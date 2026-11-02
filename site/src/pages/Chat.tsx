@@ -1,14 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { chat, receiptJob, short, sol, type ChatReply, type ReceiptJob } from '../api.ts';
 import { useApp } from '../App.tsx';
 
 type Turn = { message: string; reply?: ChatReply; job?: ReceiptJob; error?: string };
 
+/** The conversation is kept in this browser only (per network), so a refresh does not lose it. */
+const KEEP = 100;
+const load = (key: string): Turn[] => {
+  try {
+    const t = JSON.parse(localStorage.getItem(key) ?? '[]') as Turn[];
+    // A question still waiting for its reply when the page closed will not get one now.
+    return t.map((x) => (x.reply || x.error ? x : { ...x, error: 'the page was closed before the reply arrived' }));
+  } catch {
+    return [];
+  }
+};
+
 export function Chat() {
   const { config } = useApp();
-  const [turns, setTurns] = useState<Turn[]>([]);
+  const key = `neurals.chat.${config.cluster ?? 'net'}.${config.programId}`;
+  const [turns, setTurns] = useState<Turn[]>(() => load(key));
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  useEffect(() => { localStorage.setItem(key, JSON.stringify(turns.slice(-KEEP))); }, [turns, key]);
+  // Receipts still being measured or paid when the page was closed: keep following them.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current || !config.brainUrl) return;
+    resumed.current = true;
+    turns.forEach((t, i) => { if (t.reply && t.job && (t.job.status === 'measuring' || t.job.status === 'paying')) void follow(i, t.reply.job); });
+  }, []);
   if (!config.brainUrl) return <section><h1>Talk to the brain</h1><p className="muted">The hosted brain is not running for this network.</p></section>;
 
   const update = (i: number, patch: Partial<Turn>) => setTurns((t) => t.map((x, k) => (k === i ? { ...x, ...patch } : x)));
@@ -82,7 +103,9 @@ export function Chat() {
       <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="inline">
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask the brain something" disabled={busy} />
         <button disabled={busy || !text.trim()}>Send</button>
+        {turns.length > 0 && <button type="button" className="ghost" disabled={busy} onClick={() => setTurns([])}>Clear</button>}
       </form>
+      {turns.length > 0 && <p className="muted">This conversation is saved in this browser only. Receipts stay on the network either way.</p>}
     </section>
   );
 }
