@@ -53,11 +53,11 @@ const API_ROUTES = new Set(['config', 'health', 'brain', 'slot', 'wallet', 'chec
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8',
+  '.png': 'image/png', '.wasm': 'application/wasm', '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8',
 };
 
 /** Serves the built site; unknown paths get index.html (the site routes by hash). */
-function serveStatic(dir: string, pathname: string, res: ServerResponse) {
+function serveStatic(dir: string, pathname: string, res: ServerResponse, head = false) {
   const root = normalize(dir);
   let file = normalize(join(root, decodeURIComponent(pathname)));
   if (!file.startsWith(root + sep) && file !== root) { res.writeHead(403); return res.end(); }
@@ -65,7 +65,7 @@ function serveStatic(dir: string, pathname: string, res: ServerResponse) {
   if (!existsSync(file)) { res.writeHead(404); return res.end('site not built'); }
   const cache = file.includes(`${sep}assets${sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache';
   res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': cache });
-  res.end(readFileSync(file));
+  res.end(head ? undefined : readFileSync(file));
 }
 
 export function startApi(o: ApiOptions, port: number): Server {
@@ -86,8 +86,8 @@ export function startApi(o: ApiOptions, port: number): Server {
       // The API answers at /api/... (same origin as the site) and, for local tools, at the root.
       const path = url.pathname.startsWith('/api/') || url.pathname === '/api' ? url.pathname.slice(4) || '/' : url.pathname;
       const parts = path.split('/').filter(Boolean);
-      if (req.method === 'GET' && o.staticDir && !url.pathname.startsWith('/api') && !API_ROUTES.has(parts[0] ?? '')) {
-        return serveStatic(o.staticDir, url.pathname, res);
+      if ((req.method === 'GET' || req.method === 'HEAD') && o.staticDir && !url.pathname.startsWith('/api') && !API_ROUTES.has(parts[0] ?? '')) {
+        return serveStatic(o.staticDir, url.pathname, res, req.method === 'HEAD');
       }
 
       if (req.method === 'POST' && parts[0] === 'receipts') {
