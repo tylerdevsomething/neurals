@@ -17,5 +17,6 @@
   "pollMs": 3000,
   "cluster": "devnet",
   "rulesFile": "deploy/rules.devnet.json",
-  "revealFile": "deploy/reveal.devnet.json"
+  "revealFile": "deploy/reveal.devnet.json",
+  "challengeSlots": 20
 }

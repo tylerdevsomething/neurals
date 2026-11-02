@@ -107,6 +107,9 @@ const payer = opt('--payer') ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(
 const [alice, bob, carol, eve, settlerKey, apiKey] = Array.from({ length: 6 }, () => Keypair.generate());
 const treasury = Keypair.generate().publicKey;
 if (local) await fund(payer.publicKey, 50, payer);
+// Initialize must be signed by the program's upgrade authority (scripts/localnet.sh sets it to this key).
+const admin = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(opt('--admin') ?? 'C:/Users/Admin/neurals-keys/localnet-admin.json', 'utf8'))));
+if (local) await fund(admin.publicKey, 5, payer);
 for (const k of [alice, bob, carol, eve, settlerKey, apiKey]) await fund(k.publicKey, 2, payer);
 
 const mint = await createMint(conn, payer, payer.publicKey, null, 6, Keypair.generate(), { commitment: 'confirmed' }, TOKEN_2022_PROGRAM_ID);
@@ -125,8 +128,8 @@ await send([payer], new TransactionInstruction({
 await mintTo(conn, payer, mint, curveTokens(mint), payer, BigInt(1_000_000_000) * BigInt(UNIT), [], { commitment: 'confirmed' }, TOKEN_2022_PROGRAM_ID);
 await setAuthority(conn, payer, mint, payer, AuthorityType.MintTokens, null, [], { commitment: 'confirmed' }, TOKEN_2022_PROGRAM_ID);
 const configExists = await conn.getAccountInfo(acc.config());
-if (!configExists) await send([payer], acc.initialize({ admin: payer.publicKey, treasury, feeBps: 150, settler: settlerKey.publicKey }));
-await send([payer], acc.setMint({ admin: payer.publicKey, mint, curveTokenAccount: curveTokens(mint) }));
+if (!configExists) await send([admin], acc.initialize({ admin: admin.publicKey, treasury, feeBps: 150, settler: settlerKey.publicKey }));
+await send([admin], acc.setMint({ admin: admin.publicKey, mint, curveTokenAccount: curveTokens(mint) }));
 const cfg = parseConfig(Buffer.from((await conn.getAccountInfo(acc.config()))!.data));
 check(cfg.mint.equals(mint), 'set_mint recorded the mint');
 for (const k of [alice, bob, carol, eve]) await createAssociatedTokenAccountIdempotent(conn, payer, mint, k.publicKey, { commitment: 'confirmed' }, TOKEN_2022_PROGRAM_ID);
@@ -141,6 +144,7 @@ const store = new Store(dataDir);
 const indexer = new Indexer(config, new Rpc(URL_), store);
 const settler = new Settler(conn, settlerKey, acc);
 settler.log = (m) => console.log(`  ${m}`);
+settler.challengeSlots = 20; // CHALLENGE_SLOTS of the --features devnet build
 const settled: Promise<void>[] = [];
 indexer.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) settled.push(settler.enqueue(f)); };
 console.log(`  start slot ${startSlot}, epochs of ${EPOCH_SLOTS} slots, data in ${dataDir}`);

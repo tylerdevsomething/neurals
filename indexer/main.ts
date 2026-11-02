@@ -26,6 +26,8 @@ type Config = IndexerConfig & {
   model: string;
   settlerKey?: string;
   pollMs?: number;
+  /** Slots between posting a root and its first claim: the program's CHALLENGE_SLOTS (default 9,000). */
+  challengeSlots?: number;
   /** The committed rules file; needed to check a reveal. */
   rulesFile?: string;
   revealFile?: string;
@@ -59,6 +61,7 @@ const settlerSecret = process.env.SETTLER_KEY ?? (config.settlerKey ? readFileSy
 if (settlerSecret) {
   const key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(settlerSecret)));
   const settler = new Settler(new Connection(config.rpcUrl, 'confirmed'), key, new NeuralsAccounts(config.programId));
+  if (config.challengeSlots !== undefined) settler.challengeSlots = config.challengeSlots;
   indexer.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) void settler.enqueue(f); };
   // Epochs settled before a restart may not have been posted or pushed yet.
   for (const s of indexer.settlements) { const f = store.readEpoch(s.epoch); if (f) void settler.enqueue(f); }

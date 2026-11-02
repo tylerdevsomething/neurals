@@ -3,9 +3,19 @@
 // posts twice or resends a claimed payout. Owners can always claim themselves with the proof from
 // the API; this just saves them the trouble.
 
-import { Connection, Keypair, PublicKey, Transaction, ComputeBudgetProgram, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, ComputeBudgetProgram } from '@solana/web3.js';
+import { sendAndPoll } from '../brain/send.ts';
 import { NeuralsAccounts } from '../brain/accounts.ts';
 import type { EpochFile } from './store.ts';
+
+/** The posted root and the slot its claims open, from an epoch account. */
+export function epochInfo(data: Buffer): { root: string; postedSlot: number } {
+  const count = data.readUInt32LE(8 + 8 + 32 + 8 + 8);
+  const after = 72 + Math.ceil(count / 8) + 1; // bits, then bump
+  // Accounts posted before the challenge window existed have no posted slot: long open.
+  const postedSlot = data.length >= after + 8 ? Number(data.readBigUInt64LE(after)) : 0;
+  return { root: data.subarray(16, 48).toString('hex'), postedSlot };
+}
 
 /** Reads the claimed bits of a posted epoch account, or null if it is not posted. */
 export function claimedBits(data: Buffer | null): Uint8Array | null {
@@ -21,6 +31,8 @@ export class Settler {
   private readonly key: Keypair;
   private readonly accounts: NeuralsAccounts;
   private queue: Promise<void> = Promise.resolve();
+  /** Slots after posting before claims open (CHALLENGE_SLOTS in the program: 9,000 on mainnet). */
+  challengeSlots = 9_000;
   log: (msg: string) => void = (m) => console.log(m);
 
   constructor(conn: Connection, key: Keypair, accounts: NeuralsAccounts) {
@@ -37,7 +49,7 @@ export class Settler {
 
   private async send(...ixs: Parameters<Transaction['add']>): Promise<string> {
     const tx = new Transaction().add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }), ...ixs);
-    return sendAndConfirmTransaction(this.conn, tx, [this.key], { commitment: 'confirmed' });
+    return sendAndPoll(this.conn, tx, [this.key]);
   }
 
   async settle(file: EpochFile): Promise<{ posted: boolean; claimed: number; failed: number }> {
@@ -52,7 +64,18 @@ export class Settler {
       this.log(`settler: posted epoch ${file.epoch}: ${file.claims.length} payouts, ${total} lamports`);
       info = await this.conn.getAccountInfo(address, 'confirmed');
     }
-    const bits = claimedBits(info ? Buffer.from(info.data) : null)!;
+    const data = Buffer.from(info!.data);
+    const { root, postedSlot } = epochInfo(data);
+    if (root !== file.root) {
+      // Someone posted a root that is not ours: the settler key may be compromised. The admin can
+      // veto it during the challenge window (tools/veto.ts). Push nothing.
+      this.log(`ALERT: epoch ${file.epoch} on chain has root ${root}, but this indexer computed ${file.root}. Veto it before slot ${postedSlot + this.challengeSlots}: node tools/veto.ts ${file.epoch}`);
+      return { posted, claimed: 0, failed: 0 };
+    }
+    for (let now = await this.conn.getSlot('confirmed'); now < postedSlot + this.challengeSlots; now = await this.conn.getSlot('confirmed')) {
+      await new Promise((r) => setTimeout(r, Math.min(60_000, (postedSlot + this.challengeSlots - now) * 400 + 1000)));
+    }
+    const bits = claimedBits(data)!;
     let claimed = 0;
     let failed = 0;
     for (const c of file.claims) {

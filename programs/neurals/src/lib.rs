@@ -8,6 +8,11 @@
 //!   Sales and gifts change the holder record; the tokens never move.
 //! - Fees paid in go to a program-owned pool. They leave it only by `claim`, against an epoch's
 //!   Merkle root posted by the settler, at most once per payout, and never more than was posted.
+//! - Only the program's upgrade authority can initialize it, so nobody can take the admin, settler
+//!   or treasury roles between deployment and initialization.
+//! - A posted root can only be claimed after a challenge window, during which the admin can veto
+//!   it: a stolen settler key cannot drain the pool before anyone notices. The admin can replace
+//!   the settler and the treasury (`set_roles`).
 //!
 //! What it does not do: it cannot see positions. Which neurons a seal or carry really moves is
 //! decided by the ledger (SPEC §5.5); `positions` here is the sender's declaration, checked only for
@@ -33,6 +38,12 @@ pub const MAX_FEE_BPS: u16 = 500;
 pub const MAX_CLAIMS: u32 = 50_000;
 /// The deepest Merkle proof a claim may carry (2^24 leaves is far beyond MAX_CLAIMS).
 pub const MAX_PROOF: usize = 24;
+/// Slots between posting an epoch's root and its first claim, during which the admin can veto it:
+/// about an hour on mainnet; short on devnet and local test chains (feature "devnet").
+#[cfg(not(feature = "devnet"))]
+pub const CHALLENGE_SLOTS: u64 = 9_000;
+#[cfg(feature = "devnet")]
+pub const CHALLENGE_SLOTS: u64 = 20;
 
 /// The market's share of a sale price (rounded down); the seller receives the rest.
 pub fn fee_for(price: u64, fee_bps: u16) -> u64 {
@@ -43,7 +54,8 @@ pub fn fee_for(price: u64, fee_bps: u16) -> u64 {
 pub mod neurals {
     use super::*;
 
-    /// Creates the config and the fee pool. The signer becomes the admin, who may record the mint.
+    /// Creates the config and the fee pool. Only the program's upgrade authority may call it (it
+    /// becomes the admin), so the roles cannot be taken between deployment and initialization.
     pub fn initialize(ctx: Context<Initialize>, treasury: Pubkey, fee_bps: u16, settler: Pubkey) -> Result<()> {
         require!(fee_bps <= MAX_FEE_BPS, NeuralsError::FeeTooHigh);
         let c = &mut ctx.accounts.config;
@@ -57,6 +69,17 @@ pub mod neurals {
         c.bump = ctx.bumps.config;
         ctx.accounts.pool.bump = ctx.bumps.pool;
         ctx.accounts.pool.outstanding = 0;
+        Ok(())
+    }
+
+    /// Replaces the settler, the treasury or the market fee (admin only; the fee stays capped).
+    pub fn set_roles(ctx: Context<SetRoles>, settler: Pubkey, treasury: Pubkey, fee_bps: u16) -> Result<()> {
+        require!(fee_bps <= MAX_FEE_BPS, NeuralsError::FeeTooHigh);
+        let c = &mut ctx.accounts.config;
+        c.settler = settler;
+        c.treasury = treasury;
+        c.fee_bps = fee_bps;
+        emit!(RolesSet { settler, treasury, fee_bps });
         Ok(())
     }
 
@@ -265,6 +288,7 @@ pub mod neurals {
         e.count = count;
         e.bits = vec![0u8; bitmap_len(count)];
         e.bump = ctx.bumps.epoch;
+        e.posted_slot = Clock::get()?.slot;
         emit!(EpochPosted { epoch, root, total, count });
         Ok(())
     }
@@ -276,6 +300,8 @@ pub mod neurals {
         let wallet = ctx.accounts.wallet.key();
         let e = &mut ctx.accounts.epoch;
         require!(e.epoch == epoch && index < e.count, NeuralsError::BadProof);
+        let open = e.posted_slot.checked_add(CHALLENGE_SLOTS).ok_or(NeuralsError::Overflow)?;
+        require!(Clock::get()?.slot >= open, NeuralsError::ChallengeWindow);
         let (byte, bit) = ((index / 8) as usize, 1u8 << (index % 8));
         require!(e.bits[byte] & bit == 0, NeuralsError::AlreadyClaimed);
         require!(verify_claim(&e.root, index, &wallet, epoch, amount, &proof), NeuralsError::BadProof);
@@ -287,6 +313,20 @@ pub mod neurals {
         pool.sub_lamports(amount)?;
         ctx.accounts.wallet.add_lamports(amount)?;
         emit!(Claimed { epoch, index, wallet, amount });
+        Ok(())
+    }
+
+    /// Vetoes a posted root during its challenge window (admin only): the epoch account is closed,
+    /// its total is released back to the pool, and the settler can post a corrected root.
+    pub fn veto_epoch(ctx: Context<VetoEpoch>, epoch: u64) -> Result<()> {
+        let e = &ctx.accounts.epoch;
+        require!(e.epoch == epoch, NeuralsError::BadProof);
+        let open = e.posted_slot.checked_add(CHALLENGE_SLOTS).ok_or(NeuralsError::Overflow)?;
+        require!(Clock::get()?.slot < open, NeuralsError::ChallengeOver);
+        let unclaimed = e.total.checked_sub(e.claimed).ok_or(NeuralsError::Overflow)?;
+        let pool = &mut ctx.accounts.pool;
+        pool.outstanding = pool.outstanding.checked_sub(unclaimed).ok_or(NeuralsError::Overflow)?;
+        emit!(EpochVetoed { epoch, root: e.root, total: e.total });
         Ok(())
     }
 }
@@ -343,6 +383,30 @@ pub struct Initialize<'info> {
     #[account(init, payer = admin, space = 8 + Pool::INIT_SPACE, seeds = [b"pool"], bump)]
     pub pool: Account<'info, Pool>,
     pub system_program: Program<'info, System>,
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ NeuralsError::NotUpgradeAuthority)]
+    pub program: Program<'info, crate::program::Neurals>,
+    #[account(constraint = program_data.upgrade_authority_address == Some(admin.key()) @ NeuralsError::NotUpgradeAuthority)]
+    pub program_data: Account<'info, ProgramData>,
+}
+
+#[derive(Accounts)]
+pub struct SetRoles<'info> {
+    pub admin: Signer<'info>,
+    #[account(mut, seeds = [b"config"], bump = config.bump, has_one = admin @ NeuralsError::NotAdmin)]
+    pub config: Account<'info, Config>,
+}
+
+#[derive(Accounts)]
+#[instruction(epoch_id: u64)]
+pub struct VetoEpoch<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    #[account(seeds = [b"config"], bump = config.bump, has_one = admin @ NeuralsError::NotAdmin)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [b"epoch", epoch_id.to_le_bytes().as_ref()], bump = epoch.bump, close = admin)]
+    pub epoch: Account<'info, Epoch>,
+    #[account(mut, seeds = [b"pool"], bump = pool.bump)]
+    pub pool: Account<'info, Pool>,
 }
 
 #[derive(Accounts)]
@@ -512,11 +576,14 @@ pub struct Epoch {
     /// One bit per payout index, set once claimed.
     pub bits: Vec<u8>,
     pub bump: u8,
+    /// When the root was posted; claims open CHALLENGE_SLOTS later.
+    pub posted_slot: u64,
 }
 
 impl Epoch {
-    /// Everything but the bitmap's bytes: epoch, root, total, claimed, count, vec length, bump.
-    pub const BASE_SPACE: usize = 8 + 32 + 8 + 8 + 4 + 4 + 1;
+    /// Everything but the bitmap's bytes: epoch, root, total, claimed, count, vec length, bump,
+    /// posted slot.
+    pub const BASE_SPACE: usize = 8 + 32 + 8 + 8 + 4 + 4 + 1 + 8;
 }
 
 #[account]
@@ -562,6 +629,10 @@ pub struct FeePaid { pub payer: Pubkey, pub receipt: [u8; 32], pub lamports: u64
 pub struct EpochPosted { pub epoch: u64, pub root: [u8; 32], pub total: u64, pub count: u32 }
 #[event]
 pub struct Claimed { pub epoch: u64, pub index: u32, pub wallet: Pubkey, pub amount: u64 }
+#[event]
+pub struct EpochVetoed { pub epoch: u64, pub root: [u8; 32], pub total: u64 }
+#[event]
+pub struct RolesSet { pub settler: Pubkey, pub treasury: Pubkey, pub fee_bps: u16 }
 
 #[error_code]
 pub enum NeuralsError {
@@ -617,6 +688,12 @@ pub enum NeuralsError {
     BadProof,
     #[msg("This payout has already been claimed")]
     AlreadyClaimed,
+    #[msg("Only the program's upgrade authority can initialize it")]
+    NotUpgradeAuthority,
+    #[msg("This epoch's challenge window is still open: claims are not yet allowed")]
+    ChallengeWindow,
+    #[msg("This epoch's challenge window is over: it can no longer be vetoed")]
+    ChallengeOver,
 }
 
 #[cfg(test)]

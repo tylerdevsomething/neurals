@@ -6,7 +6,7 @@
 
 import { readFileSync } from 'node:fs';
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
-import { sendAndPoll } from './send.ts';
+import { sendAndPoll } from '../brain/send.ts';
 import { checkRules, commitMemo, sha256Hex, canonical, type Rules } from '../brain/reveal.ts';
 
 const MEMO = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');

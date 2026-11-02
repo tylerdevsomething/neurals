@@ -37,6 +37,8 @@ const ARGS: Record<InstructionName, string[]> = {
   payFee: ['receipt: [u8; 32]', 'lamports: u64'],
   postEpoch: ['epoch: u64', 'root: [u8; 32]', 'total: u64', 'count: u32'],
   claim: ['epoch: u64', 'index: u32', 'amount: u64', 'proof: Vec<[u8; 32]>'],
+  setRoles: ['settler: Pubkey', 'treasury: Pubkey', 'fee_bps: u16'],
+  vetoEpoch: ['epoch: u64'],
 };
 
 for (const name of Object.keys(ACCOUNTS) as InstructionName[]) {

@@ -3,7 +3,7 @@
 //   node tools/post-memo.ts "<memo text>" --key <key.json> --rpc <url>
 import { readFileSync } from 'node:fs';
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
-import { sendAndPoll } from './send.ts';
+import { sendAndPoll } from '../brain/send.ts';
 
 const args = process.argv.slice(2);
 const opt = (n: string) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };

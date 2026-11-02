@@ -132,6 +132,8 @@ export class Decoder {
       case 'cancel':
       case 'postEpoch':
       case 'claim':
+      case 'setRoles':
+      case 'vetoEpoch':
         return null; // the market's and the payouts' concern, not ownership
     }
   }

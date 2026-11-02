@@ -110,6 +110,8 @@ test('program instructions round-trip through encode and decode', () => {
     { name: 'payFee', receipt: 'ab'.repeat(32), lamports: 5_000 },
     { name: 'postEpoch', epoch: 3, root: 'cd'.repeat(32), total: 10n ** 12n, count: 17 },
     { name: 'claim', epoch: 3, index: 5, amount: 99n, proof: ['ee'.repeat(32), 'ff'.repeat(32)] },
+    { name: 'setRoles', settler: holder, treasury: holder, feeBps: 150 },
+    { name: 'vetoEpoch', epoch: 4 },
   ] as const;
   for (const c of cases) assert.deepEqual(decode(encode(c as any)), c);
   assert.equal(decode(Buffer.from('not ours at all')), null);

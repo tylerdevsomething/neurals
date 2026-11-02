@@ -99,7 +99,17 @@ export class NeuralsAccounts {
     }, ['wallet', 'epoch', 'pool'], ['payer']);
   }
 
-  /** Admin instructions (not part of the decoded contract): initialize and set_mint. */
+  /** The program's ProgramData account (upgradeable loader), which records its upgrade authority. */
+  programData = () => PublicKey.findProgramAddressSync([this.programId.toBuffer()], new PublicKey('BPFLoaderUpgradeab1e11111111111111111111111'))[0];
+
+  setRoles = (admin: PublicKey, settler: PublicKey, treasury: PublicKey, feeBps: number) =>
+    this.ix({ name: 'setRoles', settler: settler.toBase58(), treasury: treasury.toBase58(), feeBps }, { admin, config: this.config() }, ['config'], ['admin']);
+
+  vetoEpoch = (admin: PublicKey, epoch: number) =>
+    this.ix({ name: 'vetoEpoch', epoch }, { admin, config: this.config(), epoch: this.epoch(epoch), pool: this.pool() }, ['admin', 'epoch', 'pool'], ['admin']);
+
+  /** Admin instructions (not part of the decoded contract): initialize and set_mint. Initialize
+   *  must be signed by the program's upgrade authority. */
   initialize(o: { admin: PublicKey; treasury: PublicKey; feeBps: number; settler: PublicKey }): TransactionInstruction {
     const data = Buffer.alloc(8 + 32 + 2 + 32);
     anchorDiscriminator('initialize').copy(data, 0);
@@ -113,6 +123,8 @@ export class NeuralsAccounts {
         { pubkey: this.config(), isSigner: false, isWritable: true },
         { pubkey: this.pool(), isSigner: false, isWritable: true },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: this.programId, isSigner: false, isWritable: false },
+        { pubkey: this.programData(), isSigner: false, isWritable: false },
       ],
     });
   }

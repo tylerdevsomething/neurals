@@ -43,7 +43,9 @@ if (await conn.getAccountInfo(acc.config())) {
     ? 'Neurals is already initialized on this validator: start a fresh one (scripts/localnet.sh)'
     : 'Neurals is already initialized on this cluster: its mint can be recorded only once. Redeploy under a new program id to launch again.');
 }
-const [admin, settler, brain, ...demo] = Array.from({ length: 7 }, () => Keypair.generate());
+// The admin must be the program's upgrade authority: on localnet, the key scripts/localnet.sh uses.
+const admin = local ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(opt('--admin') ?? 'C:/Users/Admin/neurals-keys/localnet-admin.json', 'utf8')))) : Keypair.generate();
+const [settler, brain, ...demo] = Array.from({ length: 6 }, () => Keypair.generate());
 const treasury = Keypair.generate();
 if (local) {
   for (const k of [admin, settler, brain, ...demo]) {

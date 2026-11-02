@@ -27,6 +27,10 @@ export const ACCOUNTS = {
   postEpoch: ['settler', 'config', 'epoch', 'pool', 'systemProgram'],
   /** Pays one payout of a posted epoch to its wallet; anyone may send it. */
   claim: ['payer', 'wallet', 'epoch', 'pool'],
+  /** Replaces the settler, treasury or fee (admin only). */
+  setRoles: ['admin', 'config'],
+  /** Vetoes a posted root during its challenge window (admin only). */
+  vetoEpoch: ['admin', 'config', 'epoch', 'pool'],
 } as const;
 
 export type InstructionName = keyof typeof ACCOUNTS;
@@ -42,7 +46,9 @@ export type Instruction =
   | { name: 'withdraw' }
   | { name: 'payFee'; receipt: string; lamports: number }
   | { name: 'postEpoch'; epoch: number; root: string; total: bigint; count: number }
-  | { name: 'claim'; epoch: number; index: number; amount: bigint; proof: string[] };
+  | { name: 'claim'; epoch: number; index: number; amount: bigint; proof: string[] }
+  | { name: 'setRoles'; settler: string; treasury: string; feeBps: number }
+  | { name: 'vetoEpoch'; epoch: number };
 
 /** Anchor's instruction name is the snake_case of ours. */
 const anchorName = (n: string) => n.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
@@ -86,6 +92,12 @@ export function encode(ix: Instruction): Buffer {
     case 'gift': parts.push(Buffer.from(decodeBase58(ix.newHolder))); break;
     case 'payFee': parts.push(Buffer.from(ix.receipt, 'hex')); u64(ix.lamports); break;
     case 'postEpoch': u64(ix.epoch); parts.push(hex32(ix.root)); u64(ix.total); u32(ix.count); break;
+    case 'setRoles': {
+      parts.push(Buffer.from(decodeBase58(ix.settler)), Buffer.from(decodeBase58(ix.treasury)));
+      const b = Buffer.alloc(2); b.writeUInt16LE(ix.feeBps); parts.push(b);
+      break;
+    }
+    case 'vetoEpoch': u64(ix.epoch); break;
     case 'claim': {
       u64(ix.epoch); u32(ix.index); u64(ix.amount); u32(ix.proof.length);
       for (const p of ix.proof) parts.push(hex32(p));
@@ -151,6 +163,14 @@ export function decode(data: Uint8Array): Instruction | null {
       ix = { name, epoch, index, amount, proof: Array.from({ length: n }, h32) };
       break;
     }
+    case 'setRoles': {
+      need(66);
+      const settler = encodeBase58(buf.subarray(off, off + 32)); off += 32;
+      const treasury = encodeBase58(buf.subarray(off, off + 32)); off += 32;
+      ix = { name, settler, treasury, feeBps: buf.readUInt16LE(off) }; off += 2;
+      break;
+    }
+    case 'vetoEpoch': ix = { name, epoch: u64() }; break;
     case 'cancel': ix = { name }; break;
     case 'withdraw': ix = { name }; break;
   }
