@@ -12,8 +12,11 @@ Rules: [SPEC.md](SPEC.md), the single source of truth.
 | `brain/receipt.ts` | Activation masses → ppm fee shares, receipt hash and check (SPEC §7) |
 | `brain/ranges.ts` | Sets of curve positions; which neurons stay awake (rarest first) |
 | `brain/ledger.ts` | Ownership ledger: curve buys, dormant and wake, checkpoints, carry, epoch fee settlement (SPEC §5, §7) |
+| `brain/program.ts` | The Neurals program's instruction interface: names, Borsh arguments, account order (shared by program, decoder, site) |
+| `brain/decoder.ts` | Finalized transactions → ledger events: pump.fun curve buys and sell-backs, program instructions, wallet balance totals |
 | `probe/` | `neurals-probe`: runs the brain on llama.cpp and measures how much each part fired |
 | `tools/determinism.ts` | Milestone 1 experiment: do receipts reproduce across runs and thread counts? |
+| `tools/pump-check.ts` | Runs the decoder on real pump.fun mainnet transactions (read-only) and checks every curve transfer |
 | `tools/names-check.ts` | Fails if another project's name appears in the repo |
 
 ## Development
