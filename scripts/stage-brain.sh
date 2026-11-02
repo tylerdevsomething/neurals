@@ -7,6 +7,7 @@ OUT="$REPO/out/brain-deploy"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -r "$REPO/brain" "$REPO/brainserver" "$REPO/probe" "$REPO/deploy" "$OUT/"
+mkdir -p "$OUT/site/public" && cp -r "$REPO/site/public/wasm" "$OUT/site/public/"
 cp "$REPO/package.json" "$REPO/package-lock.json" "$OUT/"
 cp "$REPO/Dockerfile.brain" "$OUT/Dockerfile"
 cat > "$OUT/railway.json" <<'JSON'

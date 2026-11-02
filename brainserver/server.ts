@@ -23,6 +23,7 @@ import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from '@so
 import { NeuralsAccounts } from '../brain/accounts.ts';
 import { shares, receiptHash, type Receipt } from '../brain/receipt.ts';
 import { SEGMENT_COUNT } from '../brain/model.ts';
+import { loadWasmInNode } from '../brain/wasm.ts';
 
 type Config = {
   port: number;
@@ -36,6 +37,8 @@ type Config = {
   feeLamports: number;
   threads?: number;
   maxTokens?: number;
+  /** The WebAssembly verifier (receipts are measured with it); default site/public/wasm/neurals-wasm.js. */
+  wasm?: string;
   /** Run the probe through WSL (Windows host, Linux probe). Default: true on Windows. */
   wsl?: boolean;
 };
@@ -85,12 +88,16 @@ export async function startBrain(config: Config) {
   const payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.PAYER_KEY ?? readFileSync(config.payerKey, 'utf8'))));
   const conn = new Connection(config.rpcUrl, 'confirmed');
   const accounts = new NeuralsAccounts(config.programId);
+  // Receipts are measured by the WebAssembly build (SPEC §7): bit-identical on every machine and
+  // browser, so any verifier gets exactly these shares. The native probe only generates the reply.
+  const verifier = await loadWasmInNode(config.wasm ?? 'site/public/wasm/neurals-wasm.js', config.modelPath);
   let queue: Promise<unknown> = Promise.resolve();
   let served = 0;
 
   async function think(message: string) {
     const run = await runProbe(config, message);
-    const receipt: Receipt = { model: modelHash, prompt: run.prompt, output: run.output, shares: shares(run.mass) };
+    const mass = verifier.measure(run.prompt, run.output);
+    const receipt: Receipt = { model: modelHash, prompt: run.prompt, output: run.output, shares: shares(mass) };
     const hash = receiptHash(receipt);
     // Publish first: the indexer must have the receipt before the fee that names it settles.
     const res = await fetch(`${config.indexerUrl}/receipts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(receipt) });

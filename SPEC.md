@@ -220,6 +220,11 @@ For each paid message:
    pass**: a fresh context, the prompt and reply fed teacher-forced in one batch, flash attention off
    (never "auto", which can differ by machine). Generating one token at a time uses different
    arithmetic from a batch, so measuring during generation would not match a verifier's replay.
+   **The canonical pass is the WebAssembly build** (`probe/neurals-wasm.cpp`, single thread, built by
+   `scripts/build-wasm.sh` and committed in `site/public/wasm/`). WebAssembly arithmetic is specified
+   exactly, so it computes bit-identical masses on every machine and in every browser. Native builds
+   do not: their kernels depend on the CPU (AVX2 and WebAssembly differed by up to 18 ppm on one part
+   of a real receipt). The brain still generates natively, for speed.
    Each part's **activation mass** is the sum of |activation| over the positions that produced the reply:
    - a neuron column: its 256 MLP neurons, at the input of the layer's MLP down-projection;
    - an attention head: its 128 output values, at the input of the layer's attention output;
@@ -260,10 +265,10 @@ counts and in WebAssembly. Milestone 1 measures this before anything else is bui
 
 Status as of 2026-11-02.
 
-1. **Activation receipts.** Done: receipts are measured by the canonical pass. On the development
-   machine, 20 runs over 4 prompts were bit-identical at 1, 2 and 4 threads. Across machines: a
-   receipt measured by the hosted brain on Railway and replayed on the development PC matched at
-   0 ppm on all 1,318 parts. **Still to do:** replaying in the browser (WebAssembly).
+1. **Activation receipts.** Done. Native: 20 runs bit-identical at 1, 2 and 4 threads, and a
+   receipt from the hosted brain on Railway replayed at 0 ppm on the development PC. But native and
+   WebAssembly differ (up to 18 ppm), so receipts are now measured by the WebAssembly build, which is
+   bit-identical everywhere, and replayed with it in Node and in the browser.
 2. **Traits.** Measured on the inscribed model (§4); rules draft in `rules/neurals-v1.draft.json`.
    **Open:** Super Weight (none qualify); the deadline slot is set at launch.
 3. **Program.** Done: checkpoints, carry, fee pool, epoch roots and claims; contract test against
