@@ -264,5 +264,8 @@ Status as of 2026-11-02.
    mainnet is ~1.15 million transactions (~6 SOL of fees).
 5. **Indexer, hosted brain and site.** Done and run together on localnet: payouts pushed on chain,
    receipts verified, the site showing live state.
-6. **Rehearsal.** Done on localnet (`tools/rehearse.ts`, all checks pass). Devnet is two commands once
-   the devnet payer is funded (the devnet RPC faucet is closed). Mainnet is not started.
+6. **Rehearsal.** Done on localnet (`tools/rehearse.ts`, all checks pass) and on devnet: both programs
+   deployed, a test token launched, the indexer following the public cluster, two epochs posted and
+   every payout pushed exactly (`tools/devnet-payout.ts`). Writing chunks through the public devnet RPC
+   is throttled to a few per second; the full model needs a paid RPC with higher send limits.
+   Mainnet is not started.

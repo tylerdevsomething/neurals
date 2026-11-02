@@ -92,7 +92,12 @@ The devnet RPC faucet is closed: fund `payer-devnet.json` (about 5 SOL) from the
 bash scripts/deploy-devnet.sh                                    # WSL: both programs
 node tools/localnet-up.ts https://api.devnet.solana.com --payer C:/Users/Admin/neurals-keys/payer-devnet.json
 node indexer/main.ts out/devnet/indexer.json
+node tools/devnet-payout.ts                                      # a paid message, settlement, exact payouts
 ```
+
+Deployed on devnet: the Neurals program `9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR` and the test curve
+`D9JSnremGMK5EVSDJM4cXXWaD3cMKchfH41chYwG2Uq8`. The public devnet RPC throttles sends: inscribing the
+full model needs a paid RPC.
 
 ## Checks against reality
 
