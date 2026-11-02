@@ -2,6 +2,7 @@
 // transaction (Phantom, Solflare, Backpack); the site sends and confirms through its own RPC.
 import { Connection, PublicKey, Transaction, type TransactionInstruction } from '@solana/web3.js';
 import { useEffect, useState } from 'react';
+import { api } from './api.ts';
 
 type Provider = {
   publicKey?: { toBase58(): string } | null;
@@ -76,4 +77,23 @@ export async function send(conn: Connection, ixs: TransactionInstruction[]): Pro
   const r = await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
   if (r.value.err) throw new Error(`transaction failed: ${JSON.stringify(r.value.err)}`);
   return sig;
+}
+
+/**
+ * Calls `refresh` now (what the site reads from the chain is already current), then again once the
+ * indexer has followed the chain past the transaction's slot (it reads finalized blocks, so this
+ * takes some seconds). Gives up quietly after two minutes.
+ */
+export async function refreshWhenIndexed(conn: Connection, signature: string, refresh: () => void): Promise<void> {
+  refresh();
+  const deadline = Date.now() + 120_000;
+  let slot: number | null = null;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 3000));
+    try {
+      slot ??= (await conn.getSignatureStatus(signature)).value?.slot ?? null;
+      if (slot !== null && (await api.health()).synced >= slot) { refresh(); return; }
+    } catch { /* try again */ }
+  }
+  refresh();
 }

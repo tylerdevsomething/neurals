@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { api, fmt, neurons, short, sol, type CheckpointView, type Brain } from '../api.ts';
 import { useApp } from '../App.tsx';
-import { send, useWallet } from '../chain.ts';
+import { refreshWhenIndexed, send, useWallet } from '../chain.ts';
 import { parseCheckpoint, parseConfig } from '../../../brain/accounts.ts';
 import { slotsIn } from '../../../brain/layout.ts';
 import { total } from '../../../brain/ranges.ts';
@@ -41,7 +41,7 @@ export function Market() {
       const cfg = parseConfig(Buffer.from((await conn.getAccountInfo(accounts.config()))!.data));
       const sig = await send(conn, [accounts.buy({ buyer: new PublicKey(me!), checkpoint: new PublicKey(l.checkpoint), holder: st.holder, treasury: cfg.treasury, maxPrice: st.price })]);
       setMsg(`Bought (${short(sig)}). It is yours; the neurons never moved.`);
-      setTimeout(() => void load(), 15_000);
+      void refreshWhenIndexed(conn, sig, () => void load().catch(() => {}));
     } catch (e) {
       setMsg((e as Error).message);
     } finally {

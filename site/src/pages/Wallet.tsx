@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { api, fmt, fmtTokens, neurons, short, sol, UNIT, type Brain, type WalletView } from '../api.ts';
 import { useApp } from '../App.tsx';
-import { connect, send, useWallet } from '../chain.ts';
+import { connect, refreshWhenIndexed, send, useWallet } from '../chain.ts';
 import { BrainMap, ownershipMap, slotLabel } from '../BrainMap.tsx';
 import { SLOTS } from '../../../brain/layout.ts';
 import { intersect, normalize, takeRarest, total, type Range } from '../../../brain/ranges.ts';
@@ -67,8 +67,8 @@ export function WalletPage({ address }: { address: string | null }) {
     setMsg('');
     try {
       const sig = await fn();
-      setMsg(`${what}: done (${short(sig)}). The indexer shows it once finalized.`);
-      setTimeout(load, 20_000);
+      setMsg(`${what}: done (${short(sig)}).`);
+      void refreshWhenIndexed(conn, sig, load);
     } catch (e) {
       setMsg(`${what}: ${(e as Error).message}`);
     } finally {

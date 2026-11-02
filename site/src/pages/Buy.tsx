@@ -3,7 +3,7 @@ import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { createAssociatedTokenAccountIdempotentInstruction, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { api, fmt, fmtTokens, neurons, short, UNIT, type Brain, type WalletView } from '../api.ts';
 import { useApp } from '../App.tsx';
-import { connect, send, useWallet } from '../chain.ts';
+import { connect, refreshWhenIndexed, send, useWallet } from '../chain.ts';
 import { slotLabel } from '../BrainMap.tsx';
 import { anchorDiscriminator } from '../../../brain/accounts.ts';
 
@@ -70,8 +70,8 @@ export function Buy() {
         curveIx(new PublicKey(config.pumpProgramId!), side, user, mint, new PublicKey(config.curveTokenAccount), userTokens, base),
       ];
       const sig = await send(conn, ixs);
-      setMsg(`${side === 'buy' ? 'Bought' : 'Sold'} ${fmt(n, 3)} neurons (${short(sig)}). The site shows it once the transaction is final, in about 15 seconds.`);
-      setTimeout(load, 15_000);
+      setMsg(`${side === 'buy' ? 'Bought' : 'Sold'} ${fmt(n, 3)} neurons (${short(sig)}). This page updates once the transaction is final, in about 15 seconds.`);
+      void refreshWhenIndexed(conn, sig, load);
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
