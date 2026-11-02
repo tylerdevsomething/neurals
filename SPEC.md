@@ -260,19 +260,19 @@ counts and in WebAssembly. Milestone 1 measures this before anything else is bui
 
 Status as of 2026-11-02.
 
-1. **Activation receipts.** Done: receipts are measured by the canonical pass, and on the
-   development machine (after its CPU settings were fixed) 20 runs over 4 prompts were bit-identical:
-   replays at 1, 2 and 4 threads matched the posted receipt at 0 ppm with no floating-point difference
-   at all, and a live receipt from the hosted brain verified at 0 ppm. **Still to do:** a second CPU
-   model, and WebAssembly for in-browser verification.
+1. **Activation receipts.** Done: receipts are measured by the canonical pass. On the development
+   machine, 20 runs over 4 prompts were bit-identical at 1, 2 and 4 threads. Across machines: a
+   receipt measured by the hosted brain on Railway and replayed on the development PC matched at
+   0 ppm on all 1,318 parts. **Still to do:** replaying in the browser (WebAssembly).
 2. **Traits.** Measured on the inscribed model (§4); rules draft in `rules/neurals-v1.draft.json`.
    **Open:** Super Weight (none qualify); the deadline slot is set at launch.
 3. **Program.** Done: checkpoints, carry, fee pool, epoch roots and claims; contract test against
    `brain/program.ts`; unit tests.
 4. **Inscription.** Done as tooling (resumable, verified on localnet). The full model on devnet or
    mainnet is ~1.15 million transactions (~6 SOL of fees).
-5. **Indexer, hosted brain and site.** Done and run together on localnet: payouts pushed on chain,
-   receipts verified, the site showing live state.
+5. **Indexer, hosted brain and site.** Done, and online on devnet: the site and indexer at
+   https://neurals-production.up.railway.app, the brain at https://brain-production-ec65.up.railway.app.
+   The site checks receipts in the browser (hash, model, shares, on-chain payment).
 6. **Rehearsal.** Done on localnet (`tools/rehearse.ts`, all checks pass) and on devnet: both programs
    deployed, a test token launched, the indexer following the public cluster, two epochs posted and
    every payout pushed exactly (`tools/devnet-payout.ts`). Writing chunks through the public devnet RPC

@@ -99,6 +99,15 @@ Deployed on devnet: the Neurals program `9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrF
 `D9JSnremGMK5EVSDJM4cXXWaD3cMKchfH41chYwG2Uq8`. The public devnet RPC throttles sends: inscribing the
 full model needs a paid RPC.
 
+## Online (devnet)
+
+- Site and indexer: https://neurals-production.up.railway.app (API at `/api`)
+- Brain: https://brain-production-ec65.up.railway.app (`POST /chat`)
+- Check a receipt: `#/receipt/<hash>/<signature>` on the site, `node tools/check-receipt.ts <hash> <signature>`,
+  or replay it with the model: `node tools/verify-receipt.ts <hash> --indexer https://neurals-production.up.railway.app/api`
+
+Redeploy: `railway up --service neurals` (indexer and site); `bash scripts/stage-brain.sh && railway up out/brain-deploy --path-as-root --service brain`.
+
 ## Hosting
 
 Two services, both from this repo (Railway builds `Dockerfile` per `railway.json`):
