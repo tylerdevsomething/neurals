@@ -99,6 +99,24 @@ Deployed on devnet: the Neurals program `9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrF
 `D9JSnremGMK5EVSDJM4cXXWaD3cMKchfH41chYwG2Uq8`. The public devnet RPC throttles sends: inscribing the
 full model needs a paid RPC.
 
+## Mainnet launch (checklist; nothing here has been run on mainnet)
+
+Before launch day:
+1. Set the treasury wallet (a multisig), the settler and admin keys.
+2. Deploy the program and initialize it (admin, treasury, 1.5% fee, settler); hand upgrade authority to the multisig.
+3. Inscribe the model, runtime and rules (`tools/inscribe.ts` through a paid RPC); publish the brain address.
+4. Measure traits (`neurals-traits`, then `tools/traits.ts --deadline <slot>`) and post the commit memo (`tools/commit.ts --post`).
+5. Host the indexer, brain and site.
+
+The moment:
+6. Start `node tools/launch.ts --rpc <rpc> --creator <creator wallet> --admin-key <admin.json> --config <indexer.json>`,
+   then create the token on pump.fun from the creator wallet. It records the mint (`set_mint`) and writes the
+   indexer config; start the indexer with it.
+
+After the sellout or the deadline:
+7. `node tools/reveal.ts <rules> --sold-out-slot <slot> --out reveal.json`; post the reveal memo; set
+   `rulesFile` and `revealFile` in the indexer config.
+
 ## Checks against reality
 
 - `node tools/pump-check.ts 150` runs the decoder on real pump.fun mainnet transactions (read-only).
