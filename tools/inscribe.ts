@@ -39,16 +39,21 @@ async function inscribe(role: FileRef['role'], path: string, label: string = rol
   console.log(`${label} ${basename(path)}: ${file.length.toLocaleString()} bytes, ${total.toLocaleString()} chunks, ${done.size.toLocaleString()} already on chain`);
   if (done.size < total) {
     let last = Date.now();
-    let since = 0;
+    // Saved with every progress report and on interrupt, so a stopped run never resends much.
+    const onStop = () => { save(); process.exit(130); };
+    process.once('SIGINT', onStop);
+    process.once('SIGTERM', onStop);
     await writeFile(conn, writer, file, {
       done, rps: Number(opt('--rps') ?? 10), microLamports: Number(opt('--micro-lamports') ?? 0),
-      onConfirmed: () => { if (++since % 200 === 0) save(); },
       onProgress: (p) => {
         if (Date.now() - last < 5000) return;
         last = Date.now();
+        save();
         console.log(`  ${p.done.toLocaleString()} / ${p.total.toLocaleString()} confirmed, ${p.inFlight} in flight, ${p.resent} resent`);
       },
     });
+    process.off('SIGINT', onStop);
+    process.off('SIGTERM', onStop);
     save();
   }
   return { role, name: basename(path), size: file.length, sha256: sha, writer: writer.publicKey.toBase58() };
