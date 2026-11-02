@@ -285,3 +285,29 @@ test('receipt fees: shares are looked up at settlement; unknown receipts split e
   assert.equal(sb.payouts.get('C'), sb.payouts.get('D'), 'an unknown receipt splits evenly');
   assert.throws(() => b.apply({ type: 'feeReceipt', slot: 2 * EPOCH + 1, lamports: 1, receipt: 'nothex' }), /receipt hash/);
 });
+
+test('a pot carried from an epoch where nothing was awake is paid out later, even with no new fees', () => {
+  const l = ledger();
+  const filler = (COL0.start - SLOTS[3].start) / UNIT;
+  run(l, [...buy(1, 'A', TOKENS.embedding + 2 * TOKENS.head), ...buy(2, 'Z', filler, 0), ...buy(3, 'C', TOKENS.column), ...buy(4, 'D', TOKENS.column)]);
+  run(l, [evenFee(50, 1_000_000)]); // epoch 0: nobody has held a whole epoch yet
+  const [s0] = l.advanceTo(EPOCH);
+  assert.equal(s0.payouts.size, 0);
+  assert.equal(s0.carried, 1_000_000n);
+  const [s1] = l.advanceTo(2 * EPOCH); // epoch 1: no fees at all
+  const paid = [...s1.payouts.values()].reduce((a, b) => a + b, 0n);
+  assert.ok(paid > 990_000n, `only ${paid} of the carried 1,000,000 was paid`);
+  assert.equal(paid + s1.carried, 1_000_000n);
+  assert.equal(s1.payouts.get('C'), s1.payouts.get('D'));
+});
+
+test('rounding dust alone, with no fees, is still paid out eventually', () => {
+  const l = owners();
+  l.advanceTo(EPOCH);
+  run(l, [evenFee(EPOCH + 5, 7)]); // a tiny fee leaves dust after integer division
+  const [s1] = l.advanceTo(2 * EPOCH);
+  const [s2] = l.advanceTo(3 * EPOCH);
+  const paid = [s1, s2].flatMap((x) => [...x.payouts.values()]).reduce((a, b) => a + b, 0n);
+  assert.equal(paid + s2.carried, 7n);
+  assert.ok(s2.carried <= s1.carried, 'dust never grows');
+});

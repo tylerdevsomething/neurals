@@ -277,6 +277,10 @@ export class Ledger {
       this.addToPool(lamports, s ?? EVEN_SHARES);
     }
     this.pending = new Map();
+    const pot = this.fees + this.carried;
+    // A pot carried into an epoch that brought no fee weights of its own (rounding dust alone, or
+    // nothing new) is split by the kind budgets, evenly: otherwise it could never be paid out.
+    if (pot > 0n && this.pool.every((w) => w === 0n)) this.addToPool(pot, EVEN_SHARES);
     const paid = new Map<string, bigint>();
     const unit = this.slotUnits();
     for (const [key, now] of this.reg) {
@@ -297,7 +301,6 @@ export class Ledger {
       if (num > 0n) paid.set(payee, (paid.get(payee) ?? 0n) + num);
     }
 
-    const pot = this.fees + this.carried;
     let z = 0n;
     for (const v of paid.values()) z += v;
     const payouts = new Map<string, bigint>();
@@ -313,7 +316,9 @@ export class Ledger {
 
     this.carried = pot - given;
     this.fees = 0n;
-    this.pool = new Array<bigint>(SEGMENT_COUNT).fill(0n);
+    // When nothing was awake, the whole pot carries over with its weights, so it is later paid by
+    // what actually fired. Otherwise only rounding dust carries, and the weights start afresh.
+    if (z > 0n) this.pool = new Array<bigint>(SEGMENT_COUNT).fill(0n);
     this.start = new Map([...this.reg].map(([k, v]) => [k, v.slice()]));
     this.minBalances = new Map(this.balances);
     this.epoch++;

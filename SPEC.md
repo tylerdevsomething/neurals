@@ -216,7 +216,9 @@ For each paid message:
    share. Before the reveal nobody knows which part is in which slot, so a kind's weight is split evenly
    over the slots of that kind. Owners are paid by weight per position held awake for the whole epoch
    (§5.2); dormant and unissued positions are renormalised away. Rounding dust, and the whole pot of
-   an epoch where nothing was awake, carries to the next epoch: no lamport is lost.
+   an epoch where nothing was awake, carries to the next epoch: no lamport is lost. A pot carried
+   from an epoch where nothing was awake keeps its fee weights, so it is still paid by what fired; a
+   pot with no weights of its own (dust alone) is split evenly within each kind's budget.
    In short, the fee is split by the shares over the awake portion of the brain; each part's share goes
    to the owners of its slot's awake positions, by how much of the slot each holds (§5). Fees can be
    collected per epoch and paid as one transaction per owner, so costs stay low.
