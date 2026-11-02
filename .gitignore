@@ -9,3 +9,4 @@ target/
 .anchor/
 test-ledger/
 site/dist/
+a.out.*
