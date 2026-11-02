@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { COLUMN_COUNT, HEAD_COUNT, SEGMENT_COUNT, type Kind } from './model.ts';
 import { SLOTS, SUPPLY, slotsIn } from './layout.ts';
 import { normalize, total, union, intersect, subtract, takeRarest, type Range, type Ranges } from './ranges.ts';
-import { PPM } from './receipt.ts';
+import { PPM, shares } from './receipt.ts';
 
 export type Event =
   /** Tokens bought off the bonding curve by `wallet`. */
@@ -31,7 +31,14 @@ export type Event =
   /** `from` sent `amount` tokens to `to` with the positions they carry. */
   | { type: 'carry'; slot: number; from: string; to: string; amount: number; positions: Ranges }
   /** A paid message: its fee in lamports and its receipt's shares (ppm per part, model order). */
-  | { type: 'fee'; slot: number; lamports: number; shares: readonly number[] };
+  | { type: 'fee'; slot: number; lamports: number; shares: readonly number[] }
+  /**
+   * A paid message as the chain records it: its fee and its receipt's hash. The receipt's shares are
+   * looked up when the epoch settles (LedgerOptions.resolveReceipt). A receipt that is unavailable
+   * then is split evenly within each kind's budget, so the outcome depends only on which receipts
+   * were published, never on timing.
+   */
+  | { type: 'feeReceipt'; slot: number; lamports: number; receipt: string };
 
 export type Settlement = {
   epoch: number;
@@ -48,7 +55,12 @@ export type LedgerOptions = {
   startSlot: number;
   /** Epoch length in slots (SPEC §5.2, OPEN: proposed one day). */
   epochSlots: number;
+  /** The checked shares of a receipt by its hash, or null if unavailable (see the feeReceipt event). */
+  resolveReceipt?: (receipt: string) => readonly number[] | null;
 };
+
+/** The split used for a fee whose receipt is unavailable: each kind's budget, evenly over its parts. */
+export const EVEN_SHARES: readonly number[] = shares(new Array(SEGMENT_COUNT).fill(1));
 
 const wallet = (w: string) => `w:${w}`;
 const checkpoint = (c: string) => `c:${c}`;
@@ -80,6 +92,8 @@ export class Ledger {
   /** Fee weight per part this epoch: sum over messages of lamports × ppm share. */
   private pool: bigint[] = new Array<bigint>(SEGMENT_COUNT).fill(0n);
   private fees = 0n;
+  /** This epoch's receipt-referenced fees, lamports by receipt hash (in first-seen order). */
+  private pending = new Map<string, bigint>();
   private carried = 0n;
   private revealed: { partOfSlot: readonly number[]; pointsOfPart: readonly number[] } | null = null;
   private lastSlot = -Infinity;
@@ -183,16 +197,16 @@ export class Ledger {
       }
       case 'fee': {
         if (!Number.isSafeInteger(e.lamports) || e.lamports < 0) throw new Error(`bad fee ${e.lamports}`);
-        if (e.shares.length !== SEGMENT_COUNT) throw new Error('a fee needs a share for every part');
-        let sum = 0;
-        for (const s of e.shares) {
-          if (!Number.isSafeInteger(s) || s < 0) throw new Error(`bad share ${s}`);
-          sum += s;
-        }
-        if (sum !== PPM) throw new Error('shares must add up to 1,000,000');
-        const fee = BigInt(e.lamports);
-        e.shares.forEach((s, p) => (this.pool[p] += fee * BigInt(s)));
-        this.fees += fee;
+        checkShares(e.shares);
+        this.addToPool(BigInt(e.lamports), e.shares);
+        this.fees += BigInt(e.lamports);
+        break;
+      }
+      case 'feeReceipt': {
+        if (!Number.isSafeInteger(e.lamports) || e.lamports < 0) throw new Error(`bad fee ${e.lamports}`);
+        if (!/^[0-9a-f]{64}$/.test(e.receipt)) throw new Error(`bad receipt hash ${e.receipt}`);
+        this.pending.set(e.receipt, (this.pending.get(e.receipt) ?? 0n) + BigInt(e.lamports));
+        this.fees += BigInt(e.lamports);
         break;
       }
     }
@@ -217,6 +231,14 @@ export class Ledger {
    *   whatever is dormant or unissued is renormalised away.
    */
   private settle(): Settlement {
+    for (const [receipt, lamports] of this.pending) {
+      let s = this.options.resolveReceipt?.(receipt) ?? null;
+      if (s) {
+        try { checkShares(s); } catch { s = null; }
+      }
+      this.addToPool(lamports, s ?? EVEN_SHARES);
+    }
+    this.pending = new Map();
     const paid = new Map<string, bigint>();
     const unit = this.slotUnits();
     for (const [key, now] of this.reg) {
@@ -258,6 +280,10 @@ export class Ledger {
     this.minBalances = new Map(this.balances);
     this.epoch++;
     return settlement;
+  }
+
+  private addToPool(lamports: bigint, s: readonly number[]): void {
+    s.forEach((x, p) => (this.pool[p] += lamports * BigInt(x)));
   }
 
   /** Fee weight per base-unit position of each slot, scaled to whole numbers. */
@@ -306,12 +332,23 @@ export class Ledger {
       balances: sorted(this.balances),
       minBalances: sorted(this.minBalances),
       pool: this.pool.map(String),
+      pending: [...this.pending].map(([k, v]) => [k, String(v)]),
       fees: String(this.fees),
       carried: String(this.carried),
       revealed: this.revealed,
     };
     return createHash('sha256').update('neurals:v1:ledger').update(JSON.stringify(state)).digest('hex');
   }
+}
+
+function checkShares(s: readonly number[]): void {
+  if (s.length !== SEGMENT_COUNT) throw new Error('a fee needs a share for every part');
+  let sum = 0;
+  for (const x of s) {
+    if (!Number.isSafeInteger(x) || x < 0) throw new Error(`bad share ${x}`);
+    sum += x;
+  }
+  if (sum !== PPM) throw new Error('shares must add up to 1,000,000');
 }
 
 function positive(n: number): void {

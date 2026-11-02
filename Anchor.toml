@@ -1,0 +1,16 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+neurals = "9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR"
+
+[programs.devnet]
+neurals = "9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR"
+
+[provider]
+cluster = "devnet"
+wallet = "/mnt/c/Users/Admin/neurals-keys/payer-devnet.json"

@@ -30,15 +30,12 @@ export type DecoderConfig = {
   programId: string;
 };
 
-/** A fee payment names a receipt; the indexer joins it with the checked receipt to get the shares. */
-export type FeePaid = { type: 'feePaid'; slot: number; payer: string; receipt: string; lamports: number };
-
 export type Observation = { account: string; owner: string; amount: number };
 
 export type DecodedTx = {
   slot: number;
   signature: string;
-  actions: (Exclude<Event, { type: 'balance' | 'fee' }> | FeePaid)[];
+  actions: Exclude<Event, { type: 'balance' | 'fee' }>[];
   pre: Observation[];
   post: Observation[];
 };
@@ -130,10 +127,12 @@ export class Decoder {
       case 'withdraw':
         return { type: 'withdraw', slot, checkpoint: a[accountIndex('withdraw', 'checkpoint')] };
       case 'payFee':
-        return { type: 'feePaid', slot, payer: a[accountIndex('payFee', 'payer')], receipt: p.receipt, lamports: p.lamports };
+        return { type: 'feeReceipt', slot, lamports: p.lamports, receipt: p.receipt };
       case 'list':
       case 'cancel':
-        return null; // the market's concern, not ownership
+      case 'postEpoch':
+      case 'claim':
+        return null; // the market's and the payouts' concern, not ownership
     }
   }
 }
@@ -197,7 +196,7 @@ export class BalanceBook {
 }
 
 /** A decoded transaction's events in the ledger's order: actions, then balance changes. */
-export function eventsOf(tx: DecodedTx, book: BalanceBook): (Event | FeePaid)[] {
+export function eventsOf(tx: DecodedTx, book: BalanceBook): Event[] {
   return [...tx.actions, ...book.apply(tx.slot, tx.pre, tx.post)];
 }
 

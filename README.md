@@ -12,6 +12,7 @@ Rules: [SPEC.md](SPEC.md), the single source of truth.
 | `brain/receipt.ts` | Activation masses → ppm fee shares, receipt hash and check (SPEC §7) |
 | `brain/ranges.ts` | Sets of curve positions; which neurons stay awake (rarest first) |
 | `brain/ledger.ts` | Ownership ledger: curve buys, dormant and wake, checkpoints, carry, epoch fee settlement (SPEC §5, §7) |
+| `programs/neurals` | Anchor program: checkpoints (seal, list, cancel, buy, gift, withdraw), carry, fee pool (SPEC §5, §7) |
 | `brain/program.ts` | The Neurals program's instruction interface: names, Borsh arguments, account order (shared by program, decoder, site) |
 | `brain/decoder.ts` | Finalized transactions → ledger events: pump.fun curve buys and sell-backs, program instructions, wallet balance totals |
 | `probe/` | `neurals-probe`: runs the brain on llama.cpp and measures how much each part fired |
@@ -28,6 +29,17 @@ npm install
 npm test
 npm run typecheck
 npm run names        # before every commit
+```
+
+## Program
+
+Built in WSL with Anchor 0.31.1 and the Solana CLI. The program ID's keypair lives outside the repo
+(`C:\Users\Admin\neurals-keys\`). Account order and arguments are the contract in `brain/program.ts`;
+`test/contract.test.ts` reads the Rust source and fails if they drift.
+
+```sh
+cargo test -p neurals --lib     # unit tests
+anchor build                     # the on-chain program
 ```
 
 ## Milestone 1: activation receipts

@@ -108,6 +108,8 @@ test('program instructions round-trip through encode and decode', () => {
     { name: 'gift', newHolder: holder },
     { name: 'withdraw' },
     { name: 'payFee', receipt: 'ab'.repeat(32), lamports: 5_000 },
+    { name: 'postEpoch', epoch: 3, root: 'cd'.repeat(32), total: 10n ** 12n, count: 17 },
+    { name: 'claim', epoch: 3, index: 5, amount: 99n, proof: ['ee'.repeat(32), 'ff'.repeat(32)] },
   ] as const;
   for (const c of cases) assert.deepEqual(decode(encode(c as any)), c);
   assert.equal(decode(Buffer.from('not ours at all')), null);
@@ -135,7 +137,7 @@ test('program instructions become ledger events with the right accounts', () => 
     [{ type: 'checkpointHolder', slot: 10, checkpoint: 'cp1', holder: carol }]);
   assert.deepEqual(d({ name: 'withdraw' }, { checkpoint: 'cp1' }), [{ type: 'withdraw', slot: 10, checkpoint: 'cp1' }]);
   assert.deepEqual(d({ name: 'payFee', receipt: 'cd'.repeat(32), lamports: 77 }, { payer: 'api' }),
-    [{ type: 'feePaid', slot: 10, payer: 'api', receipt: 'cd'.repeat(32), lamports: 77 }]);
+    [{ type: 'feeReceipt', slot: 10, lamports: 77, receipt: 'cd'.repeat(32) }]);
   assert.deepEqual(d({ name: 'list', price: 1n }, {}), []);
 });
 
@@ -160,7 +162,7 @@ test('balance book: wallet totals across accounts, owner changes, first sight fr
 test('end to end: decoded transactions drive the ledger', () => {
   const ledger = new Ledger({ startSlot: 0, epochSlots: 1000 });
   const book = new BalanceBook();
-  const feed = (t: any) => { for (const e of eventsOf(decoder.decode(t)!, book)) if (e.type !== 'feePaid') ledger.apply(e as Event); };
+  const feed = (t: any) => { for (const e of eventsOf(decoder.decode(t)!, book)) ledger.apply(e); };
   feed(curveTx('buy', 'alice', 'aliceAta', 5_000_000));
   assert.equal(total(ledger.positions('alice')), 5_000_000);
   assert.equal(ledger.balanceOf('alice'), 5_000_000);
@@ -181,7 +183,7 @@ test('end to end: decoded transactions drive the ledger', () => {
   });
   const ordered = eventsOf(decoder.decode(seal)!, book);
   assert.deepEqual(ordered.map((e) => e.type), ['seal', 'balance', 'balance']);
-  for (const e of ordered) ledger.apply(e as Event);
+  for (const e of ordered) ledger.apply(e);
   assert.deepEqual(ledger.checkpointPositions('cp'), [[0, 1_000_000]]);
 });
 

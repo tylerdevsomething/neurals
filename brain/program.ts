@@ -23,6 +23,10 @@ export const ACCOUNTS = {
   withdraw: ['holder', 'checkpoint', 'checkpointTokens', 'holderTokens', 'mint', 'tokenProgram'],
   /** Pays a message's fee into the pool, naming its receipt hash (SPEC §7). */
   payFee: ['payer', 'config', 'pool', 'systemProgram'],
+  /** Posts an epoch's payouts as a Merkle root (brain/claims.ts); settler only. */
+  postEpoch: ['settler', 'config', 'epoch', 'pool', 'systemProgram'],
+  /** Pays one payout of a posted epoch to its wallet; anyone may send it. */
+  claim: ['payer', 'wallet', 'epoch', 'pool'],
 } as const;
 
 export type InstructionName = keyof typeof ACCOUNTS;
@@ -36,7 +40,9 @@ export type Instruction =
   | { name: 'buy'; maxPrice: bigint }
   | { name: 'gift'; newHolder: string }
   | { name: 'withdraw' }
-  | { name: 'payFee'; receipt: string; lamports: number };
+  | { name: 'payFee'; receipt: string; lamports: number }
+  | { name: 'postEpoch'; epoch: number; root: string; total: bigint; count: number }
+  | { name: 'claim'; epoch: number; index: number; amount: bigint; proof: string[] };
 
 /** Anchor's instruction name is the snake_case of ours. */
 const anchorName = (n: string) => n.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
@@ -61,6 +67,11 @@ export function encode(ix: Instruction): Buffer {
     b.writeBigUInt64LE(BigInt(v));
     parts.push(b);
   };
+  const u32 = (v: number) => {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(v);
+    parts.push(b);
+  };
   const positions = (rs: Range[]) => {
     const n = Buffer.alloc(4);
     n.writeUInt32LE(rs.length);
@@ -74,9 +85,21 @@ export function encode(ix: Instruction): Buffer {
     case 'buy': u64(ix.maxPrice); break;
     case 'gift': parts.push(Buffer.from(decodeBase58(ix.newHolder))); break;
     case 'payFee': parts.push(Buffer.from(ix.receipt, 'hex')); u64(ix.lamports); break;
+    case 'postEpoch': u64(ix.epoch); parts.push(hex32(ix.root)); u64(ix.total); u32(ix.count); break;
+    case 'claim': {
+      u64(ix.epoch); u32(ix.index); u64(ix.amount); u32(ix.proof.length);
+      for (const p of ix.proof) parts.push(hex32(p));
+      break;
+    }
     case 'cancel': case 'withdraw': break;
   }
   return Buffer.concat(parts);
+}
+
+function hex32(h: string): Buffer {
+  const b = Buffer.from(h, 'hex');
+  if (b.length !== 32) throw new Error('expected 32 bytes of hex');
+  return b;
 }
 
 /** Decodes instruction data, or returns null if it is not one of ours. Throws on malformed data. */
@@ -95,6 +118,8 @@ export function decode(data: Uint8Array): Instruction | null {
     return Number(v);
   };
   const u64big = (): bigint => { need(8); const v = buf.readBigUInt64LE(off); off += 8; return v; };
+  const u32 = (): number => { need(4); const v = buf.readUInt32LE(off); off += 4; return v; };
+  const h32 = (): string => { need(32); const v = buf.subarray(off, off + 32).toString('hex'); off += 32; return v; };
   const positions = (): Range[] => {
     need(4);
     const n = buf.readUInt32LE(off);
@@ -116,6 +141,16 @@ export function decode(data: Uint8Array): Instruction | null {
     case 'buy': ix = { name, maxPrice: u64big() }; break;
     case 'gift': need(32); ix = { name, newHolder: encodeBase58(buf.subarray(off, off + 32)) }; off += 32; break;
     case 'payFee': need(32); { const receipt = buf.subarray(off, off + 32).toString('hex'); off += 32; ix = { name, receipt, lamports: u64() }; } break;
+    case 'postEpoch': ix = { name, epoch: u64(), root: h32(), total: u64big(), count: u32() }; break;
+    case 'claim': {
+      const epoch = u64();
+      const index = u32();
+      const amount = u64big();
+      const n = u32();
+      if (n > 64) throw new Error('claim: proof too long');
+      ix = { name, epoch, index, amount, proof: Array.from({ length: n }, h32) };
+      break;
+    }
     case 'cancel': ix = { name }; break;
     case 'withdraw': ix = { name }; break;
   }

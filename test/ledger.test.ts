@@ -262,3 +262,26 @@ test('same events, same fingerprint; any difference changes it', () => {
   b.apply({ type: 'balance', slot: 61, wallet: 'A', balance: t(11) });
   assert.notEqual(a.fingerprint(), b.fingerprint());
 });
+
+test('receipt fees: shares are looked up at settlement; unknown receipts split evenly by kind', () => {
+  const known = 'aa'.repeat(32);
+  const unknown = 'bb'.repeat(32);
+  const mass = PARTS.map((p) => (p.index === 13 ? 3 : 1));
+  const make = () => {
+    const l = new Ledger({ startSlot: 0, epochSlots: EPOCH, resolveReceipt: (h) => (h === known ? shares(mass) : null) });
+    const filler = (COL0.start - SLOTS[3].start) / UNIT;
+    run(l, [...buy(1, 'A', TOKENS.embedding + 2 * TOKENS.head), ...buy(2, 'Z', filler, 0), ...buy(3, 'C', TOKENS.column), ...buy(4, 'D', TOKENS.column)]);
+    l.reveal(SLOTS.map((s) => s.index), new Array(SEGMENT_COUNT).fill(0));
+    l.advanceTo(EPOCH);
+    return l;
+  };
+  const a = make();
+  run(a, [{ type: 'feeReceipt', slot: EPOCH + 5, lamports: 1_000_000_000, receipt: known }]);
+  const [sa] = a.advanceTo(2 * EPOCH);
+  assert.ok(Math.abs(Number(sa.payouts.get('C')!) / Number(sa.payouts.get('D')!) - 3) < 0.01, 'the known receipt says part 13 fired 3x');
+  const b = make();
+  run(b, [{ type: 'feeReceipt', slot: EPOCH + 5, lamports: 1_000_000_000, receipt: unknown }]);
+  const [sb] = b.advanceTo(2 * EPOCH);
+  assert.equal(sb.payouts.get('C'), sb.payouts.get('D'), 'an unknown receipt splits evenly');
+  assert.throws(() => b.apply({ type: 'feeReceipt', slot: 2 * EPOCH + 1, lamports: 1, receipt: 'nothex' }), /receipt hash/);
+});
