@@ -10,7 +10,7 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { check, receiptHash, shares, type Receipt } from '../brain/receipt.ts';
-import { loadWasmInNode } from '../brain/wasm.ts';
+import { loadWasmInNode } from '../brain/wasm-node.ts';
 
 const args = process.argv.slice(2);
 const opt = (n: string, d: string) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };

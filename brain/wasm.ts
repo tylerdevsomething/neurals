@@ -49,14 +49,3 @@ export class WasmMeasurer {
     }
   }
 }
-
-/** Loads the verifier in Node with the model's folder mounted. */
-export async function loadWasmInNode(wasmJs: string, modelFile: string): Promise<WasmMeasurer> {
-  const { dirname, basename, resolve } = await import('node:path');
-  const { pathToFileURL } = await import('node:url');
-  const factory = (await import(pathToFileURL(resolve(wasmJs)).href)).default as () => Promise<NeuralsWasm & { FS: any }>;
-  const m = await factory();
-  m.FS.mkdir('/models');
-  m.FS.mount(m.FS.filesystems.NODEFS, { root: dirname(resolve(modelFile)) }, '/models');
-  return new WasmMeasurer(m, `/models/${basename(modelFile)}`);
-}

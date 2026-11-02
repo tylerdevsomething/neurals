@@ -9,6 +9,7 @@ import { PARTS } from '../../../brain/layout.ts';
 import { stageOf } from '../../../brain/model.ts';
 import { decode } from '../../../brain/program.ts';
 import { PublicKey } from '@solana/web3.js';
+import { replay, type Progress } from '../replay.ts';
 
 type Check = { what: string; ok: boolean | null; detail: string };
 
@@ -24,6 +25,29 @@ export function ReceiptPage({ hash, signature }: { hash: string; signature?: str
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [checks, setChecks] = useState<Check[]>([]);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; diff: number; why?: string; seconds: number } | null>(null);
+  const [replayError, setReplayError] = useState('');
+  const [running, setRunning] = useState(false);
+  const runReplay = async () => {
+    if (!receipt) return;
+    setRunning(true);
+    setReplayError('');
+    setResult(null);
+    try {
+      setResult(await replay(receipt, setProgress));
+    } catch (e) {
+      setReplayError((e as Error).message);
+    } finally {
+      setRunning(false);
+      setProgress(null);
+    }
+  };
+  const mb = (n: number) => fmt(n / 1e6);
+  const progressText = (p: Progress) =>
+    p.stage === 'downloading' ? `downloading the brain: ${mb(p.done)} of ${mb(p.total)} MB (once; your browser keeps it)`
+      : p.stage === 'checking' ? `checking the model is the brain: ${mb(p.done)} of ${mb(p.total)} MB`
+        : p.stage === 'loading' ? 'loading the brain' : 'replaying the message on your computer…';
 
   useEffect(() => {
     (async () => {
@@ -50,7 +74,6 @@ export function ReceiptPage({ hash, signature }: { hash: string; signature?: str
       } else {
         out.push({ what: 'Fee paid on chain', ok: null, detail: 'open this page from a chat answer to check its payment' });
       }
-      out.push({ what: 'Replayed on your computer', ok: null, detail: 'coming: re-running the brain here to re-measure every share' });
       setChecks(out);
     })().catch((e) => setError((e as Error).message));
   }, [hash, signature]);
@@ -77,6 +100,23 @@ export function ReceiptPage({ hash, signature }: { hash: string; signature?: str
           ))}
         </tbody>
       </table>
+      <h2>Replay it on your computer</h2>
+      <p className="muted">
+        The strongest check: your browser re-runs this message through the brain and re-measures every one of the
+        1,318 shares. It uses the same WebAssembly build that measured the receipt, which computes identically on every
+        computer. The first time, it downloads the brain (1.1 GB) and checks it is the inscribed model.
+      </p>
+      {!result && <button disabled={running} onClick={() => void runReplay()}>{running ? 'Working…' : 'Replay on my computer'}</button>}
+      {progress && <p className="muted">{progressText(progress)}</p>}
+      {replayError && <p className="error">{replayError}</p>}
+      {result && (
+        <p className={result.ok ? 'note' : 'error'}>
+          {result.ok
+            ? `✔ Replayed in ${fmt(result.seconds, 1)} s: every share matches (largest difference ${result.diff} ppm). This receipt is genuine.`
+            : `✘ The replay does not match: ${result.why}.`}
+        </p>
+      )}
+
       <h2>What fired most</h2>
       <table>
         <tbody>

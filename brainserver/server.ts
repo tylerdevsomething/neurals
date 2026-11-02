@@ -23,7 +23,7 @@ import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from '@so
 import { NeuralsAccounts } from '../brain/accounts.ts';
 import { shares, receiptHash, type Receipt } from '../brain/receipt.ts';
 import { SEGMENT_COUNT } from '../brain/model.ts';
-import { loadWasmInNode } from '../brain/wasm.ts';
+import { loadWasmInNode } from '../brain/wasm-node.ts';
 
 type Config = {
   port: number;
