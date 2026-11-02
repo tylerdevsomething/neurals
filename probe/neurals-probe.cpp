@@ -181,6 +181,7 @@ int main(int argc, char ** argv) {
   std::string prompt;
   int n_gen = 64, threads = 4;
   const char * replay = nullptr;
+  const char * prompt_ids_arg = nullptr;
   bool raw = false;
   bool measure = true;
   for (int i = 1; i < argc; i++) {
@@ -191,12 +192,13 @@ int main(int argc, char ** argv) {
     else if (a == "-n") n_gen = atoi(next());
     else if (a == "-t") threads = atoi(next());
     else if (a == "--replay") replay = next();
+    else if (a == "--prompt-ids") prompt_ids_arg = next(); // exact prompt tokens (a receipt's), no template
     else if (a == "--raw") raw = true; // prompt is used as-is, without the chat template
     else if (a == "--no-measure") measure = false; // no eval hook: for checking the hook changes nothing
     else { fprintf(stderr, "unknown argument %s\n", a.c_str()); return 2; }
   }
-  if (!model_path || prompt.empty()) {
-    fprintf(stderr, "usage: neurals-probe -m model.gguf -p prompt [-n 64] [-t 4] [--replay ids] [--raw]\n");
+  if (!model_path || (prompt.empty() && !prompt_ids_arg)) {
+    fprintf(stderr, "usage: neurals-probe -m model.gguf (-p prompt | --prompt-ids ids) [-n 64] [-t 4] [--replay ids] [--raw]\n");
     return 2;
   }
 
@@ -229,10 +231,20 @@ int main(int argc, char ** argv) {
     if (n > (int)out.size()) { out.resize((size_t)n); n = llama_chat_apply_template(tmpl, &msg, 1, true, out.data(), (int32_t)out.size()); }
     text.assign(out.data(), (size_t)n);
   }
-  std::vector<llama_token> prompt_ids(text.size() + 16);
-  int np = llama_tokenize(vocab, text.c_str(), (int32_t)text.size(), prompt_ids.data(), (int32_t)prompt_ids.size(), true, true);
-  if (np < 0) { fprintf(stderr, "tokenize failed\n"); return 1; }
-  prompt_ids.resize((size_t)np);
+  std::vector<llama_token> prompt_ids;
+  int np;
+  if (prompt_ids_arg) {
+    prompt_ids = parse_ids(prompt_ids_arg);
+    const int n_vocab_check = llama_vocab_n_tokens(vocab);
+    for (llama_token t : prompt_ids) if (t < 0 || t >= n_vocab_check) { fprintf(stderr, "prompt token %d out of range\n", t); return 1; }
+    np = (int)prompt_ids.size();
+    if (np == 0) { fprintf(stderr, "empty --prompt-ids\n"); return 1; }
+  } else {
+    prompt_ids.resize(text.size() + 16);
+    np = llama_tokenize(vocab, text.c_str(), (int32_t)text.size(), prompt_ids.data(), (int32_t)prompt_ids.size(), true, true);
+    if (np < 0) { fprintf(stderr, "tokenize failed\n"); return 1; }
+    prompt_ids.resize((size_t)np);
+  }
 
   std::vector<llama_token> reply = replay ? parse_ids(replay) : std::vector<llama_token>();
 
