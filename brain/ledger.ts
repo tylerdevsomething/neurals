@@ -129,6 +129,44 @@ export class Ledger {
     return this.balances.get(w) ?? 0;
   }
 
+  /** Wallets holding positions, sorted. */
+  wallets(): string[] {
+    return [...this.reg.keys()].filter((k) => k.startsWith('w:')).map((k) => k.slice(2)).sort();
+  }
+
+  /** Open checkpoints with their holder and positions, sorted by address. */
+  checkpoints(): { checkpoint: string; holder: string; positions: Range[] }[] {
+    return [...this.holders].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([checkpoint, holder]) => ({
+      checkpoint, holder, positions: this.reg.get(checkpoint === '' ? '' : `c:${checkpoint}`)?.slice() ?? [],
+    }));
+  }
+
+  /** Whether the indexer must follow this owner's token accounts: a wallet with positions, or a checkpoint. */
+  tracked(owner: string): boolean {
+    return this.reg.has(`w:${owner}`) || this.holders.has(owner);
+  }
+
+  /** Who holds each base-unit range of a slot right now: wallets and checkpoints, with amounts. */
+  holdersOf(start: number, end: number): { holder: string; checkpoint?: string; amount: number }[] {
+    const out: { holder: string; checkpoint?: string; amount: number }[] = [];
+    for (const [key, rs] of this.reg) {
+      const amount = total(intersect(rs, [[start, end]]));
+      if (amount === 0) continue;
+      if (key.startsWith('w:')) out.push({ holder: key.slice(2), amount });
+      else out.push({ holder: this.holders.get(key.slice(2))!, checkpoint: key.slice(2), amount });
+    }
+    return out.sort((a, b) => b.amount - a.amount || (a.holder < b.holder ? -1 : 1));
+  }
+
+  get isRevealed(): boolean {
+    return this.revealed !== null;
+  }
+
+  /** The part in a slot after the reveal, or null before it. */
+  partOfSlot(slot: number): number | null {
+    return this.revealed ? this.revealed.partOfSlot[slot] : null;
+  }
+
   /** The wallet's neurons that are awake right now: covered by its current balance, rarest first. */
   awake(w: string): Range[] {
     const mine = this.reg.get(wallet(w)) ?? [];

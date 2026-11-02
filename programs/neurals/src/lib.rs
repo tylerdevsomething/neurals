@@ -452,13 +452,13 @@ pub struct PayFee<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(epoch: u64, root: [u8; 32], total: u64, count: u32)]
+#[instruction(epoch_id: u64, root: [u8; 32], total: u64, count: u32)]
 pub struct PostEpoch<'info> {
     #[account(mut)]
     pub settler: Signer<'info>,
     #[account(seeds = [b"config"], bump = config.bump, constraint = config.settler == settler.key() @ NeuralsError::NotSettler)]
     pub config: Account<'info, Config>,
-    #[account(init, payer = settler, space = 8 + Epoch::BASE_SPACE + bitmap_len(count), seeds = [b"epoch", epoch.to_le_bytes().as_ref()], bump)]
+    #[account(init, payer = settler, space = 8 + Epoch::BASE_SPACE + bitmap_len(count), seeds = [b"epoch", epoch_id.to_le_bytes().as_ref()], bump)]
     pub epoch: Account<'info, Epoch>,
     #[account(mut, seeds = [b"pool"], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
@@ -466,13 +466,13 @@ pub struct PostEpoch<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(epoch: u64)]
+#[instruction(epoch_id: u64)]
 pub struct Claim<'info> {
     pub payer: Signer<'info>,
     /// CHECK: the wallet being paid; the Merkle proof binds the payout to this address.
     #[account(mut)]
     pub wallet: UncheckedAccount<'info>,
-    #[account(mut, seeds = [b"epoch", epoch.to_le_bytes().as_ref()], bump = epoch.bump)]
+    #[account(mut, seeds = [b"epoch", epoch_id.to_le_bytes().as_ref()], bump = epoch.bump)]
     pub epoch: Account<'info, Epoch>,
     #[account(mut, seeds = [b"pool"], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
