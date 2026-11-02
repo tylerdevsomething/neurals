@@ -176,6 +176,88 @@ static void ids_json(const std::vector<llama_token> & v) {
   putchar(']');
 }
 
+/** Sizes a Probe for a model. Returns false if the model's shape does not fit the layout. */
+static bool probe_init(Probe & p, const llama_model * model) {
+  p = Probe();
+  p.n_layer = llama_model_n_layer(model);
+  p.n_head = llama_model_n_head(model);
+  p.head_dim = llama_model_n_embd(model) / p.n_head;
+  p.ffn = 8960; // checked against the tensor on first use
+  if (p.ffn % NEURONS_PER_COLUMN) return false;
+  p.cols = p.ffn / NEURONS_PER_COLUMN;
+  p.heads.assign((size_t)(p.n_layer * p.n_head), 0);
+  p.columns.assign((size_t)(p.n_layer * p.cols), 0);
+  return true;
+}
+
+/** A context sized for n_ctx tokens, all in one ubatch so rows map straight to positions. */
+static llama_context * probe_ctx(llama_model * model, int n_ctx, int threads, Probe * p) {
+  llama_context_params cp = llama_context_default_params();
+  cp.n_ctx = (uint32_t)n_ctx;
+  cp.n_batch = (uint32_t)n_ctx;
+  cp.n_ubatch = (uint32_t)n_ctx;
+  cp.n_threads = threads;
+  cp.n_threads_batch = threads;
+  cp.cb_eval = p ? on_tensor : nullptr;
+  cp.cb_eval_user_data = p;
+  cp.no_perf = true;
+  // Never "auto": a receipt must not depend on a choice llama.cpp makes per machine.
+  // NEURALS_FLASH_ATTN=1 turns it on, for experiments only.
+  const char * fa = getenv("NEURALS_FLASH_ATTN");
+  cp.flash_attn_type = fa && strcmp(fa, "1") == 0 ? LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_DISABLED;
+  return llama_init_from_model(model, cp);
+}
+
+/** Decodes tokens at positions pos0.., asking for every row's logits (so the last layer is never
+ *  pruned to the final row only). */
+static bool probe_decode(llama_context * ctx, const std::vector<llama_token> & toks, int pos0, Probe * p) {
+  llama_batch b = llama_batch_init((int32_t)toks.size(), 0, 1);
+  for (size_t i = 0; i < toks.size(); i++) {
+    b.token[i] = toks[i];
+    b.pos[i] = pos0 + (int)i;
+    b.n_seq_id[i] = 1;
+    b.seq_id[i][0] = 0;
+    b.logits[i] = 1;
+  }
+  b.n_tokens = (int32_t)toks.size();
+  if (p) { p->base_pos = pos0; p->embedded = false; }
+  const int rc = llama_decode(ctx, b);
+  llama_batch_free(b);
+  if (rc != 0) { fprintf(stderr, "decode failed (%d)\n", rc); return false; }
+  if (p && !p->error.empty()) { fprintf(stderr, "%s\n", p->error.c_str()); return false; }
+  return true;
+}
+
+/**
+ * The canonical pass (SPEC §7), the one definition of how a receipt is measured, shared by the
+ * command-line probe and the WebAssembly verifier: a fresh context, prompt and reply teacher-forced
+ * in one batch. Positions np-1 .. np+R-2 produced the R reply tokens; those are the ones counted.
+ * Fills p's masses (p must come from probe_init, or be null with measure off). Returns the context
+ * (the caller frees it) or null.
+ */
+static llama_context * canonical_pass(llama_model * model, const std::vector<llama_token> & prompt_ids, const std::vector<llama_token> & reply, int threads, Probe * p) {
+  const int np = (int)prompt_ids.size();
+  llama_context * ctx = probe_ctx(model, np + (int)reply.size() + 8, threads, p);
+  if (!ctx) { fprintf(stderr, "cannot create context\n"); return nullptr; }
+  if (p) { p->count_from = np - 1; p->count_to = np + (int)reply.size() - 2; }
+  std::vector<llama_token> all = prompt_ids;
+  all.insert(all.end(), reply.begin(), reply.end());
+  if (!probe_decode(ctx, all, 0, p)) { llama_free(ctx); return nullptr; }
+  return ctx;
+}
+
+/** The masses in model order: embedding, then per layer 12 heads and 35 columns, then unembedding. */
+static void masses_in_order(const Probe & p, double * out) {
+  size_t k = 0;
+  out[k++] = p.embedding;
+  for (int l = 0; l < p.n_layer; l++) {
+    for (int h = 0; h < p.n_head; h++) out[k++] = p.heads[(size_t)(l * p.n_head + h)];
+    for (int c = 0; c < p.cols; c++) out[k++] = p.columns[(size_t)(l * p.cols + c)];
+  }
+  out[k++] = p.unembedding;
+}
+
+#ifndef NEURALS_NO_MAIN
 int main(int argc, char ** argv) {
   const char * model_path = nullptr;
   std::string prompt;
@@ -211,14 +293,8 @@ int main(int argc, char ** argv) {
   const llama_vocab * vocab = llama_model_get_vocab(model);
 
   Probe p;
-  p.n_layer = llama_model_n_layer(model);
-  p.n_head = llama_model_n_head(model);
-  p.head_dim = llama_model_n_embd(model) / p.n_head;
-  p.ffn = 8960; // checked against the tensor on first use
-  if (p.ffn % NEURONS_PER_COLUMN) { fprintf(stderr, "FFN width does not divide into columns\n"); return 1; }
-  p.cols = p.ffn / NEURONS_PER_COLUMN;
-  p.heads.assign((size_t)(p.n_layer * p.n_head), 0);
-  p.columns.assign((size_t)(p.n_layer * p.cols), 0);
+  if (!probe_init(p, model)) { fprintf(stderr, "FFN width does not divide into columns\n"); return 1; }
+  Probe * pm = measure ? &p : nullptr;
 
   // Prompt: one user turn with the model's own chat template.
   std::string text = prompt;
@@ -248,44 +324,6 @@ int main(int argc, char ** argv) {
 
   std::vector<llama_token> reply = replay ? parse_ids(replay) : std::vector<llama_token>();
 
-  // A context sized for n_ctx tokens, all in one ubatch so rows map straight to positions.
-  auto make_ctx = [&](int n_ctx) {
-    llama_context_params cp = llama_context_default_params();
-    cp.n_ctx = (uint32_t)n_ctx;
-    cp.n_batch = (uint32_t)n_ctx;
-    cp.n_ubatch = (uint32_t)n_ctx;
-    cp.n_threads = threads;
-    cp.n_threads_batch = threads;
-    cp.cb_eval = measure ? on_tensor : nullptr;
-    cp.cb_eval_user_data = measure ? &p : nullptr;
-    cp.no_perf = true;
-    // Never "auto": a receipt must not depend on a choice llama.cpp makes per machine.
-    // NEURALS_FLASH_ATTN=1 turns it on, for experiments only.
-    const char * fa = getenv("NEURALS_FLASH_ATTN");
-    cp.flash_attn_type = fa && strcmp(fa, "1") == 0 ? LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_DISABLED;
-    return llama_init_from_model(model, cp);
-  };
-
-  // Every row asks for logits, so the last layer is never pruned to the final row only.
-  auto decode = [&](llama_context * ctx, const std::vector<llama_token> & toks, int pos0) -> bool {
-    llama_batch b = llama_batch_init((int32_t)toks.size(), 0, 1);
-    for (size_t i = 0; i < toks.size(); i++) {
-      b.token[i] = toks[i];
-      b.pos[i] = pos0 + (int)i;
-      b.n_seq_id[i] = 1;
-      b.seq_id[i][0] = 0;
-      b.logits[i] = 1;
-    }
-    b.n_tokens = (int32_t)toks.size();
-    p.base_pos = pos0;
-    p.embedded = false;
-    const int rc = llama_decode(ctx, b);
-    llama_batch_free(b);
-    if (rc != 0) { fprintf(stderr, "decode failed (%d)\n", rc); return false; }
-    if (!p.error.empty()) { fprintf(stderr, "%s\n", p.error.c_str()); return false; }
-    return true;
-  };
-
   const int n_vocab = llama_vocab_n_tokens(vocab);
   auto argmax = [&](llama_context * ctx, int row) {
     const float * l = llama_get_logits_ith(ctx, row);
@@ -298,32 +336,24 @@ int main(int argc, char ** argv) {
     // Generate the reply token by token, as the hosted brain does. Nothing is measured here:
     // one-token decodes use different arithmetic from a batch, so the receipt comes from the
     // canonical pass below, the same one a verifier runs.
-    llama_context * gen = make_ctx(np + n_gen + 8);
+    llama_context * gen = probe_ctx(model, np + n_gen + 8, threads, pm);
     if (!gen) { fprintf(stderr, "cannot create context\n"); return 1; }
     p.count_from = 1;
     p.count_to = 0; // count nothing
-    if (!decode(gen, prompt_ids, 0)) return 1;
+    if (!probe_decode(gen, prompt_ids, 0, pm)) return 1;
     llama_token tok = argmax(gen, np - 1);
     for (int i = 0; i < n_gen; i++) {
       reply.push_back(tok);
       if (llama_vocab_is_eog(vocab, tok) || i == n_gen - 1) break;
-      if (!decode(gen, { tok }, np + i)) return 1;
+      if (!probe_decode(gen, { tok }, np + i, pm)) return 1;
       tok = argmax(gen, 0);
     }
     llama_free(gen);
   }
 
-  // The canonical pass (SPEC §7): a fresh context, prompt and reply teacher-forced in one batch.
-  // Positions np-1 .. np+R-2 produced the R reply tokens; those are the ones counted.
-  llama_context * ctx = make_ctx(np + (int)reply.size() + 8);
-  if (!ctx) { fprintf(stderr, "cannot create context\n"); return 1; }
-  p.count_from = np - 1;
-  p.count_to = np + (int)reply.size() - 2;
-  {
-    std::vector<llama_token> all = prompt_ids;
-    all.insert(all.end(), reply.begin(), reply.end());
-    if (!decode(ctx, all, 0)) return 1;
-  }
+  // The canonical pass: the receipt (the same function the browser verifier runs).
+  llama_context * ctx = canonical_pass(model, prompt_ids, reply, threads, pm);
+  if (!ctx) return 1;
   // Fingerprint of the logits at the counted positions (FNV-1a over the float bits): two runs that
   // computed the same thing have the same fingerprint, measured or not.
   uint64_t logits_hash = 1469598103934665603ull;
@@ -345,15 +375,15 @@ int main(int argc, char ** argv) {
   ids_json(reply);
   printf(",\"text\":");
   json_string(reply_text);
-  printf(",\"mass\":[%.17g", p.embedding);
-  for (int l = 0; l < p.n_layer; l++) {
-    for (int h = 0; h < p.n_head; h++) printf(",%.17g", p.heads[(size_t)(l * p.n_head + h)]);
-    for (int c = 0; c < p.cols; c++) printf(",%.17g", p.columns[(size_t)(l * p.cols + c)]);
-  }
-  printf(",%.17g]}\n", p.unembedding);
+  std::vector<double> mass((size_t)(2 + p.n_layer * (p.n_head + p.cols)));
+  masses_in_order(p, mass.data());
+  printf(",\"mass\":[");
+  for (size_t k = 0; k < mass.size(); k++) printf(k ? ",%.17g" : "%.17g", mass[k]);
+  printf("]}\n");
 
   llama_free(ctx);
   llama_model_free(model);
   llama_backend_free();
   return 0;
 }
+#endif
