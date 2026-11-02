@@ -109,12 +109,12 @@ Rules:
 - The thresholds above are proposals, to be set once the tool has been run on the model, so that
   each trait is genuinely rare. Once committed they never change.
 
-**Measured on the inscribed model** (`probe/neurals-traits`, 2026-11-02; 502-token reference text
+**Measured on the inscribed model** (`probe/neurals-traits`, 2026-11-02, Super Weight by the redefinition below; 502-token reference text
 `rules/reference.txt`; draft in `rules/neurals-v1.draft.json`):
 
 | Trait | Given | Qualified | Strongest |
 |---|---|---|---|
-| Super Weight | 0 | 0 | — |
+| Super Weight | 3 | 34 | layer 1 column 21: a weight of −11.84, 1,437× the layer's RMS weight (the 34 qualifying weights all feed the massive-activation dimensions) |
 | Induction Head | 6 | 15 | layer 14 head 3, score 0.98 |
 | Massive Activation | 6 | 74 | layer 1 neuron 7401, 8,544× the layer median (all into hidden dimension 408) |
 | Attention Sink | 3 | 6 | layer 14 head 5, 97.6% on the first token (3 of the 6 were already Induction Heads) |

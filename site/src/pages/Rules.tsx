@@ -29,14 +29,14 @@ export function Rules() {
       <table>
         <thead><tr><th>Trait</th><th>What it is</th><th>Points</th></tr></thead>
         <tbody>
-          <tr><td>Super Weight</td><td>one of the model's few weights that, set to zero, wreck it</td><td>100</td></tr>
+          <tr><td>Super Weight</td><td>one of the model's largest outlier weights: hundreds of times bigger than the weights around it</td><td>100</td></tr>
           <tr><td>Induction Head</td><td>the circuit that spots a pattern in the context and continues it</td><td>85</td></tr>
           <tr><td>Massive Activation</td><td>a neuron firing thousands of times harder than typical</td><td>70</td></tr>
           <tr><td>Attention Sink</td><td>a head that parks attention on the first token to keep the model stable</td><td>50</td></tr>
           <tr><td>Monosemantic</td><td>a neuron that responds to one clear thing</td><td>30</td></tr>
         </tbody>
       </table>
-      <p>A published tool measures them on the exact inscribed model. Anyone can rerun it.</p>
+      <p>A published tool measures them on the exact inscribed model. Anyone can rerun it. A part with a trait earns a bonus: (100 + points)/100 times its share, within its kind's budget.</p>
 
       <h2>Neurons never die</h2>
       <ul>

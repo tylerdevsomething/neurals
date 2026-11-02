@@ -1,7 +1,7 @@
 // Turns the trait tool's raw measurements into the rules draft (SPEC §4).
 //
 //   node tools/traits.ts out/traits-raw.json [--out rules/neurals-v1.draft.json] [--deadline <slot>]
-//        [--super 10] [--induction 0.4] [--massive 1000] [--sink 0.8] [--mono 0.9]
+//        [--super 100] [--induction 0.4] [--massive 1000] [--sink 0.8] [--mono 0.875] [--lift 20]
 //
 // A part qualifies only if it passes its threshold; the counts are caps. Each part takes at most
 // one trait, from the most points down. The rules record the tool's and the reference text's
@@ -18,6 +18,7 @@ type Raw = {
   perplexity: number;
   heads: { layer: number; head: number; sink: number; induction: number }[];
   superWeight: { layer: number; neuron: number; out: number; weight: number; input: number; output: number; perplexityRatio: number }[];
+  outliers: { layer: number; out: number; neuron: number; weight: number; ratio: number }[];
   neurons: { layer: number; neuron: number; ratio: number; same: number; token: number; freq: number }[];
 };
 
@@ -25,15 +26,16 @@ const args = process.argv.slice(2);
 const opt = (n: string, d: string) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
 const raw = JSON.parse(readFileSync(args[0] ?? 'out/traits-raw.json', 'utf8')) as Raw;
 const T = {
-  superWeight: Number(opt('--super', '10')),
+  /** A weight's magnitude against its layer's root-mean-square weight. */
+  superWeight: Number(opt('--super', '100')),
   induction: Number(opt('--induction', '0.4')),
   massive: Number(opt('--massive', '1000')),
   sink: Number(opt('--sink', '0.8')),
-  monosemantic: Number(opt('--mono', '0.9')),
+  monosemantic: Number(opt('--mono', '0.875')),
   /** How many times more often than chance the neuron's token must fill its top positions. */
-  lift: Number(opt('--lift', '10')),
+  lift: Number(opt('--lift', '20')),
 };
-const CAPS: Record<TraitName, number> = { 'Super Weight': Infinity, 'Induction Head': 6, 'Massive Activation': 6, 'Attention Sink': 12, Monosemantic: 24 };
+const CAPS: Record<TraitName, number> = { 'Super Weight': 3, 'Induction Head': 6, 'Massive Activation': 6, 'Attention Sink': 12, Monosemantic: 24 };
 
 const perLayer = MODEL.heads + COLUMNS_PER_LAYER;
 const headPart = (layer: number, head: number) => 1 + layer * perLayer + head;
@@ -41,9 +43,9 @@ const columnPart = (layer: number, neuron: number) => 1 + layer * perLayer + MOD
 
 // Candidates per trait, best first.
 const candidates: Record<TraitName, { part: number; score: number; what: string }[]> = {
-  'Super Weight': raw.superWeight.filter((s) => s.perplexityRatio >= T.superWeight)
-    .sort((a, b) => b.perplexityRatio - a.perplexityRatio)
-    .map((s) => ({ part: columnPart(s.layer, s.neuron), score: s.perplexityRatio, what: `layer ${s.layer} neuron ${s.neuron} -> dim ${s.out}: zeroed, perplexity x${s.perplexityRatio.toFixed(1)}` })),
+  // The largest outlier weights (SPEC §4): the column holding the neuron the weight leads out of.
+  'Super Weight': raw.outliers.filter((o) => o.ratio >= T.superWeight).sort((a, b) => b.ratio - a.ratio)
+    .map((o) => ({ part: columnPart(o.layer, o.neuron), score: o.ratio, what: `layer ${o.layer} neuron ${o.neuron} -> dim ${o.out}: weight ${o.weight.toFixed(2)}, ${Math.round(o.ratio)}x the layer's RMS weight` })),
   'Induction Head': raw.heads.filter((h) => h.induction >= T.induction).sort((a, b) => b.induction - a.induction)
     .map((h) => ({ part: headPart(h.layer, h.head), score: h.induction, what: `layer ${h.layer} head ${h.head}: induction score ${h.induction.toFixed(3)}` })),
   'Massive Activation': raw.neurons.filter((n) => n.ratio >= T.massive).sort((a, b) => b.ratio - a.ratio)

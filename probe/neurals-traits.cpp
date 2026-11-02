@@ -43,6 +43,7 @@ struct State {
   std::vector<float> layer_median;                          // per layer
   std::vector<std::vector<std::pair<float, int>>> topk;     // per neuron: min-heap of (|x|, position)
   std::vector<Cand> cand;                                   // per layer: largest input and output
+  std::vector<const ggml_tensor *> down;                    // per layer: the ffn_down weight tensor
   // pass B
   std::vector<double> ind, ind_n;                           // per head
   std::vector<float> buf;
@@ -141,6 +142,7 @@ static bool on_tensor(ggml_tensor * t, bool ask, void * user) {
     return true;
   }
   if (s.mode != State::REFERENCE) return true;
+  s.down[(size_t)layer] = t->src[0];
   if (!read_rows(s, x)) return false;
   const int64_t n = x->ne[0], rows = x->ne[1];
   if (n != s.ffn) { s.error = "unexpected FFN width"; return false; }
@@ -241,6 +243,7 @@ int main(int argc, char ** argv) {
   s.layer_median.assign((size_t)s.n_layer, 0);
   s.topk.resize((size_t)(s.n_layer * s.ffn));
   s.cand.resize((size_t)s.n_layer);
+  s.down.assign((size_t)s.n_layer, nullptr);
 
   std::vector<llama_token> ref(text.size() + 16);
   int n_ref = llama_tokenize(vocab, text.c_str(), (int32_t)text.size(), ref.data(), (int32_t)ref.size(), true, false);
@@ -311,6 +314,38 @@ int main(int argc, char ** argv) {
     fprintf(stderr, "pass C: layer %d neuron %d -> x%.2f\n", c.layer, c.neuron, ratios.back());
   }
 
+  // Outlier weights: every MLP down-projection weight, by magnitude relative to its layer's
+  // root-mean-square weight. Weights are in the file's layout (no repacking), read row by row.
+  struct Outlier { int layer, out, in; float w; double ratio; };
+  std::vector<Outlier> outliers;
+  for (int l = 0; l < s.n_layer; l++) {
+    const ggml_tensor * w = s.down[(size_t)l];
+    if (!w) { fprintf(stderr, "no ffn_down tensor seen for layer %d\n", l); return 1; }
+    const int64_t n_in = w->ne[0], n_out = w->ne[1];
+    const auto * traits = ggml_get_type_traits(w->type);
+    std::vector<float> row((size_t)n_in);
+    double sq = 0;
+    std::vector<Outlier> top;
+    for (int64_t o = 0; o < n_out; o++) {
+      const char * src = (const char *)w->data + o * w->nb[1];
+      if (w->type == GGML_TYPE_F32) memcpy(row.data(), src, (size_t)n_in * sizeof(float));
+      else traits->to_float(src, row.data(), n_in);
+      for (int64_t i = 0; i < n_in; i++) {
+        const float v = row[(size_t)i];
+        sq += (double)v * v;
+        if (top.size() < 8 || std::fabs(v) > std::fabs(top.back().w)) {
+          top.push_back({l, (int)o, (int)i, v, 0});
+          std::sort(top.begin(), top.end(), [](const Outlier & a, const Outlier & b) { return std::fabs(a.w) > std::fabs(b.w); });
+          if (top.size() > 8) top.pop_back();
+        }
+      }
+    }
+    const double rms = std::sqrt(sq / (double)(n_in * n_out));
+    for (auto & t : top) { t.ratio = std::fabs(t.w) / rms; outliers.push_back(t); }
+  }
+  std::sort(outliers.begin(), outliers.end(), [](const Outlier & a, const Outlier & b) { return a.ratio > b.ratio; });
+  fprintf(stderr, "outlier scan done: largest %.0fx its layer's RMS (layer %d)\n", outliers.empty() ? 0 : outliers[0].ratio, outliers.empty() ? -1 : outliers[0].layer);
+
   // Output.
   printf("{\"tokens\":%d,\"k\":%d,\"perplexity\":%.6f,\"heads\":[", n_ref, k, base_ppl);
   for (int l = 0; l < s.n_layer; l++) for (int h = 0; h < s.n_head; h++) {
@@ -323,6 +358,11 @@ int main(int argc, char ** argv) {
     const Cand & c = cands[i];
     printf("%s{\"layer\":%d,\"neuron\":%d,\"out\":%d,\"weight\":%.6g,\"input\":%.6g,\"output\":%.6g,\"perplexityRatio\":%.6f}",
            i ? "," : "", c.layer, c.neuron, c.out, c.weight, c.in_val, c.out_val, ratios[i]);
+  }
+  printf("],\"outliers\":[");
+  for (size_t i = 0; i < outliers.size() && i < 40; i++) {
+    const Outlier & o = outliers[i];
+    printf("%s{\"layer\":%d,\"out\":%d,\"neuron\":%d,\"weight\":%.6g,\"ratio\":%.3f}", i ? "," : "", o.layer, o.out, o.in, o.w, o.ratio);
   }
   printf("],\"neurons\":[");
   // Every neuron: largest |activation| relative to its layer's median, and how many of its top-k
