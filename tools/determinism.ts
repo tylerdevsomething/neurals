@@ -3,7 +3,7 @@
 //   node tools/determinism.ts [--probe <path in WSL>] [--model <path in WSL>] [-n 48]
 //
 // For each test prompt: generate once (4 threads, token by token, as the hosted brain would), then
-// replay the same reply teacher-forced in one batch with 1, 4 and 12 threads, as verifiers on other
+// replay the same reply teacher-forced in one batch with 1, 2 and 4 threads (--threads to change), as verifiers on other
 // machines would. Prints the largest per-part share difference (ppm) of every replay against the
 // generation. Each probe run is a separate process, so nothing is shared between runs.
 // Runs the probe through WSL on Windows, directly elsewhere.
@@ -23,6 +23,8 @@ const PROBE = opt('--probe', '~/neurals-build/probe/neurals-probe');
 const MODEL = opt('--model', '/mnt/c/git/neurals/models/qwen2.5-1.5b-instruct-q4_k_m.gguf');
 const N = opt('-n', '48');
 const TOLERANCE = 1; // ppm
+// Replay thread counts. Keep below the machine's core count when other work is running.
+const THREADS = (opt('--threads', '1,2,4')).split(',').map(Number);
 
 const PROMPTS = [
   'Explain in two sentences why the sky is blue.',
@@ -66,7 +68,7 @@ for (const prompt of PROMPTS) {
   const gen = probe(prompt, 4);
   const posted = receipt(model, gen);
   console.log(`\n"${prompt}"\n  reply (${gen.output.length} tokens): ${JSON.stringify(gen.text.slice(0, 80))}`);
-  for (const threads of [1, 4, 12]) {
+  for (const threads of THREADS) {
     const rep = probe(prompt, threads, gen.output);
     const r = check(posted, receipt(model, rep), TOLERANCE);
     // Raw relative difference too, to see how far floating point drifts before rounding.

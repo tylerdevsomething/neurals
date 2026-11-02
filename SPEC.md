@@ -260,11 +260,11 @@ counts and in WebAssembly. Milestone 1 measures this before anything else is bui
 
 Status as of 2026-11-02.
 
-1. **Activation receipts.** Done on one machine: receipts are measured by the canonical pass and
-   replays matched exactly (0 ppm) at 1, 4 and 12 threads; a live receipt from the hosted brain
-   verified at 0 ppm. **Still to do:** rerun `tools/determinism.ts` on a machine without CPU faults
-   (the development PC logged machine-check errors under full load), on a second CPU model, and in
-   WebAssembly for in-browser verification.
+1. **Activation receipts.** Done: receipts are measured by the canonical pass, and on the
+   development machine (after its CPU settings were fixed) 20 runs over 4 prompts were bit-identical:
+   replays at 1, 2 and 4 threads matched the posted receipt at 0 ppm with no floating-point difference
+   at all, and a live receipt from the hosted brain verified at 0 ppm. **Still to do:** a second CPU
+   model, and WebAssembly for in-browser verification.
 2. **Traits.** Measured on the inscribed model (§4); rules draft in `rules/neurals-v1.draft.json`.
    **Open:** Super Weight (none qualify); the deadline slot is set at launch.
 3. **Program.** Done: checkpoints, carry, fee pool, epoch roots and claims; contract test against
