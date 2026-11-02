@@ -311,3 +311,25 @@ test('rounding dust alone, with no fees, is still paid out eventually', () => {
   assert.equal(paid + s2.carried, 7n);
   assert.ok(s2.carried <= s1.carried, 'dust never grows');
 });
+
+test('trait bonus: a part with a trait earns (100 + points)/100, and kind budgets stay fixed', () => {
+  const settleWith = (points: number[]) => {
+    const l = owners();
+    l.reveal(SLOTS.map((s) => s.index), points);
+    l.advanceTo(EPOCH);
+    run(l, [evenFee(EPOCH + 5, 1_000_000_000)]);
+    return l.advanceTo(2 * EPOCH)[0];
+  };
+  const plain = settleWith(new Array(SEGMENT_COUNT).fill(0));
+  const pts = new Array(SEGMENT_COUNT).fill(0);
+  pts[13] = 100; // column 0 of layer 0 (held by C) is a Super Weight
+  const boosted = settleWith(pts);
+  const c = Number(boosted.payouts.get('C')!);
+  const d = Number(boosted.payouts.get('D')!);
+  assert.ok(Math.abs(c / d - 2) < 1e-6, `C/D ${c / d}`);
+  // The boost takes a little from every column of the kind, including the 978 nobody owns, whose
+  // shares go to the awake owners anyway: so the owned columns gain on the other kinds overall.
+  assert.ok(boosted.payouts.get('A')! < plain.payouts.get('A')!);
+  const sum = (x: typeof plain) => [...x.payouts.values()].reduce((p, q) => p + q, 0n) + x.carried;
+  assert.equal(sum(boosted), sum(plain), 'no lamport is lost');
+});

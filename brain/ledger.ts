@@ -332,12 +332,22 @@ export class Ledger {
   /** Fee weight per base-unit position of each slot, scaled to whole numbers. */
   private slotUnits(): bigint[] {
     const kindWeight: Record<Kind, bigint> = { embedding: 0n, head: 0n, column: 0n, unembedding: 0n };
-    if (!this.revealed) SLOTS.forEach((s, i) => (kindWeight[s.kind] += this.pool[i]));
+    SLOTS.forEach((s, i) => (kindWeight[s.kind] += this.pool[i]));
+    if (!this.revealed) {
+      return SLOTS.map((s, i) => kindWeight[s.kind] * (COUNT_LCM / BigInt(KIND_COUNT[s.kind])) * (SIZE_LCM / SIZE[i]));
+    }
+    // After the reveal, a part with a trait earns (100 + points) / 100 of its weight (SPEC §4), and
+    // each kind's total stays its budget: the bonus moves share between parts of a kind, never
+    // between kinds. Exact: boosted weights are rescaled with a common multiple, not divided.
+    const { partOfSlot, pointsOfPart } = this.revealed;
+    const boosted = SLOTS.map((_, i) => this.pool[partOfSlot[i]] * BigInt(100 + pointsOfPart[partOfSlot[i]]));
+    const boostedKind: Record<Kind, bigint> = { embedding: 0n, head: 0n, column: 0n, unembedding: 0n };
+    SLOTS.forEach((s, i) => (boostedKind[s.kind] += boosted[i]));
+    const common = (Object.values(boostedKind).filter((b) => b > 0n)).reduce((a, b) => a * b, 1n);
     return SLOTS.map((s, i) => {
-      const weight = this.revealed
-        ? this.pool[this.revealed.partOfSlot[i]] * COUNT_LCM
-        : kindWeight[s.kind] * (COUNT_LCM / BigInt(KIND_COUNT[s.kind]));
-      return weight * (SIZE_LCM / SIZE[i]);
+      const b = boostedKind[s.kind];
+      if (b === 0n) return 0n;
+      return boosted[i] * kindWeight[s.kind] * (common / b) * (SIZE_LCM / SIZE[i]);
     });
   }
 

@@ -17,6 +17,10 @@ through a pump.fun token, and every paid thought paying the neurons that fired.*
 | Repo | `C:\git\neurals`, new: ledger, checkpoints, launch ops, inscription and runner |
 | Brain | Qwen2.5-1.5B-Instruct class, GGUF Q4_K_M (~1.1 GB), inscribed in full |
 | Fees | Activation-weighted: each paid message's fee is split by how much each segment fired |
+| Message price | 0.001 SOL per paid message (decided 2026-11-02; can change before launch) |
+| Epochs | One day |
+| Market fee | 1.5% to the treasury (treasury wallet set before mainnet) |
+| Traits | Measured; a part with a trait earns a bonus share (§4) |
 | Token moves | Neurons never die: dormant and wake by default, checkpoints for trading, carry transfer for gifts (§5) |
 
 ## 2. The brain
@@ -88,7 +92,7 @@ Luck is in which part a buyer gets (§3 slots), not in what the parts are.
 
 | Trait | Found in | What it is | How it is measured | Count | Points |
 |---|---|---|---|---|---|
-| Super Weight | neuron columns | One of the model's few critical weights: a single number that, set to zero, wrecks the model | Zero each candidate weight alone (candidates: the extreme spikes in the MLP down-projections); it is a Super Weight if perplexity on the reference text rises at least 10× | all found (expected only a handful) | 100 |
+| Super Weight | neuron columns | Holds one of the model's largest outlier weights: a single number in an MLP down-projection far larger than the weights around it | Every MLP down-projection weight is scanned; a weight qualifies if its magnitude is at least 100× its layer's typical (root-mean-square) weight | top 3 | 100 |
 | Induction Head | attention heads | The circuit that spots a pattern earlier in the context and continues it | Induction score on repeated random token sequences: attention from each token to the token that followed its earlier copy | top 6, score ≥ 0.4 | 85 |
 | Massive Activation | neuron columns | Holds a neuron whose activation is thousands of times larger than typical, which the model depends on | Largest absolute MLP activation over the reference text, relative to that layer's median | top 6, ≥ 1,000× median | 70 |
 | Attention Sink | attention heads | A head that parks its attention on the first token when it has nowhere useful to look, which keeps the model stable | Average share of attention on the first token over the reference text | top 12, share ≥ 0.8 | 50 |
@@ -98,7 +102,7 @@ Rules:
 - A part qualifies only if it passes the threshold; "top N" is a cap. If the model has fewer parts
   that pass, fewer are given. All the counts are fixed in the rules file before launch.
 - A neuron column holds 256 neurons; it takes a neuron trait if any of its neurons (or, for Super
-  Weight, any of its neurons' weights) qualifies.
+  Weight, any of its neurons' outgoing weights) qualifies.
 - At most one trait per part. Traits are given from the most points down; a part already given one
   is skipped, and the next qualifying part takes its place.
 - The Embedding and Unembedding are one of a kind and take no trait.
@@ -116,18 +120,20 @@ Rules:
 | Attention Sink | 3 | 6 | layer 14 head 5, 97.6% on the first token (3 of the 6 were already Induction Heads) |
 | Monosemantic | 24 | 199 | 7–8 of the top 8 on one rare word, 56–63× chance |
 
-**OPEN: Super Weight.** No single weight passes the bar. The tool tests the weight behind each of
-the 6 largest MLP output spikes; one is a genuine outlier (layer 2, value 4.78, about 200× a typical
-weight, feeding the massive-activation dimension), but removing any one of them changes perplexity by
-at most 1%, not 10×. This compressed Qwen2.5-1.5B does not depend on one weight the way the models
-in the original research did. Options: drop the trait (5 traits); redefine it as "the largest
-outlier weights in the model" (true, but not critical); or test more candidates and a longer text.
+**Super Weight was redefined** (decided 2026-11-02). It first meant a single weight that, removed,
+wrecks the model (perplexity ×10 or more), as in the original research. None exists here: removing
+the weight behind each of the 6 largest MLP output spikes changed perplexity by at most 1%, including
+a genuine outlier (layer 2, value 4.78, about 200× a typical weight, feeding the massive-activation
+dimension). This compressed Qwen2.5-1.5B does not depend on one weight. The trait now names the
+largest outlier weights, which is true and measurable, without claiming they are critical.
 
 Polysemantic is not a trait: mixing many concepts is what almost every neuron does, so it cannot be rare.
 
-**OPEN:** whether rare traits also multiply fee share, or is purely collectible. The activation split
-already gives some segments more income: segments that fire more earn more, a trait that is only
-learned after launch ("hot" neurons).
+**Traits earn a bonus** (decided 2026-11-02). After the reveal, a part with a trait counts
+(100 + points) / 100 times in the fee split: a Super Weight 2×, an Induction Head 1.85×, a Massive
+Activation 1.7×, an Attention Sink 1.5×, a Monosemantic neuron 1.3×. The bonus works inside each
+kind's budget (§7): it moves share between the parts of a kind, never between kinds. Activation still
+decides most of the split: segments that fire more earn more.
 
 ## 5. Ownership
 
@@ -151,7 +157,8 @@ A wallet's registered neurons are **awake** as far as its own token balance cove
   wakes them.
 - **For fees, the balance of an epoch is its lowest point during that epoch**, computed from the
   finalized transactions (pre- and post-balances) of the wallet's token accounts. Buying just before
-  a payout and selling straight after earns nothing. **OPEN:** epoch length (proposed: one day).
+  a payout and selling straight after earns nothing. **Epoch length: one day** (216,000 slots at
+  400 ms; decided 2026-11-02; test runs use shorter epochs).
 - **A position earns in an epoch only if it was with the same holder (wallet or checkpoint) at the
   start and at the end of the epoch.** Positions bought, carried or sealed during an epoch start
   earning the next one. This stops a wallet whose neurons are dormant from buying back and sealing
@@ -170,7 +177,9 @@ gifted without anything moving. *"Seal your neurons into a checkpoint."*
   moves carries none. Neurons in a checkpoint are always awake, because their tokens
   cannot leave.
 - **List, cancel, buy:** a checkpoint can be listed at a price on the neuron market. A buyer pays and
-  becomes the holder in one transaction; the tokens never move. **OPEN:** market fee.
+  becomes the holder in one transaction; the tokens never move. **Market fee: 1.5%** of the price,
+  to the treasury (decided 2026-11-02; the program caps it at 5%). The treasury wallet is a
+  placeholder on devnet and must be set before mainnet.
 - **Gift:** the holder hands the checkpoint to another wallet.
 - **Withdraw:** tokens and positions go back to the holder's wallet and are registered to the holder
   (rule 5.2 applies from then on). Nothing is lost.

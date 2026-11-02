@@ -105,7 +105,7 @@ const brainCfg = {
   model: '/mnt/c/git/neurals/models/qwen2.5-1.5b-instruct-q4_k_m.gguf',
   modelPath: resolve('models/qwen2.5-1.5b-instruct-q4_k_m.gguf'),
   indexerUrl: 'http://127.0.0.1:8787', rpcUrl: URL_, programId: NEURALS.toBase58(),
-  payerKey: keys.brain, feeLamports: local ? 10_000_000 : 1_000_000, threads: 2, maxTokens: 64,
+  payerKey: keys.brain, feeLamports: 1_000_000, threads: 4, maxTokens: 64,
 };
 writeFileSync(join(OUT, 'indexer.json'), JSON.stringify(indexer, null, 2));
 writeFileSync(join(OUT, 'brain.json'), JSON.stringify(brainCfg, null, 2));
