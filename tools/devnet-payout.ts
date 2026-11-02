@@ -23,6 +23,7 @@ const acc = new NeuralsAccounts(cfg.programId);
 const store = new Store(mkdtempSync(join(tmpdir(), 'neurals-devnet-')));
 const ix = new Indexer(cfg, new Rpc(cfg.rpcUrl, 4), store);
 const settler = new Settler(conn, key(cfg.settlerKey), acc);
+settler.challengeSlots = 20; // the devnet build's CHALLENGE_SLOTS
 const pending: Promise<void>[] = [];
 ix.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) pending.push(settler.enqueue(f)); };
 const until = async (slot: number) => { while ((await conn.getSlot('finalized')) < slot) await new Promise((r) => setTimeout(r, 3000)); };
