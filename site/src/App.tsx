@@ -7,6 +7,7 @@ import { Home } from './pages/Home.tsx';
 import { SlotPage } from './pages/Slot.tsx';
 import { WalletPage } from './pages/Wallet.tsx';
 import { Market } from './pages/Market.tsx';
+import { Buy } from './pages/Buy.tsx';
 import { Chat } from './pages/Chat.tsx';
 import { Rules } from './pages/Rules.tsx';
 import { ReceiptPage } from './pages/Receipt.tsx';
@@ -38,7 +39,7 @@ export function App() {
   }, [config]);
 
   const page = route[0] ?? '';
-  const nav = [['', 'Brain'], ['market', 'Market'], ['chat', 'Chat'], ['wallet', 'My neurons'], ['rules', 'Rules']];
+  const nav = [['', 'Brain'], ['buy', 'Buy'], ['market', 'Market'], ['chat', 'Chat'], ['wallet', 'My neurons'], ['rules', 'Rules']];
   return (
     <>
       <header>
@@ -59,6 +60,7 @@ export function App() {
             {page === '' && <Home />}
             {page === 'slot' && <SlotPage index={Number(route[1])} />}
             {page === 'wallet' && <WalletPage address={route[1] ?? wallet ?? null} />}
+            {page === 'buy' && <Buy />}
             {page === 'market' && <Market />}
             {page === 'chat' && <Chat />}
             {page === 'rules' && <Rules />}

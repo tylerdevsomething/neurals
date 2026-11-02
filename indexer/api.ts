@@ -100,7 +100,7 @@ export function startApi(o: ApiOptions, port: number): Server {
       switch (parts[0]) {
         case 'config': {
           const c = indexer.config;
-          return json(res, 200, { programId: c.programId, mint: c.mint, curveTokenAccount: c.curveTokenAccount, startSlot: c.startSlot, epochSlots: c.epochSlots, model: o.model, ...o.site });
+          return json(res, 200, { programId: c.programId, mint: c.mint, curveTokenAccount: c.curveTokenAccount, pumpProgramId: c.pumpProgramId, startSlot: c.startSlot, epochSlots: c.epochSlots, model: o.model, ...o.site });
         }
         case 'health':
           return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, fingerprint: ledger.fingerprint() });

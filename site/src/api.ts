@@ -9,6 +9,7 @@ export type SiteConfig = {
   programId: string;
   mint: string;
   curveTokenAccount: string;
+  pumpProgramId?: string;
   startSlot: number;
   epochSlots: number;
   model: string;
