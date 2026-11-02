@@ -142,6 +142,14 @@ After the sellout or the deadline:
 7. `node tools/reveal.ts <rules> --sold-out-slot <slot> --out reveal.json`; post the reveal memo; set
    `rulesFile` and `revealFile` in the indexer config.
 
+## Security checks
+
+- `node tools/attacks.ts` (fresh local validator, program built with `--features devnet`) runs 26
+  attacks against the program and checks every one is refused with the expected error (36 checks).
+- If the indexer logs an `ALERT` (a posted payout root that differs from its own), veto it within the
+  challenge window: `node tools/veto.ts <epoch> --key <admin.json> --rpc <url>` (on mainnet, the same
+  instruction from the admin multisig).
+
 ## Checks against reality
 
 - `node tools/pump-check.ts 150` runs the decoder on real pump.fun mainnet transactions (read-only).

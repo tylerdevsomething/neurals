@@ -208,6 +208,17 @@ AMM pools or exchanges, so trading volume elsewhere does not slow it down.
 3. After sellout or deadline: the seed block draws the permutation of real parts into slots (§3). The
    reveal is posted and anyone can recompute, in their browser, which part (and so which trait) every
    slot holds.
+4. **The reveal takes effect at the first epoch boundary after the seed block**: a point fixed by the
+   chain, so every indexer applies it at the same place in the event order and settles identically,
+   whenever it reads the reveal.
+
+**Safety rules in the program** (checked by `tools/attacks.ts`):
+- Only the program's upgrade authority can initialize it, so nobody can take the admin, settler or
+  treasury roles between deployment and initialization.
+- A posted payout root can be claimed only after a **challenge window** (about an hour on mainnet).
+  During it the admin (a multisig) can veto the root; the indexer raises an alert when a posted root
+  differs from the one it computed. A stolen settler key cannot drain the pool unnoticed.
+- The admin can replace the settler and the treasury, and change the market fee within its 5% cap.
 
 ## 7. Usage fees and activation receipts
 
