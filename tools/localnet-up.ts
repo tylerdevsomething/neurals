@@ -79,6 +79,7 @@ const indexer = {
   programId: NEURALS.toBase58(), mint: mint.toBase58(), curveTokenAccount: curveTokens(mint).toBase58(),
   pumpProgramId: CURVE_PROGRAM.toBase58(), pumpNonBuyInstructions: ['migrate', 'withdraw'],
   startSlot, epochSlots: 150, model: BRAIN_MODEL_SHA256, settlerKey: keys.settler, pollMs: 2000,
+  brainUrl: 'http://127.0.0.1:8788', cluster: 'localnet',
 };
 const brainCfg = {
   port: 8788, probe: '/root/neurals-build/probe/neurals-probe',

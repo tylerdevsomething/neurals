@@ -24,6 +24,10 @@ type Config = IndexerConfig & {
   settlerKey?: string;
   pollMs?: number;
   revealFile?: string;
+  /** Shown to the site: the RPC browsers should use, and the brain's URL. */
+  publicRpcUrl?: string;
+  brainUrl?: string;
+  cluster?: string;
 };
 
 const path = process.argv[2];
@@ -46,7 +50,7 @@ if (config.settlerKey) {
   for (const s of indexer.settlements) { const f = store.readEpoch(s.epoch); if (f) void settler.enqueue(f); }
 }
 
-startApi({ indexer, store, model: config.model }, config.port);
+startApi({ indexer, store, model: config.model, site: { rpcUrl: config.publicRpcUrl ?? config.rpcUrl, brainUrl: config.brainUrl, cluster: config.cluster } }, config.port);
 console.log(`api on :${config.port}`);
 
 let revealed = indexer.ledger.isRevealed;

@@ -1,5 +1,6 @@
 // The indexer's read API, plus receipt submission for the brain.
 //
+//   GET  /config                 what the site needs: program, mint, RPC, epochs, brain URL
 //   GET  /health                 synced and finalized slots, epoch, ledger fingerprint
 //   GET  /brain                  every slot: kind, range, how much is issued, part and trait after the reveal
 //   GET  /slot/:i                one slot and who holds it
@@ -19,7 +20,14 @@ import type { Receipt } from '../brain/receipt.ts';
 import type { Indexer } from './indexer.ts';
 import type { Store } from './store.ts';
 
-export type ApiOptions = { indexer: Indexer; store: Store; model: string; traitNames?: Record<number, string> };
+export type ApiOptions = {
+  indexer: Indexer;
+  store: Store;
+  model: string;
+  traitNames?: Record<number, string>;
+  /** Public settings for the site: program, mint, RPC, brain URL. */
+  site?: { rpcUrl: string; brainUrl?: string; cluster?: string };
+};
 
 const json = (res: ServerResponse, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' });
@@ -61,6 +69,10 @@ export function startApi(o: ApiOptions, port: number): Server {
       if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
 
       switch (parts[0]) {
+        case 'config': {
+          const c = indexer.config;
+          return json(res, 200, { programId: c.programId, mint: c.mint, curveTokenAccount: c.curveTokenAccount, startSlot: c.startSlot, epochSlots: c.epochSlots, model: o.model, ...o.site });
+        }
         case 'health':
           return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, fingerprint: ledger.fingerprint() });
         case 'brain':

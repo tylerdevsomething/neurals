@@ -8,12 +8,23 @@
   "scripts": {
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit -p .",
-    "names": "node tools/names-check.ts"
+    "names": "node tools/names-check.ts",
+    "site": "vite site",
+    "site:build": "vite build site",
+    "site:typecheck": "tsc --noEmit -p site"
   },
   "devDependencies": {
+    "@noble/hashes": "^1.8.0",
     "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.99.0",
     "@types/node": "^24.19.2",
-    "typescript": "^5.9.3"
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^5.2.0",
+    "buffer": "^6.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7"
   }
 }

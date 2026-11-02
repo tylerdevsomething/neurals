@@ -8,3 +8,4 @@ out/
 target/
 .anchor/
 test-ledger/
+site/dist/
