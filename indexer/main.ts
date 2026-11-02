@@ -47,6 +47,7 @@ const publicRpcUrl = config.publicRpcUrl ?? config.rpcUrl;
 if (process.env.RPC_URL) config.rpcUrl = process.env.RPC_URL;
 if (process.env.PORT) config.port = Number(process.env.PORT);
 if (process.env.DATA_DIR) config.dataDir = process.env.DATA_DIR;
+if (process.env.BRAIN_URL) config.brainUrl = process.env.BRAIN_URL;
 const rpc = new Rpc(config.rpcUrl);
 const store = new Store(config.dataDir);
 const indexer = new Indexer(config, rpc, store);
