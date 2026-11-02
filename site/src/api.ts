@@ -1,7 +1,9 @@
 // The indexer and brain APIs, as the site sees them.
 import type { Range } from '../../brain/ranges.ts';
 
-export const INDEXER: string = import.meta.env.VITE_INDEXER_URL ?? 'http://127.0.0.1:8787';
+// Hosted, the indexer serves the site and answers at /api on the same origin; in development it
+// runs separately on :8787.
+export const INDEXER: string = import.meta.env.VITE_INDEXER_URL ?? (import.meta.env.DEV ? 'http://127.0.0.1:8787' : `${location.origin}/api`);
 
 export type SiteConfig = {
   programId: string;

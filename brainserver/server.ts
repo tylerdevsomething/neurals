@@ -81,7 +81,8 @@ async function readBody(req: IncomingMessage): Promise<string> {
 
 export async function startBrain(config: Config) {
   const modelHash = await hashFile(config.modelPath);
-  const payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(config.payerKey, 'utf8'))));
+  // The payer's key: PAYER_KEY (its JSON array) when hosted, or a file path in the config.
+  const payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.PAYER_KEY ?? readFileSync(config.payerKey, 'utf8'))));
   const conn = new Connection(config.rpcUrl, 'confirmed');
   const accounts = new NeuralsAccounts(config.programId);
   let queue: Promise<unknown> = Promise.resolve();
@@ -127,5 +128,10 @@ if (process.argv[1]?.replaceAll('\\', '/').endsWith('brainserver/server.ts')) {
     console.error('usage: node brainserver/server.ts <config.json>');
     process.exit(2);
   }
-  await startBrain(JSON.parse(readFileSync(path, 'utf8')) as Config);
+  const config = JSON.parse(readFileSync(path, 'utf8')) as Config;
+  // Hosting: secrets and addresses from the environment.
+  if (process.env.PORT) config.port = Number(process.env.PORT);
+  if (process.env.RPC_URL) config.rpcUrl = process.env.RPC_URL;
+  if (process.env.INDEXER_URL) config.indexerUrl = process.env.INDEXER_URL;
+  await startBrain(config);
 }

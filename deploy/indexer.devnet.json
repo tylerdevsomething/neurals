@@ -1,0 +1,19 @@
+{
+  "rpcUrl": "https://api.devnet.solana.com",
+  "publicRpcUrl": "https://api.devnet.solana.com",
+  "port": 8080,
+  "dataDir": "/data",
+  "programId": "9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR",
+  "mint": "J6F6XDkwQANFuQfaLpeBYwxP8TNfbRXuq5b8YPwVEprs",
+  "curveTokenAccount": "pEhLeBtf5kvXoo45sot9hU4RXi4E19LjPWiuFjUDWgC",
+  "pumpProgramId": "D9JSnremGMK5EVSDJM4cXXWaD3cMKchfH41chYwG2Uq8",
+  "pumpNonBuyInstructions": [
+    "migrate",
+    "withdraw"
+  ],
+  "startSlot": 517793233,
+  "epochSlots": 150,
+  "model": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+  "pollMs": 3000,
+  "cluster": "devnet"
+}

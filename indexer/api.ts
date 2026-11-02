@@ -12,6 +12,8 @@
 //   GET  /receipts/:hash         a stored receipt
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { extname, join, normalize, sep } from 'node:path';
 import { SLOTS, PARTS } from '../brain/layout.ts';
 import { stageOf } from '../brain/model.ts';
 import { total, intersect } from '../brain/ranges.ts';
@@ -27,6 +29,8 @@ export type ApiOptions = {
   traitNames?: Record<number, string>;
   /** Public settings for the site: program, mint, RPC, brain URL. */
   site?: { rpcUrl: string; brainUrl?: string; cluster?: string };
+  /** The built website (site/dist), served for every path the API does not answer. */
+  staticDir?: string;
 };
 
 const json = (res: ServerResponse, status: number, body: unknown) => {
@@ -45,6 +49,25 @@ async function body(req: IncomingMessage, limit = 256 * 1024): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+const API_ROUTES = new Set(['config', 'health', 'brain', 'slot', 'wallet', 'checkpoints', 'epochs', 'claims', 'receipts']);
+
+const TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
+  '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8',
+};
+
+/** Serves the built site; unknown paths get index.html (the site routes by hash). */
+function serveStatic(dir: string, pathname: string, res: ServerResponse) {
+  const root = normalize(dir);
+  let file = normalize(join(root, decodeURIComponent(pathname)));
+  if (!file.startsWith(root + sep) && file !== root) { res.writeHead(403); return res.end(); }
+  if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, 'index.html');
+  if (!existsSync(file)) { res.writeHead(404); return res.end('site not built'); }
+  const cache = file.includes(`${sep}assets${sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache';
+  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': cache });
+  res.end(readFileSync(file));
+}
+
 export function startApi(o: ApiOptions, port: number): Server {
   const { indexer, store } = o;
   const ledger = indexer.ledger;
@@ -60,7 +83,12 @@ export function startApi(o: ApiOptions, port: number): Server {
     try {
       if (req.method === 'OPTIONS') return json(res, 204, null);
       const url = new URL(req.url ?? '/', 'http://x');
-      const parts = url.pathname.split('/').filter(Boolean);
+      // The API answers at /api/... (same origin as the site) and, for local tools, at the root.
+      const path = url.pathname.startsWith('/api/') || url.pathname === '/api' ? url.pathname.slice(4) || '/' : url.pathname;
+      const parts = path.split('/').filter(Boolean);
+      if (req.method === 'GET' && o.staticDir && !url.pathname.startsWith('/api') && !API_ROUTES.has(parts[0] ?? '')) {
+        return serveStatic(o.staticDir, url.pathname, res);
+      }
 
       if (req.method === 'POST' && parts[0] === 'receipts') {
         const r = JSON.parse(await body(req)) as Receipt;

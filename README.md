@@ -99,6 +99,22 @@ Deployed on devnet: the Neurals program `9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrF
 `D9JSnremGMK5EVSDJM4cXXWaD3cMKchfH41chYwG2Uq8`. The public devnet RPC throttles sends: inscribing the
 full model needs a paid RPC.
 
+## Hosting
+
+Two services, both from this repo (Railway builds `Dockerfile` per `railway.json`):
+
+| Service | Image | Serves | Environment |
+|---|---|---|---|
+| Indexer + site | `Dockerfile` | the website at `/`, the API at `/api`, the settler | `RPC_URL` (private RPC, never shown to browsers), `SETTLER_KEY` (keypair JSON), `INDEXER_CONFIG` (default `deploy/indexer.devnet.json`), a volume at `/data` |
+| Brain | `Dockerfile.brain` | `/chat` | `PAYER_KEY` (keypair JSON), `INDEXER_URL`, `RPC_URL`, a volume at `/data` (the model is fetched there on first start and hash-checked) |
+
+Secrets are never in the images, the configs or the repo. Locally, the same works without Docker:
+
+```sh
+npm run site:build
+RPC_URL=<private rpc> PORT=8080 STATIC_DIR=site/dist DATA_DIR=out/hosted node indexer/main.ts deploy/indexer.devnet.json
+```
+
 ## Mainnet launch (checklist; nothing here has been run on mainnet)
 
 Before launch day:
