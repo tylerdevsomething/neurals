@@ -7,9 +7,11 @@ skip-lint = false
 
 [programs.localnet]
 neurals = "9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR"
+test_curve = "D9JSnremGMK5EVSDJM4cXXWaD3cMKchfH41chYwG2Uq8"
 
 [programs.devnet]
 neurals = "9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR"
+test_curve = "D9JSnremGMK5EVSDJM4cXXWaD3cMKchfH41chYwG2Uq8"
 
 [provider]
 cluster = "devnet"
