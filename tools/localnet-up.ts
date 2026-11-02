@@ -92,6 +92,7 @@ for (const [i, amount] of buys.entries()) {
 
 const keys = { admin: save('admin', admin), settler: save('settler', settler), brain: save('brain', brain), treasury: save('treasury', treasury) };
 demo.forEach((k, i) => save(`demo-${i}`, k));
+writeFileSync(join(OUT, 'demo-wallets.txt'), demo.map((k) => k.publicKey.toBase58()).join('\n') + '\n');
 const indexer = {
   rpcUrl: URL_, port: 8787, dataDir: join(OUT, 'indexer-data'),
   programId: NEURALS.toBase58(), mint: mint.toBase58(), curveTokenAccount: curveTokens(mint).toBase58(),
