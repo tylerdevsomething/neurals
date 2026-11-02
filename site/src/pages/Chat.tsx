@@ -43,7 +43,7 @@ export function Chat() {
               <p>{t.reply.reply}</p>
               <p className="receipt">
                 {t.reply.tokens} tokens · {sol(t.reply.fee)} SOL to the neurons that fired ·{' '}
-                <a href={`${INDEXER}/receipts/${t.reply.receipt}`} target="_blank" rel="noreferrer">receipt {short(t.reply.receipt)}</a>
+                <a href={`#/receipt/${t.reply.receipt}/${t.reply.signature}`}>check receipt {short(t.reply.receipt)}</a>
                 <br /><code>node tools/verify-receipt.ts {t.reply.receipt}</code>
               </p>
             </div>

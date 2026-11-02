@@ -9,6 +9,7 @@ import { WalletPage } from './pages/Wallet.tsx';
 import { Market } from './pages/Market.tsx';
 import { Chat } from './pages/Chat.tsx';
 import { Rules } from './pages/Rules.tsx';
+import { ReceiptPage } from './pages/Receipt.tsx';
 
 export type Ctx = { config: SiteConfig; conn: Connection; accounts: NeuralsAccounts };
 const AppContext = createContext<Ctx | null>(null);
@@ -61,6 +62,7 @@ export function App() {
             {page === 'market' && <Market />}
             {page === 'chat' && <Chat />}
             {page === 'rules' && <Rules />}
+            {page === 'receipt' && route[1] && <ReceiptPage hash={route[1]} signature={route[2]} />}
           </AppContext.Provider>
         )}
       </main>
