@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { chat, INDEXER, short, sol, type ChatReply } from '../api.ts';
+import { chat, receiptJob, short, sol, type ChatReply, type ReceiptJob } from '../api.ts';
 import { useApp } from '../App.tsx';
 
-type Turn = { message: string; reply?: ChatReply; error?: string };
+type Turn = { message: string; reply?: ChatReply; job?: ReceiptJob; error?: string };
 
 export function Chat() {
   const { config } = useApp();
@@ -10,6 +10,22 @@ export function Chat() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   if (!config.brainUrl) return <section><h1>Talk to the brain</h1><p className="muted">The hosted brain is not running for this network.</p></section>;
+
+  const update = (i: number, patch: Partial<Turn>) => setTurns((t) => t.map((x, k) => (k === i ? { ...x, ...patch } : x)));
+
+  /** Follows a reply's receipt until it is measured and paid (or fails). */
+  const follow = async (i: number, job: string) => {
+    for (let tries = 0; tries < 120; tries++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const j = await receiptJob(config.brainUrl!, job);
+        update(i, { job: j });
+        if (j.status === 'done' || j.status === 'failed') return;
+      } catch {
+        // the brain restarted or is busy: keep trying for a while
+      }
+    }
+  };
 
   const ask = async () => {
     const message = text.trim();
@@ -20,20 +36,35 @@ export function Chat() {
     setTurns((t) => [...t, { message }]);
     try {
       const reply = await chat(config.brainUrl!, message);
-      setTurns((t) => t.map((x, k) => (k === i ? { ...x, reply } : x)));
+      update(i, { reply, job: { status: 'measuring', fee: reply.fee } });
+      void follow(i, reply.job);
     } catch (e) {
-      setTurns((t) => t.map((x, k) => (k === i ? { ...x, error: (e as Error).message } : x)));
+      update(i, { error: (e as Error).message });
     } finally {
       setBusy(false);
     }
+  };
+
+  const receiptLine = (t: Turn) => {
+    const j = t.job;
+    if (!j) return null;
+    if (j.status === 'measuring') return <span className="muted">measuring which parts of the brain fired…</span>;
+    if (j.status === 'paying') return <span className="muted">paying {sol(j.fee)} SOL to the neurons that fired…</span>;
+    if (j.status === 'failed') return <span className="error">the receipt could not be completed: {j.error}</span>;
+    return (
+      <>
+        {sol(j.fee)} SOL paid to the neurons that fired ·{' '}
+        <a href={`#/receipt/${j.receipt}/${j.signature}`}>see which parts fired and check the receipt {short(j.receipt!)}</a>
+      </>
+    );
   };
 
   return (
     <section className="chat">
       <h1>Talk to the brain</h1>
       <p className="muted">
-        Every answer is a paid thought: the brain measures which of its parts fired, publishes a receipt, and pays the
-        fee into the pool for their owners. Anyone can replay a receipt to check it.
+        Every answer is a paid thought. The brain replies first; then it measures which of its parts fired, publishes a
+        receipt, and pays the fee into the pool for their owners. Anyone can replay a receipt to check it.
       </p>
       {turns.map((t, i) => (
         <div key={i} className="turn">
@@ -41,11 +72,7 @@ export function Chat() {
           {t.reply && (
             <div className="brain">
               <p>{t.reply.reply}</p>
-              <p className="receipt">
-                {t.reply.tokens} tokens · {sol(t.reply.fee)} SOL to the neurons that fired ·{' '}
-                <a href={`#/receipt/${t.reply.receipt}/${t.reply.signature}`}>check receipt {short(t.reply.receipt)}</a>
-                <br /><code>node tools/verify-receipt.ts {t.reply.receipt}</code>
-              </p>
+              <p className="receipt">{t.reply.tokens} tokens · {receiptLine(t)}</p>
             </div>
           )}
           {t.error && <p className="error">{t.error}</p>}

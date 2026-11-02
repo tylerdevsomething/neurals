@@ -35,7 +35,8 @@ export type WalletView = {
 };
 export type CheckpointView = { checkpoint: string; holder: string; positions: Range[] };
 export type EpochView = { epoch: number; fees: string; carried: string; payouts: number; root?: string };
-export type ChatReply = { reply: string; tokens: number; receipt: string; signature: string; fee: number };
+export type ChatReply = { reply: string; tokens: number; job: string; fee: number };
+export type ReceiptJob = { status: 'measuring' | 'paying' | 'done' | 'failed'; receipt?: string; signature?: string; fee: number; error?: string };
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${INDEXER}${path}`);
@@ -53,6 +54,13 @@ export const api = {
   checkpoints: () => get<CheckpointView[]>('/checkpoints'),
   epochs: () => get<EpochView[]>('/epochs'),
 };
+
+export async function receiptJob(brainUrl: string, job: string): Promise<ReceiptJob> {
+  const res = await fetch(`${brainUrl}/jobs/${job}`);
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+  return body as ReceiptJob;
+}
 
 export async function chat(brainUrl: string, message: string): Promise<ChatReply> {
   const res = await fetch(`${brainUrl}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });

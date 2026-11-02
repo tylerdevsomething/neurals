@@ -2,17 +2,18 @@
 //
 //   node brainserver/server.ts <config.json>
 //
-// For each message: the probe generates the reply and measures it with the canonical pass; the
-// receipt (model hash, prompt and reply tokens, 1,318 ppm shares) is published to the indexer;
-// then the fee is paid on chain naming the receipt's hash. The reply comes back with the receipt
-// hash and the payment's signature, so anyone can replay the receipt and check it.
+// For each message: the native probe generates the reply, which is sent back at once with a job id.
+// Then, in a worker thread, the WebAssembly canonical pass measures the receipt (model hash, prompt
+// and reply tokens, 1,318 ppm shares); it is published to the indexer and the fee is paid on chain
+// naming the receipt's hash. GET /jobs/<id> follows it to the receipt hash and payment signature.
 //
 // Messages run one at a time, with a fixed thread count: the probe's arithmetic is the receipt.
 //
 // Config: { port, probe, model (path as the probe sees it), modelPath (path here, for hashing),
 //           indexerUrl, rpcUrl, programId, payerKey, feeLamports, threads?, maxTokens?, wsl? }
 //
-//   POST /chat  { "message": "..." }  ->  { reply, tokens, receipt, signature, fee }
+//   POST /chat  { "message": "..." }  ->  { reply, tokens, job, fee }
+//   GET  /jobs/<id>                    ->  { status: measuring | paying | done | failed, receipt?, signature? }
 //   GET  /health
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -23,7 +24,8 @@ import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from '@so
 import { NeuralsAccounts } from '../brain/accounts.ts';
 import { shares, receiptHash, type Receipt } from '../brain/receipt.ts';
 import { SEGMENT_COUNT } from '../brain/model.ts';
-import { loadWasmInNode } from '../brain/wasm-node.ts';
+import { Worker } from 'node:worker_threads';
+import { randomBytes } from 'node:crypto';
 
 type Config = {
   port: number;
@@ -89,23 +91,63 @@ export async function startBrain(config: Config) {
   const conn = new Connection(config.rpcUrl, 'confirmed');
   const accounts = new NeuralsAccounts(config.programId);
   // Receipts are measured by the WebAssembly build (SPEC §7): bit-identical on every machine and
-  // browser, so any verifier gets exactly these shares. The native probe only generates the reply.
-  const verifier = await loadWasmInNode(config.wasm ?? 'site/public/wasm/neurals-wasm.js', config.modelPath);
-  let queue: Promise<unknown> = Promise.resolve();
+  // browser, so any verifier gets exactly these shares. It runs in a worker thread, after the reply
+  // has been sent: the native probe generates the reply (fast), the receipt follows.
+  const worker = new Worker(new URL('./measure-worker.ts', import.meta.url), {
+    workerData: { wasm: config.wasm ?? 'site/public/wasm/neurals-wasm.js', model: config.modelPath },
+  });
+  const waiting = new Map<string, { resolve: (mass: number[]) => void; reject: (e: Error) => void }>();
+  await new Promise<void>((resolve, reject) => {
+    worker.once('error', reject);
+    worker.on('message', (m: { ready?: boolean; id?: string; mass?: number[]; error?: string }) => {
+      if (m.ready) return resolve();
+      const w = waiting.get(m.id!);
+      if (!w) return;
+      waiting.delete(m.id!);
+      if (m.error) w.reject(new Error(m.error));
+      else w.resolve(m.mass!);
+    });
+  });
+  const measure = (prompt: number[], reply: number[]) => new Promise<number[]>((resolve, reject) => {
+    const id = randomBytes(8).toString('hex');
+    waiting.set(id, { resolve, reject });
+    worker.postMessage({ id, prompt, reply });
+  });
+
+  type Job = { status: 'measuring' | 'paying' | 'done' | 'failed'; receipt?: string; signature?: string; fee: number; error?: string; at: number };
+  const jobs = new Map<string, Job>();
+  let generating: Promise<unknown> = Promise.resolve();
+  let receipts: Promise<unknown> = Promise.resolve();
   let served = 0;
 
-  async function think(message: string) {
-    const run = await runProbe(config, message);
-    const mass = verifier.measure(run.prompt, run.output);
-    const receipt: Receipt = { model: modelHash, prompt: run.prompt, output: run.output, shares: shares(mass) };
+  /** Measures, publishes and pays for one reply's receipt (runs after the reply was sent). */
+  async function settle(job: Job, prompt: number[], output: number[]) {
+    const mass = await measure(prompt, output);
+    const receipt: Receipt = { model: modelHash, prompt, output, shares: shares(mass) };
     const hash = receiptHash(receipt);
+    job.receipt = hash;
+    job.status = 'paying';
     // Publish first: the indexer must have the receipt before the fee that names it settles.
     const res = await fetch(`${config.indexerUrl}/receipts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(receipt) });
     const body = (await res.json()) as { hash?: string; error?: string };
     if (!res.ok || body.hash !== hash) throw new Error(`indexer refused the receipt: ${body.error ?? body.hash}`);
-    const signature = await sendAndConfirmTransaction(conn, new Transaction().add(accounts.payFee(payer.publicKey, hash, config.feeLamports)), [payer], { commitment: 'confirmed' });
+    job.signature = await sendAndConfirmTransaction(conn, new Transaction().add(accounts.payFee(payer.publicKey, hash, config.feeLamports)), [payer], { commitment: 'confirmed' });
+    job.status = 'done';
     served++;
-    return { reply: run.text, tokens: run.output.length, receipt: hash, signature, fee: config.feeLamports };
+  }
+
+  async function think(message: string) {
+    const run = await runProbe(config, message);
+    const id = randomBytes(12).toString('hex');
+    const job: Job = { status: 'measuring', fee: config.feeLamports, at: Date.now() };
+    jobs.set(id, job);
+    for (const [k, j] of jobs) if (Date.now() - j.at > 3_600_000) jobs.delete(k); // keep an hour
+    receipts = receipts.then(() => settle(job, run.prompt, run.output)).catch((e) => {
+      job.status = 'failed';
+      job.error = (e as Error).message;
+      console.error(`receipt for job ${id} failed: ${job.error}`);
+    });
+    return { reply: run.text, tokens: run.output.length, job: id, fee: config.feeLamports };
   }
 
   const server = createServer(async (req, res) => {
@@ -115,9 +157,15 @@ export async function startBrain(config: Config) {
       if (req.method === 'POST' && req.url === '/chat') {
         const { message } = JSON.parse(await readBody(req)) as { message?: string };
         if (typeof message !== 'string' || !message.trim()) return json(res, 400, { error: 'message required' });
-        const job = queue.then(() => think(message.slice(0, 4000)));
-        queue = job.catch(() => undefined);
-        return json(res, 200, await job);
+        const reply = generating.then(() => think(message.slice(0, 4000)));
+        generating = reply.catch(() => undefined);
+        return json(res, 200, await reply);
+      }
+      // The receipt of a reply: measuring, paying, done (with the receipt hash and payment) or failed.
+      const jm = req.method === 'GET' ? /^\/jobs\/([0-9a-f]{24})$/.exec(req.url ?? '') : null;
+      if (jm) {
+        const job = jobs.get(jm[1]);
+        return job ? json(res, 200, job) : json(res, 404, { error: 'no such job' });
       }
       return json(res, 404, { error: 'not found' });
     } catch (e) {
