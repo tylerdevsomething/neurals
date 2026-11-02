@@ -53,6 +53,19 @@ if (process.env.BRAIN_URL) config.brainUrl = process.env.BRAIN_URL;
 const rpc = new Rpc(config.rpcUrl);
 const store = new Store(config.dataDir);
 const indexer = new Indexer(config, rpc, store);
+// The reveal is checked against the committed rules and the seed block on chain, then set before
+// the log is replayed, so it lands at its canonical place (SPEC §6).
+if (config.revealFile && existsSync(config.revealFile)) {
+  if (!config.rulesFile) throw new Error('a reveal needs rulesFile to be checked against');
+  const rules = checkRules(JSON.parse(readFileSync(config.rulesFile, 'utf8')) as Rules);
+  if (rules.model !== config.model) throw new Error('the rules are for a different model');
+  const r = JSON.parse(readFileSync(config.revealFile, 'utf8')) as Reveal;
+  checkReveal(rules, r);
+  const block = await rpc.call<{ blockhash: string }>('getBlock', [r.seedSlot, { transactionDetails: 'none', rewards: false, commitment: 'finalized', maxSupportedTransactionVersion: 1 }]);
+  if (block.blockhash !== r.blockhash) throw new Error(`the reveal's seed block hash does not match block ${r.seedSlot} on chain`);
+  const p = indexer.setReveal(r.partOfSlot, r.pointsOfPart, r.seedSlot);
+  console.log(`reveal checked: takes effect at slot ${p.effectiveSlot}`);
+}
 indexer.restore();
 console.log(`restored to slot ${indexer.syncedSlot}, epoch ${indexer.ledger.epoch}, fingerprint ${indexer.ledger.fingerprint().slice(0, 16)}`);
 
@@ -74,21 +87,8 @@ startApi({
 }, config.port);
 console.log(`api on :${config.port}`);
 
-let revealed = indexer.ledger.isRevealed;
 for (;;) {
   const n = await indexer.syncOnce();
   if (n) console.log(`slot ${indexer.syncedSlot}: applied ${n} transactions; epoch ${indexer.ledger.epoch}`);
-  if (!revealed && config.revealFile && existsSync(config.revealFile)) {
-    if (!config.rulesFile) throw new Error('a reveal needs rulesFile to be checked against');
-    const rules = checkRules(JSON.parse(readFileSync(config.rulesFile, 'utf8')) as Rules);
-    if (rules.model !== config.model) throw new Error('the rules are for a different model');
-    const r = JSON.parse(readFileSync(config.revealFile, 'utf8')) as Reveal;
-    checkReveal(rules, r);
-    const block = await rpc.call<{ blockhash: string }>('getBlock', [r.seedSlot, { transactionDetails: 'none', rewards: false, commitment: 'finalized', maxSupportedTransactionVersion: 1 }]);
-    if (block.blockhash !== r.blockhash) throw new Error(`the reveal's seed block hash does not match block ${r.seedSlot} on chain`);
-    indexer.reveal(r.partOfSlot, r.pointsOfPart);
-    revealed = true;
-    console.log('reveal recorded');
-  }
   await new Promise((r) => setTimeout(r, config.pollMs ?? 2000));
 }

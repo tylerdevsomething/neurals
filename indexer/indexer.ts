@@ -15,13 +15,22 @@ import { Ledger, type Settlement } from '../brain/ledger.ts';
 import { Decoder, BalanceBook, eventsOf, type DecodedTx, type DecoderConfig } from '../brain/decoder.ts';
 import { buildTree, type ClaimTree } from '../brain/claims.ts';
 import type { Rpc } from './rpc.ts';
+import type { Receipt } from '../brain/receipt.ts';
 import type { Store, LogLine } from './store.ts';
 
 export type IndexerConfig = DecoderConfig & {
   /** First slot of epoch 0. Transactions before it are not followed. */
   startSlot: number;
   epochSlots: number;
+  /**
+   * Another indexer's API (…/api) to fetch published receipts from, when a fee names a receipt
+   * this indexer has not been sent. Independent indexers settle on the same receipts this way.
+   */
+  receiptsFrom?: string;
 };
+
+/** A checked reveal and the slot it takes effect (the first epoch boundary after its seed block). */
+export type PendingReveal = { partOfSlot: number[]; pointsOfPart: number[]; effectiveSlot: number };
 
 type Pending = { signature: string; slot: number };
 
@@ -39,6 +48,7 @@ export class Indexer {
   private readonly rpc: Rpc;
   private readonly store: Store;
   private readonly blockOrder = new Map<number, Map<string, number>>();
+  private reveal: PendingReveal | null = null;
 
   constructor(config: IndexerConfig, rpc: Rpc, store: Store) {
     this.config = config;
@@ -53,28 +63,42 @@ export class Indexer {
     this.syncedSlot = config.startSlot - 1;
   }
 
-  /** Rebuilds state from the log. */
+  /** Rebuilds state from the log. Set the reveal first (setReveal), so it lands where it belongs. */
   restore(): void {
     for (const line of this.store.readLog()) this.replay(line);
     const last = this.store.readSynced();
     if (last !== null) {
       this.syncedSlot = Math.max(this.syncedSlot, last);
+      this.revealIfDue(this.syncedSlot, false);
       this.settle(this.ledger.advanceTo(this.syncedSlot), false);
     }
   }
 
   private replay(line: LogLine): void {
-    if (line.kind === 'reveal') {
-      this.ledger.reveal(line.partOfSlot, line.pointsOfPart);
-      return;
+    if (line.kind === 'reveal') return; // older logs recorded when the file was read: not canonical
+    for (const e of eventsOf(line.tx, this.book)) {
+      this.revealIfDue(e.slot, false);
+      this.settle(this.ledger.apply(e), false);
     }
-    for (const e of eventsOf(line.tx, this.book)) this.settle(this.ledger.apply(e), false);
   }
 
-  /** Records the reveal at the current point of the event order (SPEC §6). */
-  reveal(partOfSlot: number[], pointsOfPart: number[]): void {
-    this.ledger.reveal(partOfSlot, pointsOfPart);
-    this.store.appendLog({ kind: 'reveal', slot: this.syncedSlot, partOfSlot, pointsOfPart });
+  /**
+   * The checked reveal (SPEC §6). It takes effect at a point fixed by the chain, the first epoch
+   * boundary after the seed block, never at the moment an indexer happens to read it, so every
+   * indexer applies it at the same place in the event order and settles identically.
+   */
+  setReveal(partOfSlot: number[], pointsOfPart: number[], seedSlot: number): PendingReveal {
+    const { startSlot, epochSlots } = this.config;
+    const effectiveSlot = startSlot + (Math.floor((seedSlot - startSlot) / epochSlots) + 1) * epochSlots;
+    this.reveal = { partOfSlot, pointsOfPart, effectiveSlot };
+    return this.reveal;
+  }
+
+  /** Applies the pending reveal once the event order reaches its effective slot. */
+  private revealIfDue(slot: number, fresh: boolean): void {
+    if (!this.reveal || this.ledger.isRevealed || slot < this.reveal.effectiveSlot) return;
+    this.settle(this.ledger.advanceTo(this.reveal.effectiveSlot), fresh);
+    this.ledger.reveal(this.reveal.partOfSlot, this.reveal.pointsOfPart);
   }
 
   /** Addresses whose transactions must be followed. */
@@ -112,6 +136,7 @@ export class Indexer {
       const tx = this.decoder.decode(raw);
       applied.add(next.signature);
       if (!tx) continue;
+      await this.fetchReceipts(tx);
       this.apply(tx);
       count++;
       const fresh = [...this.watched()].filter((a) => !scanned.has(a));
@@ -124,13 +149,31 @@ export class Indexer {
     }
     this.syncedSlot = finalized;
     this.store.writeSynced(finalized);
+    this.revealIfDue(finalized, true);
     this.settle(this.ledger.advanceTo(finalized), true);
     return count;
   }
 
   private apply(tx: DecodedTx): void {
     this.store.appendLog({ kind: 'tx', tx });
-    for (const e of eventsOf(tx, this.book)) this.settle(this.ledger.apply(e), true);
+    for (const e of eventsOf(tx, this.book)) {
+      this.revealIfDue(e.slot, true);
+      this.settle(this.ledger.apply(e), true);
+    }
+  }
+
+  /** Fetches published receipts this indexer was not sent (receiptsFrom), before their fees apply. */
+  private async fetchReceipts(tx: DecodedTx): Promise<void> {
+    if (!this.config.receiptsFrom) return;
+    for (const a of tx.actions) {
+      if (a.type !== 'feeReceipt' || this.store.receipt(a.receipt)) continue;
+      const res = await fetch(`${this.config.receiptsFrom}/receipts/${a.receipt}`).catch(() => null);
+      if (!res?.ok) continue; // unpublished: the fee is split evenly by kind, as for everyone
+      const r = (await res.json()) as Receipt;
+      try {
+        if (this.store.addReceipt(r, r.model) !== a.receipt) continue; // hashed: it cannot be faked
+      } catch { /* malformed: treated as unpublished */ }
+    }
   }
 
   private settle(done: Settlement[], fresh: boolean): void {

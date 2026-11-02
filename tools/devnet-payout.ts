@@ -21,11 +21,18 @@ const key = (p: string) => Keypair.fromSecretKey(Uint8Array.from(JSON.parse(read
 const conn = new Connection(cfg.rpcUrl, 'confirmed');
 const acc = new NeuralsAccounts(cfg.programId);
 const store = new Store(mkdtempSync(join(tmpdir(), 'neurals-devnet-')));
-const ix = new Indexer(cfg, new Rpc(cfg.rpcUrl, 4), store);
+// An independent indexer: the hosted one's published receipts, and the same checked reveal.
+const hosted = JSON.parse(readFileSync('deploy/indexer.devnet.json', 'utf8'));
+const ix = new Indexer({ ...cfg, receiptsFrom: 'https://neurals-production.up.railway.app/api' }, new Rpc(cfg.rpcUrl, 4), store);
+if (hosted.revealFile) {
+  const r = JSON.parse(readFileSync(hosted.revealFile, 'utf8'));
+  ix.setReveal(r.partOfSlot, r.pointsOfPart, r.seedSlot);
+}
 const settler = new Settler(conn, key(cfg.settlerKey), acc);
 settler.challengeSlots = 20; // the devnet build's CHALLENGE_SLOTS
 const pending: Promise<void>[] = [];
-ix.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) pending.push(settler.enqueue(f)); };
+let target = -1; // only the epoch this run's fee lands in (earlier devnet epochs used older rules)
+ix.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f && s.epoch === target) pending.push(settler.enqueue(f)); };
 const until = async (slot: number) => { while ((await conn.getSlot('finalized')) < slot) await new Promise((r) => setTimeout(r, 3000)); };
 
 await until(cfg.startSlot + cfg.epochSlots + 2); // the demo buys are a full epoch old
@@ -36,6 +43,7 @@ const sig = await sendAndConfirmTransaction(conn, new Transaction().add(acc.payF
 const landed = (await conn.getTransaction(sig, { commitment: 'confirmed', maxSupportedTransactionVersion: 1 }))!.slot;
 const E = Math.floor((landed - cfg.startSlot) / cfg.epochSlots);
 console.log(`fee paid: ${sig} (slot ${landed}, epoch ${E})`);
+target = E;
 const wallets = readFileSync('out/devnet/demo-wallets.txt', 'utf8').trim().split(/\s+/);
 const { PublicKey } = await import('@solana/web3.js');
 const before = await Promise.all(wallets.map((w) => conn.getBalance(new PublicKey(w))));
@@ -48,7 +56,7 @@ const after = await Promise.all(wallets.map((w) => conn.getBalance(new PublicKey
 let ok = true;
 wallets.forEach((w, i) => {
   // Every epoch settled in this run was pushed, including fees paid by earlier runs.
-  const owed = ix.settlements.reduce((a, s) => a + (s.payouts.get(w) ?? 0n), 0n);
+  const owed = s1.payouts.get(w) ?? 0n;
   const got = BigInt(after[i] - before[i]);
   ok &&= got === owed;
   console.log(`  ${w.slice(0, 6)}…: owed ${owed}, received ${got} ${got === owed ? 'ok' : 'MISMATCH'}`);
