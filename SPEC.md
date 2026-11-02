@@ -92,7 +92,7 @@ Luck is in which part a buyer gets (§3 slots), not in what the parts are.
 | Induction Head | attention heads | The circuit that spots a pattern earlier in the context and continues it | Induction score on repeated random token sequences: attention from each token to the token that followed its earlier copy | top 6, score ≥ 0.4 | 85 |
 | Massive Activation | neuron columns | Holds a neuron whose activation is thousands of times larger than typical, which the model depends on | Largest absolute MLP activation over the reference text, relative to that layer's median | top 6, ≥ 1,000× median | 70 |
 | Attention Sink | attention heads | A head that parks its attention on the first token when it has nowhere useful to look, which keeps the model stable | Average share of attention on the first token over the reference text | top 12, share ≥ 0.8 | 50 |
-| Monosemantic | neuron columns | Holds a neuron that responds to one clear thing (rare: most neurons mix many) | Selectivity: share of a neuron's 100 strongest activations on the reference text that fall on the same token | top 24, share ≥ 0.9 | 30 |
+| Monosemantic | neuron columns | Holds a neuron that responds to one clear thing (rare: most neurons mix many) | Selectivity: of a neuron's 8 strongest activations on the reference text, at least 7 fall on the same token, and that token is at least 20× over-represented there compared with its share of the text (a neuron that fires on commas is consistent, not selective) | top 24 | 30 |
 
 Rules:
 - A part qualifies only if it passes the threshold; "top N" is a cap. If the model has fewer parts
@@ -104,6 +104,24 @@ Rules:
 - The Embedding and Unembedding are one of a kind and take no trait.
 - The thresholds above are proposals, to be set once the tool has been run on the model, so that
   each trait is genuinely rare. Once committed they never change.
+
+**Measured on the inscribed model** (`probe/neurals-traits`, 2026-11-02; 502-token reference text
+`rules/reference.txt`; draft in `rules/neurals-v1.draft.json`):
+
+| Trait | Given | Qualified | Strongest |
+|---|---|---|---|
+| Super Weight | 0 | 0 | — |
+| Induction Head | 6 | 15 | layer 14 head 3, score 0.98 |
+| Massive Activation | 6 | 74 | layer 1 neuron 7401, 8,544× the layer median (all into hidden dimension 408) |
+| Attention Sink | 3 | 6 | layer 14 head 5, 97.6% on the first token (3 of the 6 were already Induction Heads) |
+| Monosemantic | 24 | 199 | 7–8 of the top 8 on one rare word, 56–63× chance |
+
+**OPEN: Super Weight.** No single weight passes the bar. The tool tests the weight behind each of
+the 6 largest MLP output spikes; one is a genuine outlier (layer 2, value 4.78, about 200× a typical
+weight, feeding the massive-activation dimension), but removing any one of them changes perplexity by
+at most 1%, not 10×. This compressed Qwen2.5-1.5B does not depend on one weight the way the models
+in the original research did. Options: drop the trait (5 traits); redefine it as "the largest
+outlier weights in the model" (true, but not critical); or test more candidates and a longer text.
 
 Polysemantic is not a trait: mixing many concepts is what almost every neuron does, so it cannot be rare.
 

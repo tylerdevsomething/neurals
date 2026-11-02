@@ -16,3 +16,6 @@ add_subdirectory(${LLAMA_DIR} llama.cpp EXCLUDE_FROM_ALL)
 
 add_executable(neurals-probe neurals-probe.cpp)
 target_link_libraries(neurals-probe PRIVATE llama ggml)
+
+add_executable(neurals-traits neurals-traits.cpp)
+target_link_libraries(neurals-traits PRIVATE llama ggml)

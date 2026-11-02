@@ -16,6 +16,6 @@ fi
 # Fixed CPU features (not -march=native), so every machine that runs it takes the same kernels.
 "$CMAKE" -S "$REPO/probe" -B "$BUILD" -DLLAMA_DIR="$WORK/llama.cpp" -DCMAKE_BUILD_TYPE=Release \
   -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_OPENMP=OFF >/dev/null
-"$CMAKE" --build "$BUILD" -j "$(nproc)" --target neurals-probe
+"$CMAKE" --build "$BUILD" -j "${JOBS:-2}" --target neurals-probe neurals-traits
 cp "$BUILD/neurals-probe" "$BUILD/../neurals-probe" 2>/dev/null || true
-echo "built $BUILD/neurals-probe"
+echo "built $BUILD/neurals-probe and $BUILD/neurals-traits"

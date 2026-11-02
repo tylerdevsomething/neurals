@@ -1,0 +1,23 @@
+The lighthouse keeper kept a notebook on the table by the window. Every evening she wrote the time the lamp was lit, the speed of the wind, and the names of the ships that passed. On calm nights the sea was flat and grey, and the light swept across it like a slow hand. On stormy nights the waves climbed the rocks and the glass rattled in its frame.
+
+In the spring a small boat arrived with flour, oil, letters and a box of new batteries. The captain stayed for tea. He said the harbour town had built a school, a bakery and a bridge over the river. She asked whether the old bridge was still standing. He said it was, but nobody used it any more.
+
+A recipe for bread: mix 500 grams of flour, 10 grams of salt, 7 grams of yeast and 350 millilitres of warm water. Knead for ten minutes, let it rise for an hour, shape it, and bake at 220 degrees for 35 minutes. The crust should sound hollow when you tap it.
+
+def average(values):
+    if not values:
+        return 0.0
+    total = 0.0
+    for v in values:
+        total += v
+    return total / len(values)
+
+print(average([3, 4, 5, 6]))
+
+Questions and answers. What is the capital of France? Paris. How many days are in a week? Seven. What do plants need to grow? Light, water and air. What is twelve times twelve? One hundred and forty-four. Which planet is closest to the sun? Mercury.
+
+The meeting began at nine o'clock. The first item was the budget for next year. The second item was the new office in the north. The third item was a proposal to change the name of the company, which nobody liked. The meeting ended at eleven, and everyone went to lunch.
+
+Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday. January, February, March, April, May, June, July, August, September, October, November, December. One, two, three, four, five, six, seven, eight, nine, ten.
+
+When the storm finally passed, the keeper climbed the stairs, wiped the salt from the glass, and wrote one more line in the notebook: the sky is clear, the sea is quiet, and the light is still burning.
