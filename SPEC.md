@@ -134,6 +134,10 @@ A wallet's registered neurons are **awake** as far as its own token balance cove
 - **For fees, the balance of an epoch is its lowest point during that epoch**, computed from the
   finalized transactions (pre- and post-balances) of the wallet's token accounts. Buying just before
   a payout and selling straight after earns nothing. **OPEN:** epoch length (proposed: one day).
+- **A position earns in an epoch only if it was with the same holder (wallet or checkpoint) at the
+  start and at the end of the epoch.** Positions bought, carried or sealed during an epoch start
+  earning the next one. This stops a wallet whose neurons are dormant from buying back and sealing
+  them into a checkpoint just before the payout to earn for an epoch it did not hold.
 - Dormant neurons earn nothing. Their share of each fee is not lost: it goes to the awake neurons
   (the shares are renormalised over the awake portion of the brain).
 
@@ -144,7 +148,8 @@ the program that freezes a set of neurons together with their tokens, so they ca
 gifted without anything moving. *"Seal your neurons into a checkpoint."*
 
 - **Seal:** the owner moves tokens into a checkpoint and names the positions they carry (which must
-  be registered to them and awake). Neurons in a checkpoint are always awake, because their tokens
+  be registered to them and awake at that moment). A seal naming more positions than the tokens it
+  moves carries none. Neurons in a checkpoint are always awake, because their tokens
   cannot leave.
 - **List, cancel, buy:** a checkpoint can be listed at a price on the neuron market. A buyer pays and
   becomes the holder in one transaction; the tokens never move. **OPEN:** market fee.
@@ -207,7 +212,12 @@ For each paid message:
    change the reply. The receipt is valid if every replayed share is within a small tolerance of the
    posted one (proposed: ±1 ppm; set by the milestone 1 results). Exact equality is not required,
    because different CPUs and thread counts add floating-point numbers in different orders.
-6. The fee is split by the shares over the awake portion of the brain; each part's share goes
+6. **Settlement, once per epoch.** Each part's weight is the sum over the epoch's messages of fee ×
+   share. Before the reveal nobody knows which part is in which slot, so a kind's weight is split evenly
+   over the slots of that kind. Owners are paid by weight per position held awake for the whole epoch
+   (§5.2); dormant and unissued positions are renormalised away. Rounding dust, and the whole pot of
+   an epoch where nothing was awake, carries to the next epoch: no lamport is lost.
+   In short, the fee is split by the shares over the awake portion of the brain; each part's share goes
    to the owners of its slot's awake positions, by how much of the slot each holds (§5). Fees can be
    collected per epoch and paid as one transaction per owner, so costs stay low.
 
