@@ -10,6 +10,8 @@ import { stageOf } from '../../../brain/model.ts';
 import { decode } from '../../../brain/program.ts';
 import { PublicKey } from '@solana/web3.js';
 import { replay, type Progress } from '../replay.ts';
+import { BrainMap, activityMap } from '../BrainMap.tsx';
+import { api, type Brain } from '../api.ts';
 
 type Check = { what: string; ok: boolean | null; detail: string };
 
@@ -25,6 +27,8 @@ export function ReceiptPage({ hash, signature }: { hash: string; signature?: str
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [checks, setChecks] = useState<Check[]>([]);
   const [error, setError] = useState('');
+  const [brain, setBrain] = useState<Brain | null>(null);
+  useEffect(() => { api.brain().then(setBrain).catch(() => {}); }, []);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [result, setResult] = useState<{ ok: boolean; diff: number; why?: string; seconds: number } | null>(null);
   const [replayError, setReplayError] = useState('');
@@ -116,6 +120,9 @@ export function ReceiptPage({ hash, signature }: { hash: string; signature?: str
             : `✘ The replay does not match: ${result.why}.`}
         </p>
       )}
+
+      <h2>What fired for this message</h2>
+      <BrainMap data={activityMap(receipt.shares, brain)} legend={{ title: 'What fired for this message', low: "¼ of its kind's average", high: '4× or more' }} />
 
       <h2>What fired most</h2>
       <table>

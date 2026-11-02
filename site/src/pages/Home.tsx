@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
-import { api, fmt, fmtTokens, sol, type Brain, type Health, type EpochView } from '../api.ts';
-import { BrainMap, Legend } from '../BrainMap.tsx';
+import { api, fmt, fmtTokens, sol, type Brain, type Health, type EpochView, type Activity } from '../api.ts';
+import { BrainMap, ownershipMap, activityMap } from '../BrainMap.tsx';
 import { CURVE_SUPPLY, UNIT } from '../../../brain/model.ts';
 
 export function Home() {
   const [brain, setBrain] = useState<Brain | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
   const [epochs, setEpochs] = useState<EpochView[]>([]);
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [view, setView] = useState<'owned' | 'fires'>('owned');
   useEffect(() => {
     const load = () => {
       api.brain().then(setBrain).catch(() => {});
       api.health().then(setHealth).catch(() => {});
       api.epochs().then(setEpochs).catch(() => {});
+      api.activity().then(setActivity).catch(() => {});
     };
     load();
     const t = setInterval(load, 10_000);
@@ -37,13 +40,23 @@ export function Home() {
       </section>
       <section>
         <h2>The brain</h2>
+        <div className="toggle" role="tablist">
+          <button role="tab" aria-selected={view === 'owned'} className={view === 'owned' ? 'on' : ''} onClick={() => setView('owned')}>Who owns it</button>
+          <button role="tab" aria-selected={view === 'fires'} className={view === 'fires' ? 'on' : ''} onClick={() => setView('fires')}>What fires</button>
+        </div>
         <p className="muted">
-          Top: the Embedding, where text enters. Then 28 rows, one per layer depth, of 12 attention heads and
-          35 neuron columns. Bottom: the Unembedding, where words come out. Until the reveal, a buyer knows the
-          kind of part they hold but not which one. Click any slot.
+          {view === 'owned'
+            ? (brain?.revealed
+              ? 'Every part of the model, laid out as it is built: the Embedding where text enters, 28 layers of 12 attention heads and 35 neuron columns, the Unembedding where words come out. Brighter means more of it is sold. Letters mark the measured traits.'
+              : 'The 1,318 slots in buying order: the Embedding, then 28 bands of 12 attention-head slots and 35 neuron-column slots, then the Unembedding. Brighter means more of it is sold. Which real part each slot holds is drawn at the reveal.')
+            : `How hard each part of the brain worked across the last ${activity?.messages ?? 0} paid messages, against the average for its kind. Laid out as the model is built, from the tokenizer layers at the top to the prediction layers at the bottom.`}
         </p>
-        {brain ? <BrainMap slots={brain.slots} onPick={(i) => (location.hash = `#/slot/${i}`)} /> : <p className="muted">Loading…</p>}
-        {brain && <Legend revealed={brain.revealed} />}
+        {!brain ? <p className="muted">Loading…</p>
+          : view === 'owned'
+            ? <BrainMap data={ownershipMap(brain)} legend={{ title: 'Who owns the brain', low: 'unsold', high: 'sold out' }} />
+            : activity && activity.messages > 0
+              ? <BrainMap data={activityMap(activity.shares, brain)} legend={{ title: 'What fires', low: '¼ of its kind\'s average', high: '4× or more' }} />
+              : <p className="muted">No paid messages yet. Ask the brain something on the Chat page.</p>}
       </section>
       <section className="cols">
         <div>

@@ -10,6 +10,7 @@
 //   GET  /claims/:epoch/:wallet  one payout and its proof
 //   POST /receipts               a receipt (JSON) from the brain; answers its hash
 //   GET  /receipts/:hash         a stored receipt
+//   GET  /activity               how hard each part fired across the last 50 paid messages
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -49,7 +50,7 @@ async function body(req: IncomingMessage, limit = 256 * 1024): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-const API_ROUTES = new Set(['config', 'health', 'brain', 'slot', 'wallet', 'checkpoints', 'epochs', 'claims', 'receipts']);
+const API_ROUTES = new Set(['config', 'health', 'brain', 'slot', 'wallet', 'checkpoints', 'epochs', 'claims', 'receipts', 'activity']);
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
@@ -150,6 +151,12 @@ export function startApi(o: ApiOptions, port: number): Server {
           const c = t?.claims.get(parts[2] ?? '');
           if (!t || !c) return json(res, 404, { error: 'no such payout' });
           return json(res, 200, { epoch: t.epoch, wallet: parts[2], index: c.index, amount: c.amount, proof: c.proof.map((p) => p.toString('hex')), root: t.root.toString('hex') });
+        }
+        case 'activity': {
+          const recent = store.recentReceipts(50);
+          const sum = new Array<number>(PARTS.length).fill(0);
+          for (const r of recent) r.shares.forEach((s, i) => (sum[i] += s));
+          return json(res, 200, { messages: recent.length, shares: sum.map((s) => (recent.length ? s / recent.length : 0)) });
         }
         case 'receipts': {
           const r = store.receipt(parts[1] ?? '');

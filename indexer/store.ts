@@ -4,7 +4,7 @@
 //   epochs/<n>.json    each settled epoch: payouts and the claim tree (root, index, amount, proof)
 //   receipts/<h>.json  receipts by hash, as submitted by the brain; served publicly
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, renameSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, renameSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DecodedTx } from '../brain/decoder.ts';
 import type { Settlement } from '../brain/ledger.ts';
@@ -28,14 +28,19 @@ export type EpochFile = {
 export class Store {
   readonly dir: string;
   private readonly receipts = new Map<string, Receipt>();
+  /** Receipt hashes in arrival order (oldest first). */
+  private readonly order: string[] = [];
 
   constructor(dir: string) {
     this.dir = dir;
     for (const d of [dir, join(dir, 'epochs'), join(dir, 'receipts')]) mkdirSync(d, { recursive: true });
-    for (const f of readdirSync(join(dir, 'receipts'))) {
-      if (!f.endsWith('.json')) continue;
+    const files = readdirSync(join(dir, 'receipts')).filter((f) => f.endsWith('.json'))
+      .map((f) => ({ f, t: statSync(join(dir, 'receipts', f)).mtimeMs })).sort((a, b) => a.t - b.t);
+    for (const { f } of files) {
       const r = JSON.parse(readFileSync(join(dir, 'receipts', f), 'utf8')) as Receipt;
-      this.receipts.set(receiptHash(r), r);
+      const h = receiptHash(r);
+      this.receipts.set(h, r);
+      this.order.push(h);
     }
   }
 
@@ -86,6 +91,11 @@ export class Store {
     return existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as EpochFile) : null;
   }
 
+  /** The most recent receipts, newest first. */
+  recentReceipts(n: number): Receipt[] {
+    return this.order.slice(-n).reverse().map((h) => this.receipts.get(h)!);
+  }
+
   receipt(hash: string): Receipt | null {
     return this.receipts.get(hash) ?? null;
   }
@@ -107,6 +117,7 @@ export class Store {
     if (!this.receipts.has(hash)) {
       atomicWrite(join(this.dir, 'receipts', `${hash}.json`), JSON.stringify(clean));
       this.receipts.set(hash, clean);
+      this.order.push(hash);
     }
     return hash;
   }

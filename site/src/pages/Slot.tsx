@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, fmt, fmtTokens, neurons, short, type SlotDetail } from '../api.ts';
-import { label } from '../BrainMap.tsx';
+import { slotLabel, TRAITS } from '../BrainMap.tsx';
 
 const KIND: Record<string, string> = {
   embedding: 'The Embedding: where text enters the model. One of a kind.',
@@ -24,8 +24,8 @@ export function SlotPage({ index }: { index: number }) {
       <dl>
         <dt>Positions</dt><dd>{fmtTokens(s.start)} – {fmtTokens(s.end)} ({fmtTokens(size)} tokens, {fmt(neurons(size))} neurons)</dd>
         <dt>Sold</dt><dd>{fmt((100 * s.issued) / size, 2)}%</dd>
-        <dt>Part</dt><dd>{s.part ? label(s).split(' · ').slice(1, -1).join(' · ') || s.kind : 'drawn at the reveal'}</dd>
-        {s.part && <><dt>Trait</dt><dd>{s.part.trait ?? (s.part.points ? `${s.part.points} points` : 'none')}</dd></>}
+        <dt>Part</dt><dd>{s.part ? slotLabel(s).split(' · ').slice(1).join(' · ') || s.kind : 'drawn at the reveal'}</dd>
+        {s.part && <><dt>Trait</dt><dd>{s.part.points ? `${TRAITS[s.part.points]?.name} (${s.part.points} points)` : 'none'}</dd></>}
       </dl>
       <h2>Held by</h2>
       {s.holders.length === 0 ? <p className="muted">Nobody yet.</p> : (

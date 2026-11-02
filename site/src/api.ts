@@ -34,6 +34,7 @@ export type WalletView = {
   payouts: Payout[];
 };
 export type CheckpointView = { checkpoint: string; holder: string; positions: Range[] };
+export type Activity = { messages: number; shares: number[] };
 export type EpochView = { epoch: number; fees: string; carried: string; payouts: number; root?: string };
 export type ChatReply = { reply: string; tokens: number; job: string; fee: number };
 export type ReceiptJob = { status: 'measuring' | 'paying' | 'done' | 'failed'; receipt?: string; signature?: string; fee: number; error?: string };
@@ -53,6 +54,7 @@ export const api = {
   wallet: (w: string) => get<WalletView>(`/wallet/${w}`),
   checkpoints: () => get<CheckpointView[]>('/checkpoints'),
   epochs: () => get<EpochView[]>('/epochs'),
+  activity: () => get<Activity>('/activity'),
 };
 
 export async function receiptJob(brainUrl: string, job: string): Promise<ReceiptJob> {

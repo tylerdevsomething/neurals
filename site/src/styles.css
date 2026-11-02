@@ -72,3 +72,27 @@ code { background: var(--panel); padding: 2px 6px; border-radius: 6px; font-size
   .stats, .cols { grid-template-columns: 1fr 1fr; }
   header { flex-wrap: wrap; gap: 12px; }
 }
+
+/* ---- brain map ---- */
+.brainmap-wrap { position: relative; }
+.brainmap .axis { fill: var(--muted); font-size: 10px; }
+.brainmap .axis.small { font-size: 8.5px; }
+.brainmap .axis.stage { fill: var(--text); font-size: 9.5px; }
+.brainmap .bracket { stroke: #3a4a5c; stroke-width: 2; }
+.brainmap .glyph { font-size: 9px; font-weight: 700; }
+.brainmap rect:hover { filter: brightness(1.25); }
+.tooltip {
+  position: absolute; z-index: 3; pointer-events: none; display: flex; flex-direction: column; gap: 2px;
+  background: #0d141c; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 240px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .45); font-size: 12.5px; color: var(--muted);
+}
+.tooltip strong { color: var(--text); font-size: 14px; }
+.legend .ramp { display: inline-flex; align-items: center; gap: 6px; }
+.legend .ramp i { width: 140px; height: 10px; border-radius: 3px; display: inline-block; margin: 0; }
+.legend .swatch.owned { width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(135deg, #f0efec 0 45%, #1a2531 45%); }
+.glyph-key { display: inline-block; min-width: 14px; text-align: center; background: #c3c2b7; color: #0b0f14; border-radius: 3px; font-size: 10px; padding: 0 2px; margin-right: 2px; }
+button.link { background: none; color: var(--accent); padding: 0; font-weight: 500; }
+.toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 4px 0 10px; }
+.toggle button { background: transparent; color: var(--muted); border-radius: 0; padding: 7px 14px; }
+.toggle button.on { background: var(--panel); color: var(--text); }
+.maptable td { font-size: 13px; }

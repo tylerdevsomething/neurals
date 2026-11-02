@@ -3,8 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { api, fmt, fmtTokens, neurons, short, sol, UNIT, type Brain, type WalletView } from '../api.ts';
 import { useApp } from '../App.tsx';
 import { connect, send, useWallet } from '../chain.ts';
-import { BrainMap } from '../BrainMap.tsx';
-import { label } from '../BrainMap.tsx';
+import { BrainMap, ownershipMap, slotLabel } from '../BrainMap.tsx';
 import { SLOTS } from '../../../brain/layout.ts';
 import { intersect, normalize, takeRarest, total, type Range } from '../../../brain/ranges.ts';
 import { parseCheckpoint, parseConfig } from '../../../brain/accounts.ts';
@@ -109,7 +108,7 @@ export function WalletPage({ address }: { address: string | null }) {
         <div><b>{fmtTokens(view.balance)}</b><span>token balance</span></div>
       </section>
       {msg && <p className="note">{msg}</p>}
-      {brain && <BrainMap slots={brain.slots} owned={owned} onPick={(i) => (location.hash = `#/slot/${i}`)} />}
+      {brain && <BrainMap data={ownershipMap(brain, owned)} legend={{ title: 'Your neurons in the brain', low: 'unsold', high: 'sold out' }} />}
 
       <h2>By slot</h2>
       {view.slots.length === 0 ? <p className="muted">No neurons yet. Neurons come only from buying off the curve.</p> : (
@@ -118,7 +117,7 @@ export function WalletPage({ address }: { address: string | null }) {
           <tbody>
             {view.slots.map((s) => (
               <tr key={s.slot}>
-                <td><a href={`#/slot/${s.slot}`}>{brain ? label(brain.slots[s.slot]).split(' · ')[0] : `#${s.slot}`}</a></td>
+                <td><a href={`#/slot/${s.slot}`}>{brain ? slotLabel(brain.slots[s.slot]) : `#${s.slot}`}</a></td>
                 <td>{fmtTokens(s.amount)}</td>
                 <td>{fmtTokens(s.awake)}</td>
                 {own && <td><AmountAction max={s.awake / UNIT} verb="Seal" busy={busy === 'Seal'} onGo={(n) => seal(s.slot, n)} /></td>}
