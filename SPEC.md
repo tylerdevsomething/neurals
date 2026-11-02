@@ -184,8 +184,11 @@ account, or a new agent born on the brain. A brain run privately in a visitor's 
 made to pay; it stays free.
 
 For each paid message:
-1. The brain generates the reply (greedy, fixed build). Each part's **activation mass** is the sum
-   of |activation| over the positions that produced the reply:
+1. The brain generates the reply (greedy, fixed build). It is then measured by the **canonical
+   pass**: a fresh context, the prompt and reply fed teacher-forced in one batch, flash attention off
+   (never "auto", which can differ by machine). Generating one token at a time uses different
+   arithmetic from a batch, so measuring during generation would not match a verifier's replay.
+   Each part's **activation mass** is the sum of |activation| over the positions that produced the reply:
    - a neuron column: its 256 MLP neurons, at the input of the layer's MLP down-projection;
    - an attention head: its 128 output values, at the input of the layer's attention output;
    - the Embedding: the embedding of each token fed in;

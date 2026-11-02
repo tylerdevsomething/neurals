@@ -40,6 +40,8 @@ function probe(prompt: string, threads: number, replay?: number[]): Run {
   const line = process.platform === 'win32'
     ? execFileSync('wsl', ['-e', 'bash', '-lc', cmd.join(' ')], { encoding: 'utf8', maxBuffer: 64 << 20 })
     : execFileSync('bash', ['-lc', cmd.join(' ')], { encoding: 'utf8', maxBuffer: 64 << 20 });
+  // The probe prints nan for a part whose mass is not a number; that is a broken run, not a result.
+  if (/[,[]nan[,\]]/.test(line)) throw new Error(`probe produced NaN masses (${threads} threads): the computation was corrupted`);
   const run = JSON.parse(line) as Run;
   if (run.mass.length !== SEGMENT_COUNT) throw new Error(`probe gave ${run.mass.length} masses, expected ${SEGMENT_COUNT}`);
   return run;

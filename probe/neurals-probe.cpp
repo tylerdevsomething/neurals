@@ -3,9 +3,10 @@
 //   neurals-probe -m model.gguf -p "prompt" [-n 64] [-t threads] [--replay 1,2,3]
 //
 // generate mode (default): applies the chat template, generates up to -n tokens greedily, one
-//   token per decode, as the hosted brain would.
-// replay mode (--replay): feeds the given reply tokens after the prompt in a single batch
-//   (teacher-forced), as a verifier would, and measures the same positions.
+//   token per decode, as the hosted brain would; then measures the reply with the canonical pass.
+// replay mode (--replay): skips generation and measures the given reply, as a verifier would.
+// Both modes measure with the same canonical pass: a fresh context, prompt and reply fed
+// teacher-forced in a single batch, so the posted receipt and a replay use identical arithmetic.
 //
 // Measured positions are the ones that produced the reply: the last prompt position through the
 // second-to-last reply position. For each, it adds up |activation|:
@@ -34,6 +35,7 @@ struct Probe {
   // Absolute position of row 0 of the batch being decoded, and the counted range [from, to].
   int base_pos = 0, count_from = 0, count_to = -1;
   double embedding = 0, unembedding = 0;
+  bool embedded = false; // the embedding lookup is counted once per decode (see on_tensor)
   std::vector<double> heads;   // n_layer * n_head
   std::vector<double> columns; // n_layer * cols
   std::vector<float> buf;
@@ -95,9 +97,23 @@ static bool on_tensor(ggml_tensor * t, bool ask, void * user) {
   const What what = classify(t, &layer);
   if (ask) return what != NONE;
   if (what == NONE || !p.error.empty()) return true;
+  // The graph can hold a second, unnamed lookup into token_embd whose data is not valid when the
+  // callback runs (it reads 0 in batches, garbage in one-token decodes). The real input lookup is
+  // always the first one in a decode.
+  if (what == EMBD) {
+    if (p.embedded) return true;
+    p.embedded = true;
+  }
 
   const ggml_tensor * x = what == EMBD ? t : t->src[1];
   if (!read_rows(p, x)) return false;
+  if (getenv("NEURALS_PROBE_DEBUG") && (what == EMBD || what == OUT_IN)) {
+    double s = 0;
+    for (float f : p.buf) s += std::fabs((double)f);
+    fprintf(stderr, "[probe] base %d %s %s <- %s (%s) ne %lld x %lld x %lld  sum|x| %.6g\n", p.base_pos,
+            what == EMBD ? "EMBD" : "OUT", ggml_op_desc(t), ggml_get_name(x), ggml_op_desc(x),
+            (long long)x->ne[0], (long long)x->ne[1], (long long)x->ne[2], s);
+  }
   const int64_t ne0 = x->ne[0], rows = (int64_t)p.buf.size() / ne0;
   for (int64_t r = 0; r < rows; r++) {
     if (!counted(p, r)) continue;
@@ -166,6 +182,7 @@ int main(int argc, char ** argv) {
   int n_gen = 64, threads = 4;
   const char * replay = nullptr;
   bool raw = false;
+  bool measure = true;
   for (int i = 1; i < argc; i++) {
     std::string a = argv[i];
     auto next = [&]() -> const char * { if (i + 1 >= argc) { fprintf(stderr, "missing value for %s\n", a.c_str()); exit(2); } return argv[++i]; };
@@ -175,6 +192,7 @@ int main(int argc, char ** argv) {
     else if (a == "-t") threads = atoi(next());
     else if (a == "--replay") replay = next();
     else if (a == "--raw") raw = true; // prompt is used as-is, without the chat template
+    else if (a == "--no-measure") measure = false; // no eval hook: for checking the hook changes nothing
     else { fprintf(stderr, "unknown argument %s\n", a.c_str()); return 2; }
   }
   if (!model_path || prompt.empty()) {
@@ -217,23 +235,27 @@ int main(int argc, char ** argv) {
   prompt_ids.resize((size_t)np);
 
   std::vector<llama_token> reply = replay ? parse_ids(replay) : std::vector<llama_token>();
-  const int max_reply = replay ? (int)reply.size() : n_gen;
-  const int n_ctx = np + max_reply + 8;
 
-  llama_context_params cp = llama_context_default_params();
-  cp.n_ctx = (uint32_t)n_ctx;
-  cp.n_batch = (uint32_t)n_ctx; // one ubatch: rows map straight to positions
-  cp.n_ubatch = (uint32_t)n_ctx;
-  cp.n_threads = threads;
-  cp.n_threads_batch = threads;
-  cp.cb_eval = on_tensor;
-  cp.cb_eval_user_data = &p;
-  cp.no_perf = true;
-  llama_context * ctx = llama_init_from_model(model, cp);
-  if (!ctx) { fprintf(stderr, "cannot create context\n"); return 1; }
+  // A context sized for n_ctx tokens, all in one ubatch so rows map straight to positions.
+  auto make_ctx = [&](int n_ctx) {
+    llama_context_params cp = llama_context_default_params();
+    cp.n_ctx = (uint32_t)n_ctx;
+    cp.n_batch = (uint32_t)n_ctx;
+    cp.n_ubatch = (uint32_t)n_ctx;
+    cp.n_threads = threads;
+    cp.n_threads_batch = threads;
+    cp.cb_eval = measure ? on_tensor : nullptr;
+    cp.cb_eval_user_data = measure ? &p : nullptr;
+    cp.no_perf = true;
+    // Never "auto": a receipt must not depend on a choice llama.cpp makes per machine.
+    // NEURALS_FLASH_ATTN=1 turns it on, for experiments only.
+    const char * fa = getenv("NEURALS_FLASH_ATTN");
+    cp.flash_attn_type = fa && strcmp(fa, "1") == 0 ? LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_DISABLED;
+    return llama_init_from_model(model, cp);
+  };
 
   // Every row asks for logits, so the last layer is never pruned to the final row only.
-  auto decode = [&](const std::vector<llama_token> & toks, int pos0) -> bool {
+  auto decode = [&](llama_context * ctx, const std::vector<llama_token> & toks, int pos0) -> bool {
     llama_batch b = llama_batch_init((int32_t)toks.size(), 0, 1);
     for (size_t i = 0; i < toks.size(); i++) {
       b.token[i] = toks[i];
@@ -244,6 +266,7 @@ int main(int argc, char ** argv) {
     }
     b.n_tokens = (int32_t)toks.size();
     p.base_pos = pos0;
+    p.embedded = false;
     const int rc = llama_decode(ctx, b);
     llama_batch_free(b);
     if (rc != 0) { fprintf(stderr, "decode failed (%d)\n", rc); return false; }
@@ -252,33 +275,49 @@ int main(int argc, char ** argv) {
   };
 
   const int n_vocab = llama_vocab_n_tokens(vocab);
-  auto argmax = [&](int row) {
+  auto argmax = [&](llama_context * ctx, int row) {
     const float * l = llama_get_logits_ith(ctx, row);
     int best = 0;
     for (int i = 1; i < n_vocab; i++) if (l[i] > l[best]) best = i;
     return (llama_token)best;
   };
 
-  if (replay) {
-    // Positions np-1 .. np+R-2 produced the R reply tokens.
-    p.count_from = np - 1;
-    p.count_to = np + (int)reply.size() - 2;
-    std::vector<llama_token> all = prompt_ids;
-    all.insert(all.end(), reply.begin(), reply.end());
-    if (!decode(all, 0)) return 1;
-  } else {
-    p.count_from = np - 1;
-    p.count_to = np - 1;
-    if (!decode(prompt_ids, 0)) return 1;
-    llama_token tok = argmax(np - 1);
+  if (!replay) {
+    // Generate the reply token by token, as the hosted brain does. Nothing is measured here:
+    // one-token decodes use different arithmetic from a batch, so the receipt comes from the
+    // canonical pass below, the same one a verifier runs.
+    llama_context * gen = make_ctx(np + n_gen + 8);
+    if (!gen) { fprintf(stderr, "cannot create context\n"); return 1; }
+    p.count_from = 1;
+    p.count_to = 0; // count nothing
+    if (!decode(gen, prompt_ids, 0)) return 1;
+    llama_token tok = argmax(gen, np - 1);
     for (int i = 0; i < n_gen; i++) {
       reply.push_back(tok);
       if (llama_vocab_is_eog(vocab, tok) || i == n_gen - 1) break;
-      const int pos = np + i;
-      p.count_from = p.count_to = pos;
-      if (!decode({ tok }, pos)) return 1;
-      tok = argmax(0);
+      if (!decode(gen, { tok }, np + i)) return 1;
+      tok = argmax(gen, 0);
     }
+    llama_free(gen);
+  }
+
+  // The canonical pass (SPEC §7): a fresh context, prompt and reply teacher-forced in one batch.
+  // Positions np-1 .. np+R-2 produced the R reply tokens; those are the ones counted.
+  llama_context * ctx = make_ctx(np + (int)reply.size() + 8);
+  if (!ctx) { fprintf(stderr, "cannot create context\n"); return 1; }
+  p.count_from = np - 1;
+  p.count_to = np + (int)reply.size() - 2;
+  {
+    std::vector<llama_token> all = prompt_ids;
+    all.insert(all.end(), reply.begin(), reply.end());
+    if (!decode(ctx, all, 0)) return 1;
+  }
+  // Fingerprint of the logits at the counted positions (FNV-1a over the float bits): two runs that
+  // computed the same thing have the same fingerprint, measured or not.
+  uint64_t logits_hash = 1469598103934665603ull;
+  for (int row = p.count_from; row <= p.count_to; row++) {
+    const uint8_t * b = (const uint8_t *)llama_get_logits_ith(ctx, row);
+    for (size_t k = 0; k < (size_t)n_vocab * sizeof(float); k++) { logits_hash ^= b[k]; logits_hash *= 1099511628211ull; }
   }
 
   std::string reply_text;
@@ -288,7 +327,7 @@ int main(int argc, char ** argv) {
     if (n > 0) reply_text.append(piece, (size_t)n);
   }
 
-  printf("{\"threads\":%d,\"mode\":\"%s\",\"prompt\":", threads, replay ? "replay" : "generate");
+  printf("{\"threads\":%d,\"mode\":\"%s\",\"logits\":\"%016llx\",\"prompt\":", threads, replay ? "replay" : "generate", (unsigned long long)logits_hash);
   ids_json(prompt_ids);
   printf(",\"output\":");
   ids_json(reply);
