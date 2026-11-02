@@ -249,13 +249,20 @@ counts and in WebAssembly. Milestone 1 measures this before anything else is bui
 
 ## 8. Milestones
 
-1. **Activation prototype:** run the 1.5B GGUF with a llama.cpp eval callback, record per-segment
-   shares, replay on a second machine and in WASM; confirm the receipts match.
-2. **Trait measurement tool:** Super Weight, Induction Head, Massive Activation, Attention Sink and
-   Monosemantic, run on the inscribed GGUF; set the thresholds so each trait is rare; freeze the rules,
-   then the slot permutation and reveal. (Shares the eval-callback hooks with milestone 1.)
-3. Program: fee pool, receipts, claims, checkpoints (seal, list, cancel, buy, gift, withdraw),
-   carry transfer.
-4. Inscription of the model and runner.
-5. Indexer and site: brain map, segment pages, chat, owner dashboard.
-6. Devnet run with mock curve → mainnet.
+Status as of 2026-11-02.
+
+1. **Activation receipts.** Done on one machine: receipts are measured by the canonical pass and
+   replays matched exactly (0 ppm) at 1, 4 and 12 threads; a live receipt from the hosted brain
+   verified at 0 ppm. **Still to do:** rerun `tools/determinism.ts` on a machine without CPU faults
+   (the development PC logged machine-check errors under full load), on a second CPU model, and in
+   WebAssembly for in-browser verification.
+2. **Traits.** Measured on the inscribed model (§4); rules draft in `rules/neurals-v1.draft.json`.
+   **Open:** Super Weight (none qualify); the deadline slot is set at launch.
+3. **Program.** Done: checkpoints, carry, fee pool, epoch roots and claims; contract test against
+   `brain/program.ts`; unit tests.
+4. **Inscription.** Done as tooling (resumable, verified on localnet). The full model on devnet or
+   mainnet is ~1.15 million transactions (~6 SOL of fees).
+5. **Indexer, hosted brain and site.** Done and run together on localnet: payouts pushed on chain,
+   receipts verified, the site showing live state.
+6. **Rehearsal.** Done on localnet (`tools/rehearse.ts`, all checks pass). Devnet is two commands once
+   the devnet payer is funded (the devnet RPC faucet is closed). Mainnet is not started.
