@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { chat, receiptJob, short, sol, type ChatReply, type ReceiptJob } from '../api.ts';
 import { useApp } from '../App.tsx';
 
-type Turn = { message: string; reply?: ChatReply; job?: ReceiptJob; error?: string };
+type Turn = { id?: string; message: string; reply?: ChatReply; job?: ReceiptJob; error?: string };
 
 /** The conversation is kept in this browser only (per network), so a refresh does not lose it. */
 const KEEP = 100;
 const load = (key: string): Turn[] => {
   try {
-    const t = JSON.parse(localStorage.getItem(key) ?? '[]') as Turn[];
+    const t = (JSON.parse(localStorage.getItem(key) ?? '[]') as Turn[]).map((x) => ({ ...x, id: x.id ?? crypto.randomUUID() }));
     // A question still waiting for its reply when the page closed will not get one now.
     return t.map((x) => (x.reply || x.error ? x : { ...x, error: 'the page was closed before the reply arrived' }));
   } catch {
@@ -28,22 +28,27 @@ export function Chat() {
   useEffect(() => {
     if (resumed.current || !config.brainUrl) return;
     resumed.current = true;
-    turns.forEach((t, i) => { if (t.reply && t.job && (t.job.status === 'measuring' || t.job.status === 'paying')) void follow(i, t.reply.job); });
+    turns.forEach((t) => { if (t.id && t.reply && t.job && (t.job.status === 'measuring' || t.job.status === 'paying')) void follow(t.id, t.reply.job); });
   }, []);
   if (!config.brainUrl) return <section><h1>Talk to the brain</h1><p className="muted">The hosted brain is not running for this network.</p></section>;
 
-  const update = (i: number, patch: Partial<Turn>) => setTurns((t) => t.map((x, k) => (k === i ? { ...x, ...patch } : x)));
+  const update = (id: string, patch: Partial<Turn>) => setTurns((t) => t.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   /** Follows a reply's receipt until it is measured and paid (or fails). */
-  const follow = async (i: number, job: string) => {
+  const follow = async (id: string, job: string) => {
     for (let tries = 0; tries < 120; tries++) {
       await new Promise((r) => setTimeout(r, 2000));
       try {
         const j = await receiptJob(config.brainUrl!, job);
-        update(i, { job: j });
+        update(id, { job: j });
         if (j.status === 'done' || j.status === 'failed') return;
-      } catch {
-        // the brain restarted or is busy: keep trying for a while
+      } catch (e) {
+        // The brain forgets jobs after an hour or a restart: this one's outcome can no longer be known.
+        if ((e as Error).message === 'no such job') {
+          update(id, { job: { status: 'failed', fee: 0, error: 'the brain no longer knows this job (it restarted or the job is over an hour old)' } });
+          return;
+        }
+        // otherwise the brain is busy or briefly unreachable: keep trying for a while
       }
     }
   };
@@ -53,14 +58,14 @@ export function Chat() {
     if (!message) return;
     setText('');
     setBusy(true);
-    const i = turns.length;
-    setTurns((t) => [...t, { message }]);
+    const id = crypto.randomUUID();
+    setTurns((t) => [...t, { id, message }]);
     try {
       const reply = await chat(config.brainUrl!, message);
-      update(i, { reply, job: { status: 'measuring', fee: reply.fee } });
-      void follow(i, reply.job);
+      update(id, { reply, job: { status: 'measuring', fee: reply.fee } });
+      void follow(id, reply.job);
     } catch (e) {
-      update(i, { error: (e as Error).message });
+      update(id, { error: (e as Error).message });
     } finally {
       setBusy(false);
     }
@@ -88,7 +93,7 @@ export function Chat() {
         receipt, and pays the fee into the pool for their owners. Anyone can replay a receipt to check it.
       </p>
       {turns.map((t, i) => (
-        <div key={i} className="turn">
+        <div key={t.id ?? i} className="turn">
           <p className="you">{t.message}</p>
           {t.reply && (
             <div className="brain">

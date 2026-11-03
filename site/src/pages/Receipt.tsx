@@ -39,7 +39,7 @@ export function ReceiptPage({ hash, signature }: { hash: string; signature?: str
     setReplayError('');
     setResult(null);
     try {
-      setResult(await replay(receipt, setProgress));
+      setResult(await replay(receipt, config.model, setProgress));
     } catch (e) {
       setReplayError((e as Error).message);
     } finally {

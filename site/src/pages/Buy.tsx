@@ -71,7 +71,7 @@ export function Buy() {
       ];
       const sig = await send(conn, ixs);
       setMsg(`${side === 'buy' ? 'Bought' : 'Sold'} ${fmt(n, 3)} neurons (${short(sig)}). This page updates once the transaction is final, in about 15 seconds.`);
-      void refreshWhenIndexed(conn, sig, load);
+      await refreshWhenIndexed(conn, sig, load);
     } catch (e) {
       setMsg((e as Error).message);
     } finally {

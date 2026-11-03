@@ -53,11 +53,13 @@ let worker: Worker | null = null;
 let checkedModel: Blob | null = null;
 
 /** Replays a receipt here. Returns the largest per-part difference (ppm) and whether it is valid. */
-export async function replay(receipt: Receipt, onProgress: (p: Progress) => void): Promise<{ ok: boolean; diff: number; why?: string; seconds: number }> {
+export async function replay(receipt: Receipt, brainModel: string, onProgress: (p: Progress) => void): Promise<{ ok: boolean; diff: number; why?: string; seconds: number }> {
+  // A receipt naming another model is not the brain's: no replay can make it genuine.
+  if (receipt.model !== brainModel) throw new Error('this receipt names a different model than the brain');
   if (!checkedModel) {
     const blob = await modelBlob(onProgress);
     const hash = await hashBlob(blob, onProgress);
-    if (hash !== receipt.model) {
+    if (hash !== brainModel) {
       await caches.delete(CACHE);
       throw new Error(`the downloaded model is not the brain (sha256 ${hash.slice(0, 16)}…); the cached copy was removed`);
     }

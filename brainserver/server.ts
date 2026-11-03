@@ -20,7 +20,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, readFileSync } from 'node:fs';
-import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, Keypair, Transaction } from '@solana/web3.js';
+import { sendAndPoll } from '../brain/send.ts';
 import { NeuralsAccounts } from '../brain/accounts.ts';
 import { shares, receiptHash, type Receipt } from '../brain/receipt.ts';
 import { SEGMENT_COUNT } from '../brain/model.ts';
@@ -97,6 +98,14 @@ export async function startBrain(config: Config) {
     workerData: { wasm: config.wasm ?? 'site/public/wasm/neurals-wasm.js', model: config.modelPath },
   });
   const waiting = new Map<string, { resolve: (mass: number[]) => void; reject: (e: Error) => void }>();
+  // A measurer that dies would leave every queued receipt waiting forever: fail them and stop, so the
+  // host restarts the brain.
+  const dead = (e: Error) => {
+    for (const w of waiting.values()) w.reject(e);
+    waiting.clear();
+    console.error(`measurer stopped: ${e.message}`);
+    process.exit(1);
+  };
   await new Promise<void>((resolve, reject) => {
     worker.once('error', reject);
     worker.on('message', (m: { ready?: boolean; id?: string; mass?: number[]; error?: string }) => {
@@ -108,6 +117,8 @@ export async function startBrain(config: Config) {
       else w.resolve(m.mass!);
     });
   });
+  worker.on('error', dead);
+  worker.on('exit', (code) => dead(new Error(`measurer exited (${code})`)));
   const measure = (prompt: number[], reply: number[]) => new Promise<number[]>((resolve, reject) => {
     const id = randomBytes(8).toString('hex');
     waiting.set(id, { resolve, reject });
@@ -119,6 +130,9 @@ export async function startBrain(config: Config) {
   let generating: Promise<unknown> = Promise.resolve();
   let receipts: Promise<unknown> = Promise.resolve();
   let served = 0;
+  // Messages waiting for the brain: beyond this, new ones are turned away rather than queued forever.
+  const MAX_WAITING = 8;
+  let queued = 0;
 
   /** Measures, publishes and pays for one reply's receipt (runs after the reply was sent). */
   async function settle(job: Job, prompt: number[], output: number[]) {
@@ -131,7 +145,8 @@ export async function startBrain(config: Config) {
     const res = await fetch(`${config.indexerUrl}/receipts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(receipt) });
     const body = (await res.json()) as { hash?: string; error?: string };
     if (!res.ok || body.hash !== hash) throw new Error(`indexer refused the receipt: ${body.error ?? body.hash}`);
-    job.signature = await sendAndConfirmTransaction(conn, new Transaction().add(accounts.payFee(payer.publicKey, hash, config.feeLamports)), [payer], { commitment: 'confirmed' });
+    // Polled, never a websocket wait: a confirmation that never arrives would stall every later receipt.
+    job.signature = await sendAndPoll(conn, new Transaction().add(accounts.payFee(payer.publicKey, hash, config.feeLamports)), [payer]);
     job.status = 'done';
     served++;
   }
@@ -157,7 +172,9 @@ export async function startBrain(config: Config) {
       if (req.method === 'POST' && req.url === '/chat') {
         const { message } = JSON.parse(await readBody(req)) as { message?: string };
         if (typeof message !== 'string' || !message.trim()) return json(res, 400, { error: 'message required' });
-        const reply = generating.then(() => think(message.slice(0, 4000)));
+        if (queued >= MAX_WAITING) return json(res, 503, { error: 'the brain is busy: try again in a minute' });
+        queued++;
+        const reply = generating.then(() => think(message.slice(0, 4000))).finally(() => { queued--; });
         generating = reply.catch(() => undefined);
         return json(res, 200, await reply);
       }

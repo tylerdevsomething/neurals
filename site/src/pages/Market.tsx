@@ -56,7 +56,7 @@ export function Market() {
       const name = s?.part?.trait ?? (s ? (s.kind === 'head' ? 'attention head' : s.kind === 'column' ? 'neuron column' : s.kind) : `slot ${slot.index}`);
       parts.set(name, (parts.get(name) ?? 0) + amount);
     }
-    return [...parts].map(([n, a]) => `${fmt(neurons(a))} ${n}`).join(', ');
+    return [...parts].map(([n, a]) => `${fmt(neurons(a), 2)} ${n}`).join(', ');
   };
 
   const listed = items?.filter((i) => i.listed) ?? [];
@@ -75,7 +75,7 @@ export function Market() {
             {listed.map((l) => (
               <tr key={l.checkpoint}>
                 <td>{short(l.checkpoint)}<br /><span className="muted">by <a href={`#/wallet/${l.holder}`}>{short(l.holder)}</a></span></td>
-                <td>{fmt(neurons(total(l.positions)))}</td>
+                <td>{fmt(neurons(total(l.positions)), 2)}</td>
                 <td>{describe(l)}</td>
                 <td>{sol(l.price)} SOL</td>
                 <td>{me === l.holder ? <span className="muted">yours</span> : <button disabled={!me || !!busy} onClick={() => void buy(l)}>{busy === l.checkpoint ? '…' : me ? 'Buy' : 'Connect to buy'}</button>}</td>

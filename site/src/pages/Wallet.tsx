@@ -67,8 +67,9 @@ export function WalletPage({ address }: { address: string | null }) {
     setMsg('');
     try {
       const sig = await fn();
+      setMsg(`${what}: done (${short(sig)}). Updating…`);
+      await refreshWhenIndexed(conn, sig, load);
       setMsg(`${what}: done (${short(sig)}).`);
-      void refreshWhenIndexed(conn, sig, load);
     } catch (e) {
       setMsg(`${what}: ${(e as Error).message}`);
     } finally {
@@ -102,9 +103,9 @@ export function WalletPage({ address }: { address: string | null }) {
     <section>
       <h1>{own ? 'My neurons' : `Neurons of ${short(address)}`}</h1>
       <section className="stats">
-        <div><b>{fmt(neurons(held))}</b><span>neurons owned</span></div>
-        <div><b>{fmt(neurons(awake))}</b><span>awake (earning)</span></div>
-        <div><b>{fmt(neurons(held - awake))}</b><span>dormant</span></div>
+        <div><b>{fmt(neurons(held), 2)}</b><span>neurons owned</span></div>
+        <div><b>{fmt(neurons(awake), 2)}</b><span>awake (earning)</span></div>
+        <div><b>{fmt(neurons(held - awake), 2)}</b><span>dormant</span></div>
         <div><b>{fmtTokens(view.balance)}</b><span>token balance</span></div>
       </section>
       {msg && <p className="note">{msg}</p>}
@@ -120,7 +121,7 @@ export function WalletPage({ address }: { address: string | null }) {
                 <td><a href={`#/slot/${s.slot}`}>{brain ? slotLabel(brain.slots[s.slot]) : `#${s.slot}`}</a></td>
                 <td>{fmtTokens(s.amount)}</td>
                 <td>{fmtTokens(s.awake)}</td>
-                {own && <td><AmountAction max={s.awake / UNIT} verb="Seal" busy={busy === 'Seal'} onGo={(n) => seal(s.slot, n)} /></td>}
+                {own && <td><AmountAction max={s.awake / UNIT} verb="Seal" busy={!!busy} onGo={(n) => seal(s.slot, n)} /></td>}
               </tr>
             ))}
           </tbody>
@@ -132,13 +133,13 @@ export function WalletPage({ address }: { address: string | null }) {
           <h2>What goes dormant if I sell?</h2>
           <p>
             Sell <input value={sell} onChange={(e) => setSell(e.target.value)} placeholder="tokens" size={12} /> tokens:{' '}
-            {sellBase > 0 ? <b>{fmt(neurons(Math.max(0, sleeping)))} neurons go dormant</b> : 'enter an amount'}.
+            {sellBase > 0 ? <b>{fmt(neurons(Math.max(0, sleeping)), 2)} neurons go dormant</b> : 'enter an amount'}.
             The rarest stay awake longest; buying back wakes them. Nothing is lost.
           </p>
         </>
       )}
 
-      {own && held > 0 && <CarryForm slots={view.slots.map((s) => ({ slot: s.slot, awake: s.awake }))} busy={busy === 'Carry'} onGo={carry} />}
+      {own && held > 0 && <CarryForm slots={view.slots.map((s) => ({ slot: s.slot, awake: s.awake }))} busy={!!busy} onGo={carry} />}
 
       <h2>Checkpoints</h2>
       {view.checkpoints.length === 0 ? <p className="muted">None. A checkpoint freezes neurons with their tokens so they can be sold or gifted without anything moving.</p> : (
@@ -152,7 +153,7 @@ export function WalletPage({ address }: { address: string | null }) {
               return (
                 <tr key={c.checkpoint}>
                   <td>{short(c.checkpoint)}</td>
-                  <td>{fmt(neurons(total(c.positions)))}</td>
+                  <td>{fmt(neurons(total(c.positions)), 2)}</td>
                   <td>{st ? (st.listed ? `listed at ${sol(st.price)} SOL` : 'held') : '…'}</td>
                   {own && st && (
                     <td className="actions">
