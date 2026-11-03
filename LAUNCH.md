@@ -128,6 +128,10 @@ no failures). Interrupting is safe: the journal resumes it. At the end, run it a
 (reads every byte back from chain) and keep the printed manifest hash and writer address: they are the
 brain's address on Solana.
 
+**Mainnet, done 4 Nov 2026:** 1,163,876 model chunks (about 5.9 SOL), runtime, rules and manifest on chain.
+Brain address: `neurals:v1:3d6VFWZK9dyvTqYGjHpEwPCbxsNXFbNuBLFUznq2HwDH:54527f8dfab3275b0b9c18d15bb58ee5dc4f6c83a713e645a1db8dcf60879c5c:898`.
+Rules commit memo: `3GBMoN7D29rj9sijU7MnjkvtkJbsbzSJtsWwg2Qv1rEXyyDXraGhXMrM3TkdSm9cYZMSGXsn8cvtcxRhrUw1TVTZ` (deadline slot 466593089).
+
 ## 6. Rules and their commit memo — **once**
 
 ```bash
