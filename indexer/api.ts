@@ -34,6 +34,8 @@ export type ApiOptions = {
   site?: { rpcUrl: string; brainUrl?: string; cluster?: string };
   /** The built website (site/dist), served for every path the API does not answer. */
   staticDir?: string;
+  /** The settler's alerts and last error, shown in /health for monitoring. */
+  settler?: () => { alerts: string[]; lastError: string | null };
 };
 
 const json = (res: ServerResponse, status: number, body: unknown) => {
@@ -105,7 +107,7 @@ export function startApi(o: ApiOptions, port: number): Server {
           return json(res, 200, { programId: c.programId, mint: c.mint, curveTokenAccount: c.curveTokenAccount, pumpProgramId: c.pumpProgramId, startSlot: c.startSlot, epochSlots: c.epochSlots, model: o.model, ...o.site });
         }
         case 'health':
-          return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, fingerprint: ledger.fingerprint() });
+          return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, fingerprint: ledger.fingerprint(), settler: o.settler?.() ?? null });
         case 'brain':
           return json(res, 200, {
             revealed: ledger.isRevealed,

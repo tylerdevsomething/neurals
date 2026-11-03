@@ -34,6 +34,10 @@ export class Settler {
   /** Slots after posting before claims open (CHALLENGE_SLOTS in the program: 9,000 on mainnet). */
   challengeSlots = 9_000;
   log: (msg: string) => void = (m) => console.log(m);
+  /** Posted roots that differ from ours (veto them), newest last. Monitoring reads these. */
+  readonly alerts: string[] = [];
+  /** The last settler failure, if the latest epoch did not settle. */
+  lastError: string | null = null;
 
   constructor(conn: Connection, key: Keypair, accounts: NeuralsAccounts) {
     this.conn = conn;
@@ -43,7 +47,10 @@ export class Settler {
 
   /** Queues an epoch; epochs are handled one at a time, in order. */
   enqueue(file: EpochFile): Promise<void> {
-    this.queue = this.queue.then(async () => { await this.settle(file); }).catch((e) => this.log(`settler: epoch ${file.epoch}: ${(e as Error).message}`));
+    this.queue = this.queue.then(async () => { await this.settle(file); this.lastError = null; }).catch((e) => {
+      this.lastError = `epoch ${file.epoch}: ${(e as Error).message}`;
+      this.log(`settler: ${this.lastError}`);
+    });
     return this.queue;
   }
 
@@ -69,7 +76,9 @@ export class Settler {
     if (root !== file.root) {
       // Someone posted a root that is not ours: the settler key may be compromised. The admin can
       // veto it during the challenge window (tools/veto.ts). Push nothing.
-      this.log(`ALERT: epoch ${file.epoch} on chain has root ${root}, but this indexer computed ${file.root}. Veto it before slot ${postedSlot + this.challengeSlots}: node tools/veto.ts ${file.epoch}`);
+      const alert = `ALERT: epoch ${file.epoch} on chain has root ${root}, but this indexer computed ${file.root}. Veto it before slot ${postedSlot + this.challengeSlots}: node tools/veto.ts ${file.epoch}`;
+      this.alerts.push(alert);
+      this.log(alert);
       return { posted, claimed: 0, failed: 0 };
     }
     for (let now = await this.conn.getSlot('confirmed'); now < postedSlot + this.challengeSlots; now = await this.conn.getSlot('confirmed')) {

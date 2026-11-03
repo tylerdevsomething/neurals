@@ -71,19 +71,22 @@ console.log(`restored to slot ${indexer.syncedSlot}, epoch ${indexer.ledger.epoc
 
 // The settler's key: SETTLER_KEY (its JSON array) when hosted, or a file path in the config.
 const settlerSecret = process.env.SETTLER_KEY ?? (config.settlerKey ? readFileSync(config.settlerKey, 'utf8') : null);
+let settler: Settler | null = null;
 if (settlerSecret) {
   const key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(settlerSecret)));
-  const settler = new Settler(new Connection(config.rpcUrl, 'confirmed'), key, new NeuralsAccounts(config.programId));
-  if (config.challengeSlots !== undefined) settler.challengeSlots = config.challengeSlots;
-  indexer.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) void settler.enqueue(f); };
+  settler = new Settler(new Connection(config.rpcUrl, 'confirmed'), key, new NeuralsAccounts(config.programId));
+  const st = settler;
+  if (config.challengeSlots !== undefined) st.challengeSlots = config.challengeSlots;
+  indexer.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); };
   // Epochs settled before a restart may not have been posted or pushed yet.
-  for (const s of indexer.settlements) { const f = store.readEpoch(s.epoch); if (f) void settler.enqueue(f); }
+  for (const s of indexer.settlements) { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); }
 }
 
 startApi({
   indexer, store, model: config.model, brainKey: config.brainKey,
   site: { rpcUrl: publicRpcUrl, brainUrl: config.brainUrl, cluster: config.cluster },
   staticDir: process.env.STATIC_DIR,
+  settler: settler ? () => ({ alerts: settler!.alerts, lastError: settler!.lastError }) : undefined,
 }, config.port);
 console.log(`api on :${config.port}`);
 
