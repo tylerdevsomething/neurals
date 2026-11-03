@@ -13,7 +13,8 @@
 // nothing and writes nothing.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import { sendAndPoll } from '../brain/send.ts';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { NeuralsAccounts, parseConfig } from '../brain/accounts.ts';
 import { TOKEN_PROGRAMS } from '../brain/decoder.ts';
@@ -111,7 +112,8 @@ if (dry) {
   say('dry run: not sending set_mint, not writing the config');
 } else {
   if (!cfg.mint.equals(PublicKey.default)) throw new Error('the program already has a mint: set_mint can only run once');
-  const sig = await sendAndConfirmTransaction(conn, new Transaction().add(acc.setMint({ admin: admin!.publicKey, mint: found.mint, curveTokenAccount: curve })), [admin!], { commitment: 'confirmed' });
+  // Confirmed by polling: a websocket confirmation can hang on some RPC providers, and this must not stall.
+  const sig = await sendAndPoll(conn, new Transaction().add(acc.setMint({ admin: admin!.publicKey, mint: found.mint, curveTokenAccount: curve })), [admin!]);
   say(`set_mint: ${sig}`);
   const base = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf8')) : {};
   Object.assign(base, {

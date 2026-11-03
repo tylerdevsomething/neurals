@@ -6,6 +6,37 @@ there means deploying under a new program id and starting again.
 
 Rehearse the whole list on devnet first (with a fresh program id), exactly as written.
 
+## Rehearsed on devnet (2026-11-03)
+
+The whole list, with the same tools, on devnet with a fresh program (`8UKnARNNJVUBcaFXsqHzkw1nmD2Jt5Y4vG3HtPjQMdwz`):
+deploy; initialize; rules posted before the token; preflight before the token (all ok); the launch
+watcher saw the new token and recorded its mint 5 seconds after it appeared; the indexer and settler
+started from the written config; preflight after the token (all ok); offer, accept by the stand-in
+multisig, upgrade authority moved; preflight handed-over (all ok); the curve bought out in three buys;
+the indexer found the sellout, used the seed block the rules name (sellout + 150 slots) and revealed by
+itself; the reveal rebuilt by hand with `tools/reveal.ts` was identical; a message fee was split and
+every wallet received exactly its payout (rounding dust paid the next period); a second indexer
+syncing from scratch reached identical payout roots and reveal.
+
+Not rehearsed: creating the token on pump.fun itself (a test curve stands in on devnet), accepting the
+admin role through the Squads app (a plain key stood in), and the mainnet Railway services.
+
+### The mainnet steps as single commands
+
+`tools/mainnet.ts` runs each step with the Helius key from `.env` (masked in all output):
+
+| Step | Command |
+|---|---|
+| 3 deploy | `node tools/mainnet.ts deploy --yes` (done 2026-11-03) |
+| 4 initialize | `node tools/mainnet.ts init --yes` (done 2026-11-03) |
+| 5 upload | `node tools/mainnet.ts upload --yes` (started 2026-11-03), then `node tools/mainnet.ts verify` after step 6 |
+| 6 rules | `node tools/mainnet.ts rules --yes` |
+| preflight | `node tools/mainnet.ts preflight [--stage after-token|handed-over] [--brain <url>]` |
+| 7 launch | `node tools/mainnet.ts launch --creator <your pump.fun wallet> --yes`, then create the token |
+| 8 handover | `node tools/mainnet.ts offer --yes`; `node tools/mainnet.ts print-accept` (propose it in Squads); `node tools/mainnet.ts upgrade-authority --yes` |
+| progress | `node tools/mainnet.ts status` |
+
+
 ## 0. Decisions (before anything)
 
 | Decision | Notes |
