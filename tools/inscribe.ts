@@ -1,7 +1,9 @@
 // Inscribes the brain's files on chain and writes their manifest (SPEC §2).
 //
 //   node tools/inscribe.ts --rpc <url> --key <writer.json> --model <file.gguf> [--runtime <file>...]
-//        [--rules <rules.json>] [--rps 10] [--micro-lamports 0] [--verify]
+//        [--rules <rules.json>] [--rps 10] [--micro-lamports 0] [--send-rpc <url>...] [--verify]
+// --send-rpc adds routes that transactions are sent through in turn (with --rpc), for providers
+// that limit sending separately; --rpc alone still does all reading and confirming.
 //
 // Each file is written as 960-byte chunks (brain/inscribe.ts). A journal per file and network
 // (out/inscribe/<network>-<sha256>.json) records confirmed chunks, so an interrupted run resumes
@@ -25,6 +27,7 @@ if (!rpc || !keyPath || !modelPath) {
   process.exit(2);
 }
 const conn = new Connection(rpc, 'confirmed');
+const sendVia = [rpc, ...all('--send-rpc')].map((u) => new Connection(u, { commitment: 'confirmed', disableRetryOnRateLimit: true }));
 const writer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(keyPath, 'utf8'))));
 const genesis = (await conn.getGenesisHash()).slice(0, 8);
 mkdirSync('out/inscribe', { recursive: true });
@@ -44,7 +47,7 @@ async function inscribe(role: FileRef['role'], path: string, label: string = rol
     process.once('SIGINT', onStop);
     process.once('SIGTERM', onStop);
     await writeFile(conn, writer, file, {
-      done, rps: Number(opt('--rps') ?? 10), microLamports: Number(opt('--micro-lamports') ?? 0),
+      done, sendVia, rps: Number(opt('--rps') ?? 10), microLamports: Number(opt('--micro-lamports') ?? 0),
       onProgress: (p) => {
         if (Date.now() - last < 5000) return;
         last = Date.now();

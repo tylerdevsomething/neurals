@@ -172,6 +172,12 @@ export type WriteOptions = {
   onConfirmed?: (index: number) => void;
   onProgress?: (p: { done: number; total: number; inFlight: number; resent: number }) => void;
   commitment?: Commitment;
+  /**
+   * Where transactions are sent, in turn (default: conn). Providers limit sending separately from
+   * reading, so several routes send faster; a route that is rate limited rests for a second alone.
+   * Create them with disableRetryOnRateLimit, so a limit fails fast instead of stalling the upload.
+   */
+  sendVia?: Connection[];
 };
 
 /**
@@ -229,9 +235,19 @@ export async function writeFile(conn: Connection, writer: Keypair, file: Uint8Ar
 
   const gap = 1000 / rps;
   let nextAt = Date.now();
-  let pauseUntil = 0;
+  const routes = opts.sendVia?.length ? opts.sendVia : [conn];
+  const restUntil = routes.map(() => 0);
+  let turn = 0;
+  /** The next route that is not resting, or -1. */
+  const nextRoute = () => {
+    for (let k = 0; k < routes.length; k++) {
+      const r = (turn + k) % routes.length;
+      if (Date.now() >= restUntil[r]) { turn = r + 1; return r; }
+    }
+    return -1;
+  };
   while ((queue.length || inFlight.size || sending) && !failure) {
-    if (!queue.length || inFlight.size + sending >= maxInFlight || Date.now() < pauseUntil) {
+    if (!queue.length || inFlight.size + sending >= maxInFlight || restUntil.every((t) => Date.now() < t)) {
       await new Promise((r) => setTimeout(r, 100));
       continue;
     }
@@ -239,15 +255,17 @@ export async function writeFile(conn: Connection, writer: Keypair, file: Uint8Ar
     const wait = nextAt - Date.now();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     nextAt = Math.max(nextAt + gap, Date.now());
+    const route = nextRoute();
+    if (route < 0) continue;
     const index = queue.shift()!;
     if (done.has(index)) continue;
     const tx = chunkTransaction({ writer: writer.publicKey, tag, index, bytes: chunkSlice(file, index), blockhash: hash.blockhash, microLamports: opts.microLamports ?? 0, program: opts.program });
     tx.sign(writer);
     const lastValid = hash.lastValidBlockHeight;
     sending++;
-    conn.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 2 })
+    routes[route].sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 2 })
       .then((sig) => { inFlight.set(sig, { index, lastValid }); })
-      .catch(() => { queue.push(index); pauseUntil = Date.now() + 1000; }) // rate limited or rejected: later
+      .catch(() => { queue.unshift(index); restUntil[route] = Date.now() + 1000; }) // rate limited or rejected: this route rests
       .finally(() => { sending--; });
   }
   await checker;
