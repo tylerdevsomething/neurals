@@ -118,8 +118,9 @@ export class Store {
     // Only the official brain's receipts are kept: anyone else's would fill the disk and the activity map.
     if (brainKey && !verifyReceipt(hash, r.signature, brainKey)) throw new Error('receipt is not signed by the brain');
     if (!this.receipts.has(hash)) {
-      atomicWrite(join(this.dir, 'receipts', `${hash}.json`), JSON.stringify(r.signature ? { ...clean, signature: r.signature } : clean));
-      this.receipts.set(hash, clean);
+      const kept: Receipt = r.signature ? { ...clean, signature: r.signature } as Receipt : clean;
+      atomicWrite(join(this.dir, 'receipts', `${hash}.json`), JSON.stringify(kept));
+      this.receipts.set(hash, kept);
       this.order.push(hash);
     }
     return hash;
