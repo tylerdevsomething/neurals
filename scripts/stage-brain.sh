@@ -14,7 +14,7 @@ cat > "$OUT/railway.json" <<'JSON'
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
-  "deploy": { "restartPolicyType": "ALWAYS" }
+  "deploy": { "restartPolicyType": "ALWAYS", "healthcheckPath": "/health", "healthcheckTimeout": 300 }
 }
 JSON
 printf '**/node_modules\n' > "$OUT/.dockerignore"

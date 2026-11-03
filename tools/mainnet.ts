@@ -13,6 +13,9 @@
 //   node tools/mainnet.ts offer --yes      step 8: offer the admin role to the multisig (it accepts in Squads)
 //   node tools/mainnet.ts print-accept     step 8: the instruction to propose in Squads
 //   node tools/mainnet.ts upgrade-authority --yes   step 8: move the program's upgrade authority to the multisig
+//   node tools/mainnet.ts railway-setup --yes       step 7.1: create the mainnet services, volumes, domains and
+//                                                   variables (secrets go through stdin, never printed), and deploy the brain
+//   node tools/mainnet.ts railway-deploy --yes      step 7.3: deploy the site and indexer (after the launch wrote the mint)
 
 import { readFileSync, existsSync, mkdirSync, openSync, writeFileSync, rmSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
@@ -38,6 +41,39 @@ const config = JSON.parse(readFileSync('deploy/indexer.mainnet.json', 'utf8')) a
 const SETTLER = 'GfYPjZwq5eqraSCvQHgAaQmoUdqmuZVEEboNH9HauPPz';
 const MODEL = 'models/qwen2.5-1.5b-instruct-q4_k_m.gguf';
 const RUNTIME = ['site/public/wasm/neurals-wasm.wasm', 'site/public/wasm/neurals-wasm.js'];
+
+/** Runs the Railway CLI (masked output); returns its stdout. */
+function railway(args: string[], input?: string): { code: number; out: string } {
+  const r = spawnSync('npx', ['-y', '@railway/cli@latest', ...args], { input, encoding: 'utf8', shell: process.platform === 'win32', maxBuffer: 16 << 20 });
+  const err = (r.stderr ?? '').split('\n').filter((l) => !/Config as Code|Migrate:|Existing files keep/.test(l)).join('\n').trim();
+  if (err) process.stderr.write(mask(err) + '\n');
+  return { code: r.status ?? 1, out: r.stdout ?? '' };
+}
+const SITE = 'neurals-mainnet';
+const BRAIN = 'brain-mainnet';
+/** The services that exist in the linked Railway project. */
+function services(): string[] {
+  const r = railway(['status', '--json']);
+  const j = JSON.parse(r.out) as { environments: { edges: { node: { serviceInstances: { edges: { node: { serviceName: string } }[] } } }[] } };
+  return j.environments.edges[0].node.serviceInstances.edges.map((e) => e.node.serviceName);
+}
+/** The service's Railway domain, generating one if it has none. */
+function domainOf(service: string): string {
+  const list = railway(['domain', 'list', '--service', service, '--json']);
+  const found = /([a-z0-9-]+\.up\.railway\.app)/.exec(list.out);
+  if (found) return found[1];
+  const made = railway(['domain', '--service', service, '--json']);
+  const m = /([a-z0-9-]+\.up\.railway\.app)/.exec(made.out);
+  if (!m) throw new Error(`could not get a domain for ${service}: ${mask(made.out)}`);
+  return m[1];
+}
+function setVar(service: string, name: string, value: string, secret: boolean) {
+  const r = secret
+    ? railway(['variable', 'set', name, '--stdin', '--service', service, '--skip-deploys'], value)
+    : railway(['variable', 'set', `${name}=${value}`, '--service', service, '--skip-deploys']);
+  console.log(`  ${service}: ${name} ${r.code === 0 ? 'set' : 'FAILED'}${secret ? ' (secret, not shown)' : ` = ${value}`}`);
+  if (r.code !== 0) process.exit(1);
+}
 
 /** Runs a command with its output shown as it comes (masked), for long watchers. */
 function runLive(bin: string, args: string[]): Promise<number> {
@@ -140,6 +176,45 @@ switch (cmd) {
     need();
     process.exit(run('wsl', ['-e', 'bash', '-lc', `export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"; solana program set-upgrade-authority -u "$RPC" ${config.programId} --new-upgrade-authority ${config.multisig} --skip-new-upgrade-authority-signer-check -k ${WSL_KEYS}/mainnet/deployer.json`],
       { env: { RPC, WSLENV: 'RPC/u', MSYS_NO_PATHCONV: '1' } }));
+  }
+  case 'railway-setup': {
+    need();
+    const have = services();
+    for (const name of [SITE, BRAIN]) {
+      if (have.includes(name)) { console.log(`${name}: exists`); continue; }
+      const r = railway(['add', '--service', name, '--json']);
+      if (r.code !== 0) process.exit(1);
+      const v = railway(['volume', '--service', name, 'add', '--mount-path', '/data', '--json']);
+      console.log(`${name}: created, volume on /data ${v.code === 0 ? 'added' : 'FAILED'}`);
+    }
+    const site = domainOf(SITE);
+    const brainHost = domainOf(BRAIN);
+    console.log(`domains: https://${site} (site and indexer), https://${brainHost} (brain)`);
+    const key2 = /^HELIUS_BROWSER_API_KEY=(.+)$/m.exec(env)?.[1]?.trim();
+    if (!key2) throw new Error('HELIUS_BROWSER_API_KEY missing from .env');
+    setVar(SITE, 'INDEXER_CONFIG', 'deploy/indexer.mainnet.json', false);
+    setVar(SITE, 'BRAIN_URL', `https://${brainHost}`, false);
+    setVar(SITE, 'RPC_URL', RPC, true);
+    setVar(SITE, 'PUBLIC_RPC_URL', `https://mainnet.helius-rpc.com/?api-key=${key2}`, true);
+    setVar(SITE, 'SETTLER_KEY', readFileSync(`${KEYS}/mainnet/settler.json`, 'utf8').trim(), true);
+    setVar(BRAIN, 'BRAIN_CONFIG', 'deploy/brain.mainnet.json', false);
+    setVar(BRAIN, 'INDEXER_URL', `https://${site}/api`, false);
+    setVar(BRAIN, 'RPC_URL', RPC, true);
+    setVar(BRAIN, 'PAYER_KEY', readFileSync(`${KEYS}/mainnet/brain.json`, 'utf8').trim(), true);
+    console.log('deploying the brain (it fetches and checks the 1.1 GB model on first start)');
+    if (run('bash', ['scripts/stage-brain.sh']) !== 0) process.exit(1);
+    const up = railway(['up', 'out/brain-deploy', '--path-as-root', '--service', BRAIN, '--detach']);
+    console.log(up.code === 0 ? `brain deploying: https://${brainHost}/health answers once it is up` : 'brain deploy FAILED');
+    console.log(`the site and indexer deploy after the launch: node tools/mainnet.ts railway-deploy --yes`);
+    break;
+  }
+  case 'railway-deploy': {
+    need();
+    const c = JSON.parse(readFileSync('deploy/indexer.mainnet.json', 'utf8')) as { mint?: string };
+    if (!c.mint) { console.log('no mint in deploy/indexer.mainnet.json yet: run the launch first'); process.exit(1); }
+    const up = railway(['up', '--service', SITE, '--detach']);
+    console.log(up.code === 0 ? `site and indexer deploying: https://${domainOf(SITE)}` : 'deploy FAILED');
+    break;
   }
   case 'stop': {
     const pid = Number(argOf('--pid') ?? (existsSync(PIDFILE) ? readFileSync(PIDFILE, 'utf8') : NaN));
