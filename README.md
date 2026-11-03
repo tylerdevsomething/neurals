@@ -142,6 +142,13 @@ After the sellout or the deadline:
 7. `node tools/reveal.ts <rules> --sold-out-slot <slot> --out reveal.json`; post the reveal memo; set
    `rulesFile` and `revealFile` in the indexer config.
 
+## Mainnet
+
+`LAUNCH.md` is the launch checklist: every step, command and check, in order. `node tools/preflight.ts`
+checks a deployment (configs, deployed code, roles, rules, brain) at each stage; `node tools/admin.ts`
+initializes the program and hands the admin role to the multisig; `scripts/deploy-mainnet.sh` deploys
+only the checked mainnet build.
+
 ## Security checks
 
 - `node tools/attacks.ts` (fresh local validator, program built with `--features devnet`) runs 26

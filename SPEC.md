@@ -219,6 +219,10 @@ AMM pools or exchanges, so trading volume elsewhere does not slow it down.
   During it the admin (a multisig) can veto the root; the indexer raises an alert when a posted root
   differs from the one it computed. A stolen settler key cannot drain the pool unnoticed.
 - The admin can replace the settler and the treasury, and change the market fee within its 5% cap.
+- The admin role passes to a new key in two steps (offer, then accept by the new key), so the
+  treasury multisig can take it over after launch and a mistyped key cannot lock the program out.
+
+The mainnet launch, step by step: `LAUNCH.md`.
 
 ## 7. Usage fees and activation receipts
 

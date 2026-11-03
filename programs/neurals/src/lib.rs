@@ -83,6 +83,26 @@ pub mod neurals {
         Ok(())
     }
 
+    /// Offers the admin role to `new_admin` (admin only). Nothing changes until the new admin
+    /// accepts, so a mistyped key cannot lock the program out. A new offer replaces the old one.
+    pub fn offer_admin(ctx: Context<OfferAdmin>, new_admin: Pubkey) -> Result<()> {
+        let o = &mut ctx.accounts.offer;
+        o.new_admin = new_admin;
+        o.bump = ctx.bumps.offer;
+        emit!(AdminOffered { admin: ctx.accounts.admin.key(), new_admin });
+        Ok(())
+    }
+
+    /// The offered key accepts the admin role (for example, the treasury multisig's vault).
+    pub fn accept_admin(ctx: Context<AcceptAdmin>) -> Result<()> {
+        let new_admin = ctx.accounts.new_admin.key();
+        require_keys_eq!(ctx.accounts.offer.new_admin, new_admin, NeuralsError::NotOfferedAdmin);
+        let old = ctx.accounts.config.admin;
+        ctx.accounts.config.admin = new_admin;
+        emit!(AdminChanged { old_admin: old, new_admin });
+        Ok(())
+    }
+
     /// Records the token's mint and its curve token account. Once only, by the admin; the mint must
     /// be fixed-supply with no mint or freeze authority. The curve account is for indexers.
     pub fn set_mint(ctx: Context<SetMint>, curve_token_account: Pubkey) -> Result<()> {
@@ -397,6 +417,28 @@ pub struct SetRoles<'info> {
 }
 
 #[derive(Accounts)]
+pub struct OfferAdmin<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    #[account(seeds = [b"config"], bump = config.bump, has_one = admin @ NeuralsError::NotAdmin)]
+    pub config: Account<'info, Config>,
+    #[account(init_if_needed, payer = admin, space = 8 + AdminOffer::INIT_SPACE, seeds = [b"admin_offer"], bump)]
+    pub offer: Account<'info, AdminOffer>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AcceptAdmin<'info> {
+    #[account(mut)]
+    pub new_admin: Signer<'info>,
+    #[account(mut, seeds = [b"config"], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    /// Closed on acceptance (its rent goes to the new admin), so an offer is used once.
+    #[account(mut, seeds = [b"admin_offer"], bump = offer.bump, close = new_admin)]
+    pub offer: Account<'info, AdminOffer>,
+}
+
+#[derive(Accounts)]
 #[instruction(epoch_id: u64)]
 pub struct VetoEpoch<'info> {
     #[account(mut)]
@@ -558,6 +600,14 @@ pub struct Config {
     pub bump: u8,
 }
 
+/// A pending handover of the admin role (offer_admin, accept_admin).
+#[account]
+#[derive(InitSpace)]
+pub struct AdminOffer {
+    pub new_admin: Pubkey,
+    pub bump: u8,
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct Pool {
@@ -632,6 +682,10 @@ pub struct Claimed { pub epoch: u64, pub index: u32, pub wallet: Pubkey, pub amo
 #[event]
 pub struct EpochVetoed { pub epoch: u64, pub root: [u8; 32], pub total: u64 }
 #[event]
+pub struct AdminOffered { pub admin: Pubkey, pub new_admin: Pubkey }
+#[event]
+pub struct AdminChanged { pub old_admin: Pubkey, pub new_admin: Pubkey }
+#[event]
 pub struct RolesSet { pub settler: Pubkey, pub treasury: Pubkey, pub fee_bps: u16 }
 
 #[error_code]
@@ -694,6 +748,8 @@ pub enum NeuralsError {
     ChallengeWindow,
     #[msg("This epoch's challenge window is over: it can no longer be vetoed")]
     ChallengeOver,
+    #[msg("This key was not offered the admin role")]
+    NotOfferedAdmin,
 }
 
 #[cfg(test)]

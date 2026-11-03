@@ -147,5 +147,19 @@ await send([payer], acc.claim({ payer: payer.publicKey, wallet: alice.publicKey,
 ok(BigInt((await conn.getBalance(alice.publicKey)) - before) === a.amount, 'anyone pushes Alice her exact payout after the window');
 await refused('the same payout claimed twice', 'AlreadyClaimed', [payer], acc.claim({ payer: payer.publicKey, wallet: alice.publicKey, epoch: 1, index: a.index, amount: a.amount, proof: a.proof }));
 
+// Handing the admin role to a new key (the treasury multisig on mainnet): two steps, so a typo cannot lock it.
+const next = Keypair.generate();
+await airdrop(next.publicKey, 1);
+await refused('an attacker offers themselves the admin role', 'NotAdmin', [attacker], acc.offerAdmin(attacker.publicKey, attacker.publicKey));
+await send([admin], acc.offerAdmin(admin.publicKey, next.publicKey));
+await refused('an attacker accepts an admin offer made to someone else', 'NotOfferedAdmin', [attacker], acc.acceptAdmin(attacker.publicKey));
+ok((await cfg()).admin.equals(admin.publicKey), 'an offer alone changes nothing: the old admin is still admin');
+await send([next], acc.acceptAdmin(next.publicKey));
+ok((await cfg()).admin.equals(next.publicKey), 'the offered key accepted and is now the admin');
+await refused('the old admin changes roles after handing over', 'NotAdmin', [admin], acc.setRoles(admin.publicKey, settler.publicKey, treasury, 100));
+await refused('the same offer is accepted twice', null, [next], acc.acceptAdmin(next.publicKey));
+await send([next], acc.setRoles(next.publicKey, settler.publicKey, treasury, 100));
+ok((await cfg()).feeBps === 100, 'the new admin can change roles');
+
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nevery attack was refused; every legitimate path worked');
 process.exit(failures ? 1 : 0);

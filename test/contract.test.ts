@@ -39,6 +39,8 @@ const ARGS: Record<InstructionName, string[]> = {
   claim: ['epoch: u64', 'index: u32', 'amount: u64', 'proof: Vec<[u8; 32]>'],
   setRoles: ['settler: Pubkey', 'treasury: Pubkey', 'fee_bps: u16'],
   vetoEpoch: ['epoch: u64'],
+  offerAdmin: ['new_admin: Pubkey'],
+  acceptAdmin: [],
 };
 
 for (const name of Object.keys(ACCOUNTS) as InstructionName[]) {

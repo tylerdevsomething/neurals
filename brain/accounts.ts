@@ -105,6 +105,14 @@ export class NeuralsAccounts {
   setRoles = (admin: PublicKey, settler: PublicKey, treasury: PublicKey, feeBps: number) =>
     this.ix({ name: 'setRoles', settler: settler.toBase58(), treasury: treasury.toBase58(), feeBps }, { admin, config: this.config() }, ['config'], ['admin']);
 
+  adminOffer = () => this.pda(Buffer.from('admin_offer'));
+
+  offerAdmin = (admin: PublicKey, newAdmin: PublicKey) =>
+    this.ix({ name: 'offerAdmin', newAdmin: newAdmin.toBase58() }, { admin, config: this.config(), offer: this.adminOffer(), systemProgram: SystemProgram.programId }, ['admin', 'offer'], ['admin']);
+
+  acceptAdmin = (newAdmin: PublicKey) =>
+    this.ix({ name: 'acceptAdmin' }, { newAdmin, config: this.config(), offer: this.adminOffer() }, ['newAdmin', 'config', 'offer'], ['newAdmin']);
+
   vetoEpoch = (admin: PublicKey, epoch: number) =>
     this.ix({ name: 'vetoEpoch', epoch }, { admin, config: this.config(), epoch: this.epoch(epoch), pool: this.pool() }, ['admin', 'epoch', 'pool'], ['admin']);
 

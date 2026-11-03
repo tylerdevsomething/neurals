@@ -1,0 +1,16 @@
+{
+  "port": 8080,
+  "probe": "/app/bin/neurals-probe",
+  "model": "/data/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+  "modelPath": "/data/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+  "indexerUrl": "http://localhost:8787/api",
+  "rpcUrl": "https://api.mainnet-beta.solana.com",
+  "programId": "9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR",
+  "payerKey": "/run/secrets/payer.json",
+  "feeLamports": 1000000,
+  "threads": 4,
+  "maxTokens": 96,
+  "wsl": false,
+  "requirePayment": true,
+  "paymentsFile": "/data/payments.txt"
+}

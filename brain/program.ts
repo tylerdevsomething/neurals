@@ -31,6 +31,10 @@ export const ACCOUNTS = {
   setRoles: ['admin', 'config'],
   /** Vetoes a posted root during its challenge window (admin only). */
   vetoEpoch: ['admin', 'config', 'epoch', 'pool'],
+  /** Offers the admin role to a new key (admin only); nothing changes until it accepts. */
+  offerAdmin: ['admin', 'config', 'offer', 'systemProgram'],
+  /** The offered key takes the admin role. */
+  acceptAdmin: ['newAdmin', 'config', 'offer'],
 } as const;
 
 export type InstructionName = keyof typeof ACCOUNTS;
@@ -48,7 +52,9 @@ export type Instruction =
   | { name: 'postEpoch'; epoch: number; root: string; total: bigint; count: number }
   | { name: 'claim'; epoch: number; index: number; amount: bigint; proof: string[] }
   | { name: 'setRoles'; settler: string; treasury: string; feeBps: number }
-  | { name: 'vetoEpoch'; epoch: number };
+  | { name: 'vetoEpoch'; epoch: number }
+  | { name: 'offerAdmin'; newAdmin: string }
+  | { name: 'acceptAdmin' };
 
 /** Anchor's instruction name is the snake_case of ours. */
 const anchorName = (n: string) => n.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
@@ -98,6 +104,8 @@ export function encode(ix: Instruction): Buffer {
       break;
     }
     case 'vetoEpoch': u64(ix.epoch); break;
+    case 'offerAdmin': parts.push(Buffer.from(decodeBase58(ix.newAdmin))); break;
+    case 'acceptAdmin': break;
     case 'claim': {
       u64(ix.epoch); u32(ix.index); u64(ix.amount); u32(ix.proof.length);
       for (const p of ix.proof) parts.push(hex32(p));
@@ -171,6 +179,8 @@ export function decode(data: Uint8Array): Instruction | null {
       break;
     }
     case 'vetoEpoch': ix = { name, epoch: u64() }; break;
+    case 'offerAdmin': need(32); ix = { name, newAdmin: encodeBase58(buf.subarray(off, off + 32)) }; off += 32; break;
+    case 'acceptAdmin': ix = { name }; break;
     case 'cancel': ix = { name }; break;
     case 'withdraw': ix = { name }; break;
   }
