@@ -18,15 +18,15 @@ Rehearse the whole list on devnet first (with a fresh program id), exactly as wr
 
 ## 1. Keys
 
-**Created 2026-11-03** (files in , outside the repo; public addresses below):
+**Created 2026-11-03** (files in `neurals-keys/mainnet/`, outside the repo; public addresses below):
 
 | Key | Address | Fund with |
 |---|---|---|
-| deployer |  | 4.2 SOL |
-| writer |  | 6.5 SOL |
-| settler |  | 0.3 SOL |
-| brain |  | 0.1 SOL |
-| program address |  (; unused on mainnet) | 0 |
+| deployer | `3XKMThFUJT5kvNK7FMVoWFZcBW6xPrVPQqG6RTpaVj9e` | 4.2 SOL |
+| writer | `3d6VFWZK9dyvTqYGjHpEwPCbxsNXFbNuBLFUznq2HwDH` | 6.5 SOL |
+| settler | `GfYPjZwq5eqraSCvQHgAaQmoUdqmuZVEEboNH9HauPPz` | 0.3 SOL |
+| brain | `6aWy1UL2uuF8G7pTCqC6JhHtLoBuhccQGavjjoVmdmGH` | 0.1 SOL |
+| program address | `9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR` (`neurals-keys/program-devnet.json`; unused on mainnet) | 0 |
 
 Audit: decided against (2026-11-03). Launch: as soon as possible.
 
