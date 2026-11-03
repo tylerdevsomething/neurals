@@ -18,6 +18,19 @@ Rehearse the whole list on devnet first (with a fresh program id), exactly as wr
 
 ## 1. Keys
 
+**Created 2026-11-03** (files in , outside the repo; public addresses below):
+
+| Key | Address | Fund with |
+|---|---|---|
+| deployer |  | 4.2 SOL |
+| writer |  | 6.5 SOL |
+| settler |  | 0.3 SOL |
+| brain |  | 0.1 SOL |
+| program address |  (; unused on mainnet) | 0 |
+
+Audit: decided against (2026-11-03). Launch: as soon as possible.
+
+
 Make each key on its own and keep the files out of the repo (as with `neurals-keys/`).
 
 | Key | Role | Lives | Fund with |

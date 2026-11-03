@@ -17,7 +17,7 @@
   "cluster": "mainnet",
   "rulesFile": "deploy/rules.mainnet.json",
   "challengeSlots": 9000,
-  "brainKey": "<BRAIN_PUBKEY>",
+  "brainKey": "6aWy1UL2uuF8G7pTCqC6JhHtLoBuhccQGavjjoVmdmGH",
   "minPushLamports": 100000,
   "multisig": "4mSYGQvZTpcdVhz3bbN1EtYhSjnnnSdZLfD3ZVJRcrfa"
 }
