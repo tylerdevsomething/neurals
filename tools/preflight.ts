@@ -49,6 +49,7 @@ if (mainnet) {
   check((config.minPushLamports ?? 100_000) >= 50_000, 'small payouts are left to claim, not pushed at a loss', `minPushLamports ${config.minPushLamports} pushes payouts smaller than their fee`);
 }
 check(!!config.brainKey, 'brain key set: only its fees and signed receipts count', 'brainKey missing: anyone could publish receipts');
+if (mainnet) note('the site browser RPC comes from PUBLIC_RPC_URL on the host (never the private RPC_URL)');
 
 console.log('\nprogram on chain');
 const programInfo = await conn.getAccountInfo(acc.programId, 'confirmed');
@@ -82,7 +83,7 @@ else {
   const mintSet = !cfg.mint.equals(PublicKey.default);
   if (stage === 'before-token') check(!mintSet, 'no mint recorded yet (set_mint runs on launch day)', `a mint is already recorded (${cfg.mint.toBase58()}): this program can never launch another token`);
   else check(mintSet && cfg.mint.toBase58() === config.mint, `mint recorded and matches the config (${cfg.mint.toBase58()})`, 'the recorded mint does not match the config');
-  const multisig = opt('--multisig');
+  const multisig = opt('--multisig') ?? (config.multisig as string | undefined);
   if (stage === 'handed-over') {
     if (!multisig) fail('--multisig <vault> is needed to check the handover');
     else {

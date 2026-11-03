@@ -10,9 +10,9 @@ Rehearse the whole list on devnet first (with a fresh program id), exactly as wr
 
 | Decision | Notes |
 |---|---|
-| Multisig | A Squads multisig (for example 2 of 3). Its **vault** address becomes the treasury, the admin and the upgrade authority. Signers must be reachable within an hour: that is the window for vetoing a bad payout root. |
-| Browser RPC | The RPC the site gives visitors' browsers. Not the private Helius key: a second Helius key restricted to the site's domain, or another provider. |
-| Reveal deadline | The slot by which the reveal happens even if the curve has not sold out (about 7 days is 1,512,000 slots after launch). Fixed in the rules before the token exists. |
+| Multisig | **Decided:** Squads vault `4mSYGQvZTpcdVhz3bbN1EtYhSjnnnSdZLfD3ZVJRcrfa` (recorded as `multisig` in `deploy/indexer.mainnet.json`). It becomes the treasury, the admin and the upgrade authority. Signers must be reachable within an hour: that is the window for vetoing a bad payout root. |
+| Browser RPC | **Decided:** a second Helius key, kept in `.env` as `HELIUS_BROWSER_API_KEY` and given to the indexer host as `PUBLIC_RPC_URL` (never committed). In the Helius dashboard, restrict it to the site's domain: browsers see it. |
+| Reveal | **Decided:** at bonding (the curve selling out), expected within about 30 minutes of launch. The indexer reveals by itself (step 9). The rules still need a **deadline**, the fallback if the curve never sells out: a short one fits a fast sale (for example 3 days, 648,000 slots after launch). |
 | Audit | Recommended before real money sits in the program. |
 | Launch date | The brain upload (step 5) takes about 33 hours and must finish first. |
 
@@ -87,7 +87,7 @@ brain's address on Solana.
 ## 6. Rules and their commit memo — **once**
 
 ```bash
-# deadline = launch slot estimate + ~1,512,000 (7 days)
+# deadline = launch slot estimate + ~648,000 (3 days): the fallback if the curve never sells out
 node tools/traits.ts out/traits-raw.json --deadline <slot> --out deploy/rules.mainnet.json
 #   (or copy rules/neurals-v1.draft.json and set seed.deadlineSlot: the traits are the same)
 node tools/commit.ts deploy/rules.mainnet.json                                   # shows the memo
@@ -113,7 +113,7 @@ the roles and fee, that no mint is recorded yet, the rules and their deadline, a
 ## 7. Launch day — **once**
 
 1. Hosting (Railway): two new services from this repo, each with its own volume on `/data`:
-   - `neurals-mainnet`: `INDEXER_CONFIG=deploy/indexer.mainnet.json`, `RPC_URL` (Helius mainnet), `SETTLER_KEY`, `BRAIN_URL`.
+   - `neurals-mainnet`: `INDEXER_CONFIG=deploy/indexer.mainnet.json`, `RPC_URL` (Helius mainnet, private), `PUBLIC_RPC_URL` (the browser key's URL), `SETTLER_KEY`, `BRAIN_URL`.
    - `brain-mainnet` (staged by `scripts/stage-brain.sh`): `BRAIN_CONFIG=deploy/brain.mainnet.json`, `PAYER_KEY` (the brain key), `RPC_URL`, `INDEXER_URL`. Healthcheck path `/health`, timeout 300 s.
 2. Start the watcher, then create the token from the creator wallet on pump.fun:
    ```bash
@@ -146,15 +146,25 @@ node tools/preflight.ts deploy/indexer.mainnet.json --rpc <url> --stage handed-o
 The offer changes nothing until the vault accepts, so a mistyped address cannot lock the program.
 After this the deployer key controls nothing: store it offline.
 
-## 9. The reveal (after sellout or the deadline)
+## 9. The reveal (automatic, at bonding)
+
+Nothing to run. When the last position on the curve is bought (bonding), the indexer records that
+slot, waits for the seed block the rules name (the first block at or after sellout + `delaySlots`,
+about a minute later), builds the reveal itself and applies it at the next epoch boundary. Nobody picks
+the seed block, and an indexer refuses any reveal drawn from another block, so nobody can steer
+traits to chosen wallets. If the curve never sells out, the same happens at the deadline.
+
+Check, minutes after bonding:
 
 ```bash
-node tools/reveal.ts deploy/rules.mainnet.json --sold-out-slot <slot | none> --out deploy/reveal.mainnet.json --rpc <url>
-node tools/post-memo.ts "<memo printed above>" --key <deployer or any key> --rpc <url>
+curl <site>/api/health        # soldOutSlot and seedSlot are set
+curl <site>/api/reveal        # the reveal; anyone can rebuild it:
+node tools/reveal.ts deploy/rules.mainnet.json --sold-out-slot <soldOutSlot> --out /tmp/check.json --rpc <url>   # must be identical
 ```
 
-Commit `deploy/reveal.mainnet.json` and redeploy `neurals-mainnet`. The indexer checks the reveal against
-the rules and the seed block, and applies it at the first epoch boundary after the seed block.
+Optionally post its memo for the record (`node tools/post-memo.ts` with the memo `tools/reveal.ts` prints).
+Rehearsed by `tools/reveal-rehearse.ts` on a local chain: sellout found, the named seed block used, a
+second indexer from scratch identical, a restart re-checked, a reveal from any other block refused.
 
 ## Running it
 

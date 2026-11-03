@@ -10,6 +10,7 @@
 //   GET  /claims/:epoch/:wallet  one payout and its proof
 //   POST /receipts               a receipt (JSON) from the brain; answers its hash
 //   GET  /receipts/:hash         a stored receipt
+//   GET  /reveal                 the reveal in use (rebuildable from the rules and the seed block)
 //   GET  /activity               how hard each part fired across the last 50 paid messages
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
@@ -54,7 +55,7 @@ async function body(req: IncomingMessage, limit = 256 * 1024): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-const API_ROUTES = new Set(['config', 'health', 'brain', 'slot', 'wallet', 'checkpoints', 'epochs', 'claims', 'receipts', 'activity']);
+const API_ROUTES = new Set(['config', 'health', 'brain', 'slot', 'wallet', 'checkpoints', 'epochs', 'claims', 'receipts', 'activity', 'reveal']);
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
@@ -107,7 +108,7 @@ export function startApi(o: ApiOptions, port: number): Server {
           return json(res, 200, { programId: c.programId, mint: c.mint, curveTokenAccount: c.curveTokenAccount, pumpProgramId: c.pumpProgramId, startSlot: c.startSlot, epochSlots: c.epochSlots, model: o.model, ...o.site });
         }
         case 'health':
-          return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, fingerprint: ledger.fingerprint(), settler: o.settler?.() ?? null });
+          return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, soldOutSlot: indexer.soldOutSlot, seedSlot: indexer.seedSlot(indexer.syncedSlot), fingerprint: ledger.fingerprint(), settler: o.settler?.() ?? null });
         case 'brain':
           return json(res, 200, {
             revealed: ledger.isRevealed,
@@ -162,6 +163,9 @@ export function startApi(o: ApiOptions, port: number): Server {
           for (const r of recent) r.shares.forEach((s, i) => (sum[i] += s));
           return json(res, 200, { messages: recent.length, shares: sum.map((s) => (recent.length ? s / recent.length : 0)) });
         }
+        case 'reveal':
+          // The reveal in use: anyone can rebuild it from the committed rules and the seed block (tools/reveal.ts).
+          return indexer.revealed ? json(res, 200, indexer.revealed) : json(res, 404, { error: 'not revealed yet', soldOutSlot: indexer.soldOutSlot, seedSlot: indexer.seedSlot(indexer.syncedSlot) });
         case 'receipts': {
           const r = store.receipt(parts[1] ?? '');
           return r ? json(res, 200, r) : json(res, 404, { error: 'no such receipt' });

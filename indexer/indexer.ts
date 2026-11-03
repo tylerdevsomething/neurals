@@ -17,6 +17,8 @@ import { buildTree, type ClaimTree } from '../brain/claims.ts';
 import type { Rpc } from './rpc.ts';
 import type { Receipt } from '../brain/receipt.ts';
 import type { Store, LogLine } from './store.ts';
+import { SUPPLY } from '../brain/layout.ts';
+import { buildReveal, seedSlotFor, type Reveal, type Rules } from '../brain/reveal.ts';
 
 export type IndexerConfig = DecoderConfig & {
   /** First slot of epoch 0. Transactions before it are not followed. */
@@ -51,6 +53,12 @@ export class Indexer {
   private readonly store: Store;
   private readonly blockOrder = new Map<number, Map<string, number>>();
   private reveal: PendingReveal | null = null;
+  /** The committed rules (SPEC §6): with them, the indexer finds the seed block and builds the reveal itself. */
+  private rules: Rules | null = null;
+  /** The reveal in use, as built (or read) and checked. */
+  revealed: Reveal | null = null;
+  /** The slot of the transaction that sold the last position on the curve, or null while unsold. */
+  soldOutSlot: number | null = null;
 
   constructor(config: IndexerConfig, rpc: Rpc, store: Store) {
     this.config = config;
@@ -82,6 +90,75 @@ export class Indexer {
     for (const e of eventsOf(line.tx, this.book)) {
       this.revealIfDue(e.slot, false);
       this.settle(this.ledger.apply(e), false);
+      this.noteSellout(e.slot);
+    }
+  }
+
+  /** Records the slot the curve sold out in: the first time every position has been issued. */
+  private noteSellout(slot: number): void {
+    if (this.soldOutSlot === null && this.ledger.cursor >= SUPPLY) this.soldOutSlot = slot;
+  }
+
+  /**
+   * The rules the reveal follows. With them the indexer reveals by itself: when the curve sells out
+   * (or the deadline passes), it takes the seed block the rules name, builds the reveal and applies
+   * it at the first epoch boundary after that block. Nobody picks the seed block.
+   */
+  setRules(rules: Rules): void {
+    this.rules = rules;
+  }
+
+  /** The seed slot the rules call for, once it is known from the chain (sellout or deadline), else null. */
+  seedSlot(upTo: number): number | null {
+    if (!this.rules) return null;
+    if (this.soldOutSlot !== null) return seedSlotFor(this.rules, this.soldOutSlot);
+    return upTo > this.rules.seed.deadlineSlot ? this.rules.seed.deadlineSlot : null;
+  }
+
+  /** The first block produced at or after a slot (slots can be skipped). */
+  private async firstBlockFrom(slot: number): Promise<{ slot: number; blockhash: string }> {
+    const slots = await this.rpc.call<number[]>('getBlocks', [slot, slot + 500, { commitment: 'finalized' }]);
+    if (!slots.length) throw new Error(`no finalized block in slots ${slot}..${slot + 500}`);
+    const block = await this.rpc.call<{ blockhash: string }>('getBlock', [slots[0], { transactionDetails: 'none', rewards: false, commitment: 'finalized', maxSupportedTransactionVersion: 1 }]);
+    return { slot: slots[0], blockhash: block.blockhash };
+  }
+
+  /**
+   * Builds the reveal before the event order can pass its effective slot. Called before applying
+   * anything at or after `upTo`.
+   */
+  private async ensureReveal(upTo: number): Promise<void> {
+    if (!this.rules || this.reveal) return;
+    const seed = this.seedSlot(upTo);
+    if (seed === null) return;
+    const { startSlot, epochSlots } = this.config;
+    // The effective slot is the first epoch boundary after the seed block, which is at or after the seed slot.
+    const earliest = startSlot + (Math.floor((seed - startSlot) / epochSlots) + 1) * epochSlots;
+    if (upTo < earliest) return;
+    const block = await this.firstBlockFrom(seed);
+    const reveal = buildReveal(this.rules, block.slot, block.blockhash);
+    this.store.writeReveal(reveal);
+    this.revealed = reveal;
+    this.setReveal(reveal.partOfSlot, reveal.pointsOfPart, reveal.seedSlot);
+  }
+
+  /**
+   * Uses a reveal read from a file or an earlier run. Call checkSeed() after restore(): the seed
+   * block must be the one the rules call for, given when the curve sold out.
+   */
+  useReveal(reveal: Reveal): PendingReveal {
+    this.revealed = reveal;
+    return this.setReveal(reveal.partOfSlot, reveal.pointsOfPart, reveal.seedSlot);
+  }
+
+  /** Throws unless the reveal in use was drawn from the seed block the rules call for. */
+  async checkSeed(): Promise<void> {
+    if (!this.revealed || !this.rules) return;
+    const seed = this.seedSlot(Math.max(this.syncedSlot, this.revealed.seedSlot));
+    if (seed === null) throw new Error('a reveal exists, but the curve has not sold out and the deadline has not passed');
+    const block = await this.firstBlockFrom(seed);
+    if (block.slot !== this.revealed.seedSlot) {
+      throw new Error(`the reveal uses block ${this.revealed.seedSlot}, but the rules call for block ${block.slot} (sold out in slot ${this.soldOutSlot ?? 'none'}): it is not the canonical reveal`);
     }
   }
 
@@ -140,6 +217,7 @@ export class Indexer {
       applied.add(next.signature);
       if (!tx) continue;
       await this.fetchReceipts(tx);
+      await this.ensureReveal(tx.slot);
       this.apply(tx);
       count++;
       const fresh = [...this.watched()].filter((a) => !scanned.has(a));
@@ -150,6 +228,7 @@ export class Indexer {
         if (p.slot < next.slot || (p.slot === next.slot && (await this.before(p, next)))) pending.delete(sig);
       }
     }
+    await this.ensureReveal(finalized);
     this.syncedSlot = finalized;
     this.store.writeSynced(finalized);
     this.revealIfDue(finalized, true);
@@ -162,6 +241,7 @@ export class Indexer {
     for (const e of eventsOf(tx, this.book)) {
       this.revealIfDue(e.slot, true);
       this.settle(this.ledger.apply(e), true);
+      this.noteSellout(e.slot);
     }
   }
 

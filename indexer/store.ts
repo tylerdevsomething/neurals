@@ -12,6 +12,7 @@ import type { ClaimTree } from '../brain/claims.ts';
 import { receiptHash, PPM, type Receipt } from '../brain/receipt.ts';
 import { SEGMENT_COUNT } from '../brain/model.ts';
 import { verifyReceipt } from '../brain/signature.ts';
+import type { Reveal } from '../brain/reveal.ts';
 
 export type LogLine =
   | { kind: 'tx'; tx: DecodedTx }
@@ -64,6 +65,16 @@ export class Store {
 
   appendLog(line: LogLine): void {
     appendFileSync(join(this.dir, 'log.jsonl'), JSON.stringify(line) + '\n');
+  }
+
+  /** The reveal this indexer built from the rules and the seed block (checked again on every start). */
+  writeReveal(reveal: Reveal): void {
+    atomicWrite(join(this.dir, 'reveal.json'), JSON.stringify(reveal));
+  }
+
+  readReveal(): Reveal | null {
+    const path = join(this.dir, 'reveal.json');
+    return existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as Reveal) : null;
   }
 
   readSynced(): number | null {

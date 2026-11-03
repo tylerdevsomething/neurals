@@ -1,6 +1,5 @@
 {
   "rpcUrl": "https://api.mainnet-beta.solana.com",
-  "publicRpcUrl": "<BROWSER_RPC_URL>",
   "port": 8080,
   "dataDir": "/data",
   "programId": "9oaybEFAoXGv1Q6R15djkAiAw69cvyJbpAYJVrFXqcMR",
@@ -17,8 +16,8 @@
   "pollMs": 3000,
   "cluster": "mainnet",
   "rulesFile": "deploy/rules.mainnet.json",
-  "revealFile": "deploy/reveal.mainnet.json",
   "challengeSlots": 9000,
   "brainKey": "<BRAIN_PUBKEY>",
-  "minPushLamports": 100000
+  "minPushLamports": 100000,
+  "multisig": "4mSYGQvZTpcdVhz3bbN1EtYhSjnnnSdZLfD3ZVJRcrfa"
 }

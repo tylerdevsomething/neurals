@@ -206,8 +206,11 @@ AMM pools or exchanges, so trading volume elsewhere does not slow it down.
    hashes, and the seed rule.
 2. Token created on pump.fun; a watcher records the mint on-chain and the site goes live.
 3. After sellout or deadline: the seed block draws the permutation of real parts into slots (§3). The
-   reveal is posted and anyone can recompute, in their browser, which part (and so which trait) every
-   slot holds.
+   **sellout slot** is the slot of the transaction that issued the last position on the curve, as the
+   ledger records it; the **seed block** is the first block at or after sellout + `delaySlots` (or at the
+   deadline, if the curve never sells out). Every indexer finds both on chain and builds the reveal
+   itself, and refuses a reveal drawn from any other block: nobody picks the seed block. Anyone can
+   recompute, in their browser, which part (and so which trait) every slot holds.
 4. **The reveal takes effect at the first epoch boundary after the seed block**: a point fixed by the
    chain, so every indexer applies it at the same place in the event order and settles identically,
    whenever it reads the reveal.

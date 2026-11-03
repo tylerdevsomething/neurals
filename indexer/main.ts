@@ -46,7 +46,8 @@ if (!path) {
 }
 const config = JSON.parse(readFileSync(path, 'utf8')) as Config;
 // What browsers are told to use: never the private RPC below, which may carry an API key.
-const publicRpcUrl = config.publicRpcUrl ?? config.rpcUrl;
+// PUBLIC_RPC_URL (hosted): a key meant for browsers, restricted to the site's domain.
+const publicRpcUrl = process.env.PUBLIC_RPC_URL ?? config.publicRpcUrl ?? config.rpcUrl;
 // Hosting: secrets and paths from the environment, never from the config file or the image.
 if (process.env.RPC_URL) config.rpcUrl = process.env.RPC_URL;
 if (process.env.PORT) config.port = Number(process.env.PORT);
@@ -55,20 +56,27 @@ if (process.env.BRAIN_URL) config.brainUrl = process.env.BRAIN_URL;
 const rpc = new Rpc(config.rpcUrl);
 const store = new Store(config.dataDir);
 const indexer = new Indexer(config, rpc, store);
-// The reveal is checked against the committed rules and the seed block on chain, then set before
-// the log is replayed, so it lands at its canonical place (SPEC §6).
-if (config.revealFile && existsSync(config.revealFile)) {
-  if (!config.rulesFile) throw new Error('a reveal needs rulesFile to be checked against');
+// The rules fix the reveal (SPEC §6): the indexer finds the seed block itself once the curve sells out
+// or the deadline passes. A reveal already built (by this indexer, or given as revealFile) is checked
+// against the rules and the seed block on chain, then set before the log is replayed, so it lands at
+// its canonical place; after the replay, its seed block must be the one the sellout calls for.
+if (config.rulesFile) {
   const rules = checkRules(JSON.parse(readFileSync(config.rulesFile, 'utf8')) as Rules);
   if (rules.model !== config.model) throw new Error('the rules are for a different model');
-  const r = JSON.parse(readFileSync(config.revealFile, 'utf8')) as Reveal;
-  checkReveal(rules, r);
-  const block = await rpc.call<{ blockhash: string }>('getBlock', [r.seedSlot, { transactionDetails: 'none', rewards: false, commitment: 'finalized', maxSupportedTransactionVersion: 1 }]);
-  if (block.blockhash !== r.blockhash) throw new Error(`the reveal's seed block hash does not match block ${r.seedSlot} on chain`);
-  const p = indexer.setReveal(r.partOfSlot, r.pointsOfPart, r.seedSlot);
-  console.log(`reveal checked: takes effect at slot ${p.effectiveSlot}`);
+  indexer.setRules(rules);
+  const r = store.readReveal() ?? (config.revealFile && existsSync(config.revealFile) ? JSON.parse(readFileSync(config.revealFile, 'utf8')) as Reveal : null);
+  if (r) {
+    checkReveal(rules, r);
+    const block = await rpc.call<{ blockhash: string }>('getBlock', [r.seedSlot, { transactionDetails: 'none', rewards: false, commitment: 'finalized', maxSupportedTransactionVersion: 1 }]);
+    if (block.blockhash !== r.blockhash) throw new Error(`the reveal's seed block hash does not match block ${r.seedSlot} on chain`);
+    const p = indexer.useReveal(r);
+    console.log(`reveal checked: seed block ${r.seedSlot}, takes effect at slot ${p.effectiveSlot}`);
+  }
+} else if (config.revealFile) {
+  throw new Error('a reveal needs rulesFile to be checked against');
 }
 indexer.restore();
+await indexer.checkSeed();
 console.log(`restored to slot ${indexer.syncedSlot}, epoch ${indexer.ledger.epoch}, fingerprint ${indexer.ledger.fingerprint().slice(0, 16)}`);
 
 // The settler's key: SETTLER_KEY (its JSON array) when hosted, or a file path in the config.
