@@ -28,6 +28,8 @@ type Config = IndexerConfig & {
   pollMs?: number;
   /** Slots between posting a root and its first claim: the program's CHALLENGE_SLOTS (default 9,000). */
   challengeSlots?: number;
+  /** Payouts below this are left for their owners to claim (default 100,000 lamports). */
+  minPushLamports?: number;
   /** The committed rules file; needed to check a reveal. */
   rulesFile?: string;
   revealFile?: string;
@@ -77,6 +79,7 @@ if (settlerSecret) {
   settler = new Settler(new Connection(config.rpcUrl, 'confirmed'), key, new NeuralsAccounts(config.programId));
   const st = settler;
   if (config.challengeSlots !== undefined) st.challengeSlots = config.challengeSlots;
+  if (config.minPushLamports !== undefined) st.minPushLamports = config.minPushLamports;
   indexer.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); };
   // Epochs settled before a restart may not have been posted or pushed yet.
   for (const s of indexer.settlements) { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); }

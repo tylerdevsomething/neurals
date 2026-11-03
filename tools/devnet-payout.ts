@@ -29,6 +29,7 @@ if (hosted.revealFile) {
   ix.setReveal(r.partOfSlot, r.pointsOfPart, r.seedSlot);
 }
 const settler = new Settler(conn, key(cfg.settlerKey), acc);
+settler.minPushLamports = 0; // push every payout, however small, so the checks see them all
 settler.challengeSlots = 20; // the devnet build's CHALLENGE_SLOTS
 const pending: Promise<void>[] = [];
 let target = -1; // only the epoch this run's fee lands in (earlier devnet epochs used older rules)

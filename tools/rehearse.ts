@@ -143,6 +143,7 @@ const config = {
 const store = new Store(dataDir);
 const indexer = new Indexer(config, new Rpc(URL_), store);
 const settler = new Settler(conn, settlerKey, acc);
+settler.minPushLamports = 0; // push every payout, however small, so the checks see them all
 settler.log = (m) => console.log(`  ${m}`);
 settler.challengeSlots = 20; // CHALLENGE_SLOTS of the --features devnet build
 const settled: Promise<void>[] = [];

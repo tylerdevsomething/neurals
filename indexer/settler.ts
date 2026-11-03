@@ -33,6 +33,11 @@ export class Settler {
   private queue: Promise<void> = Promise.resolve();
   /** Slots after posting before claims open (CHALLENGE_SLOTS in the program: 9,000 on mainnet). */
   challengeSlots = 9_000;
+  /**
+   * Payouts smaller than this are not pushed: the network fee to send one (5,000 lamports, paid by the
+   * settler) would be a large part of it. They stay claimable by their owners at any time.
+   */
+  minPushLamports = 100_000;
   log: (msg: string) => void = (m) => console.log(m);
   /** Posted roots that differ from ours (veto them), newest last. Monitoring reads these. */
   readonly alerts: string[] = [];
@@ -87,8 +92,10 @@ export class Settler {
     const bits = claimedBits(data)!;
     let claimed = 0;
     let failed = 0;
+    let small = 0;
     for (const c of file.claims) {
       if (bits[c.index >> 3] & (1 << (c.index & 7))) continue;
+      if (BigInt(c.amount) < BigInt(this.minPushLamports)) { small++; continue; }
       try {
         await this.send(this.accounts.claim({
           payer: this.key.publicKey, wallet: new PublicKey(c.wallet), epoch: file.epoch,
@@ -101,7 +108,7 @@ export class Settler {
         this.log(`settler: epoch ${file.epoch} payout ${c.index} to ${c.wallet} not pushed: ${(e as Error).message.split('\n')[0]}`);
       }
     }
-    if (claimed || failed) this.log(`settler: epoch ${file.epoch}: pushed ${claimed} payouts${failed ? `, ${failed} left for their owners to claim` : ''}`);
+    if (claimed || failed || small) this.log(`settler: epoch ${file.epoch}: pushed ${claimed} payouts${failed ? `, ${failed} failed` : ''}${small ? `, ${small} too small to push` : ''}; the rest stay claimable by their owners`);
     return { posted, claimed, failed };
   }
 }
