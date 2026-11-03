@@ -38,7 +38,7 @@ Make each key on its own and keep the files out of the repo (as with `neurals-ke
 | program address | The program's id. Used once, by the deploy. | offline | 0 |
 | deployer | Upgrade authority and first admin until handover (step 8) | your PC, then offline | ~4.2 SOL |
 | writer | Uploads the brain (step 5) | your PC | ~6.5 SOL |
-| settler | Posts each day's payout root, pushes payouts | Railway (`SETTLER_KEY`) | ~0.3 SOL, topped up |
+| settler | Posts each hour's payout root, pushes payouts | Railway (`SETTLER_KEY`) | ~0.3 SOL, topped up (about 0.05 SOL a day: rent for 24 payout records plus push fees) |
 | brain | Receives visitors' message payments, forwards them with receipts, signs receipts | Railway (`PAYER_KEY`) | ~0.1 SOL |
 | creator | Creates the token on pump.fun | Phantom | pump.fun's creation fee (+ any first buy) |
 

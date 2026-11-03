@@ -42,7 +42,7 @@ console.log(`\nconfig ${path} (${config.cluster ?? 'no cluster'})`);
 const placeholders = JSON.stringify(config).match(/<[^>]+>/g);
 check(!placeholders, 'no placeholders left', `placeholders still to fill: ${placeholders?.join(', ')}`);
 if (mainnet) {
-  check(config.epochSlots === 216_000, 'epochs are one day (216,000 slots)', `epochSlots is ${config.epochSlots}, not 216,000`);
+  check(config.epochSlots === 9_000, 'epochs are one hour (9,000 slots)', `epochSlots is ${config.epochSlots}, not 9,000`);
   check((config.challengeSlots ?? 9_000) === 9_000, 'challenge window matches the mainnet build (9,000 slots)', `challengeSlots is ${config.challengeSlots}: the mainnet program uses 9,000`);
   check(config.pumpProgramId === PUMP, 'pump.fun program', `pumpProgramId is ${config.pumpProgramId}, not pump.fun's`);
   check(NON_BUY.every((n) => config.pumpNonBuyInstructions.includes(n)), 'pump.fun non-buy instructions listed', `pumpNonBuyInstructions misses some of ${NON_BUY.join(', ')}`);

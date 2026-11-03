@@ -18,7 +18,7 @@ through a pump.fun token, and every paid thought paying the neurons that fired.*
 | Brain | Qwen2.5-1.5B-Instruct class, GGUF Q4_K_M (~1.1 GB), inscribed in full |
 | Fees | Activation-weighted: each paid message's fee is split by how much each segment fired |
 | Message price | 0.001 SOL per paid message (decided 2026-11-02; can change before launch) |
-| Epochs | One day |
+| Epochs | One hour (changed from one day, 2026-11-03) |
 | Market fee | 1.5% to the treasury (treasury wallet set before mainnet) |
 | Traits | Measured; a part with a trait earns a bonus share (§4) |
 | Token moves | Neurons never die: dormant and wake by default, checkpoints for trading, carry transfer for gifts (§5) |
@@ -157,8 +157,10 @@ A wallet's registered neurons are **awake** as far as its own token balance cove
   wakes them.
 - **For fees, the balance of an epoch is its lowest point during that epoch**, computed from the
   finalized transactions (pre- and post-balances) of the wallet's token accounts. Buying just before
-  a payout and selling straight after earns nothing. **Epoch length: one day** (216,000 slots at
-  400 ms; decided 2026-11-02; test runs use shorter epochs).
+  a payout and selling straight after earns nothing. **Epoch length: one hour** (9,000 slots at
+  400 ms; decided 2026-11-03, was one day; test runs use shorter epochs). Each posted payout waits
+  out the challenge window (also about an hour) before it is pushed; posting never waits for pushing,
+  so hourly payouts keep pace. Each posted epoch costs the settler about 0.002 SOL of rent.
 - **A position earns in an epoch only if it was with the same holder (wallet or checkpoint) at the
   start and at the end of the epoch.** Positions bought, carried or sealed during an epoch start
   earning the next one. This stops a wallet whose neurons are dormant from buying back and sealing

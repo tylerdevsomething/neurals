@@ -53,7 +53,7 @@ export type Settlement = {
 export type LedgerOptions = {
   /** First slot of epoch 0 (the launch slot). */
   startSlot: number;
-  /** Epoch length in slots (SPEC §5.2, OPEN: proposed one day). */
+  /** Epoch length in slots (SPEC §5.2: one hour, 9,000 slots, on mainnet). */
   epochSlots: number;
   /** The checked shares of a receipt by its hash, or null if unavailable (see the feeReceipt event). */
   resolveReceipt?: (receipt: string) => readonly number[] | null;

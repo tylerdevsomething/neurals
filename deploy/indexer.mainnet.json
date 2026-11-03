@@ -11,7 +11,7 @@
     "withdraw",
     "withdraw_v2"
   ],
-  "epochSlots": 216000,
+  "epochSlots": 9000,
   "model": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
   "pollMs": 3000,
   "cluster": "mainnet",

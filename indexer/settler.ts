@@ -30,7 +30,10 @@ export class Settler {
   private readonly conn: Connection;
   private readonly key: Keypair;
   private readonly accounts: NeuralsAccounts;
-  private queue: Promise<void> = Promise.resolve();
+  /** Posting runs as soon as an epoch settles; pushing waits out each epoch's challenge window. Kept
+   * apart, so a long window or a slow push never delays the next epoch's post. */
+  private posts: Promise<void> = Promise.resolve();
+  private pushes: Promise<void> = Promise.resolve();
   /** Slots after posting before claims open (CHALLENGE_SLOTS in the program: 9,000 on mainnet). */
   challengeSlots = 9_000;
   /**
@@ -50,13 +53,24 @@ export class Settler {
     this.accounts = accounts;
   }
 
-  /** Queues an epoch; epochs are handled one at a time, in order. */
+  /**
+   * Queues an epoch: its root is posted at once (posts in order), and its payouts are pushed once its
+   * challenge window has passed (pushes in order). Resolves when the push is done.
+   */
   enqueue(file: EpochFile): Promise<void> {
-    this.queue = this.queue.then(async () => { await this.settle(file); this.lastError = null; }).catch((e) => {
+    const fail = (e: unknown) => {
       this.lastError = `epoch ${file.epoch}: ${(e as Error).message}`;
       this.log(`settler: ${this.lastError}`);
-    });
-    return this.queue;
+    };
+    let ready!: (p: Posted | null) => void;
+    const posted = new Promise<Posted | null>((r) => { ready = r; });
+    this.posts = this.posts.then(async () => { ready(await this.post(file)); }).catch((e) => { ready(null); fail(e); });
+    this.pushes = this.pushes.then(async () => {
+      const p = await posted;
+      if (p) await this.push(file, p);
+      if (p) this.lastError = null;
+    }).catch(fail);
+    return this.pushes;
   }
 
   private async send(...ixs: Parameters<Transaction['add']>): Promise<string> {
@@ -64,9 +78,18 @@ export class Settler {
     return sendAndPoll(this.conn, tx, [this.key]);
   }
 
+  /** Posts and pushes one epoch, waiting out its window (used by tools; the indexer uses enqueue). */
   async settle(file: EpochFile): Promise<{ posted: boolean; claimed: number; failed: number }> {
+    const p = await this.post(file);
+    if (!p) return { posted: false, claimed: 0, failed: 0 };
+    const { claimed, failed } = await this.push(file, p);
+    return { posted: p.posted, claimed, failed };
+  }
+
+  /** Posts an epoch's root unless it is on chain already; null if there is nothing to pay or the root is not ours. */
+  private async post(file: EpochFile): Promise<Posted | null> {
     const total = BigInt(file.total);
-    if (total === 0n || file.claims.length === 0) return { posted: false, claimed: 0, failed: 0 };
+    if (total === 0n || file.claims.length === 0) return null;
     const address = this.accounts.epoch(file.epoch);
     let info = await this.conn.getAccountInfo(address, 'confirmed');
     let posted = false;
@@ -84,12 +107,23 @@ export class Settler {
       const alert = `ALERT: epoch ${file.epoch} on chain has root ${root}, but this indexer computed ${file.root}. Veto it before slot ${postedSlot + this.challengeSlots}: node tools/veto.ts ${file.epoch}`;
       this.alerts.push(alert);
       this.log(alert);
-      return { posted, claimed: 0, failed: 0 };
+      return null;
     }
+    return { posted, data, postedSlot };
+  }
+
+  /** Pushes an epoch's payouts once its challenge window has passed. */
+  private async push(file: EpochFile, { postedSlot }: Posted): Promise<{ claimed: number; failed: number }> {
     for (let now = await this.conn.getSlot('confirmed'); now < postedSlot + this.challengeSlots; now = await this.conn.getSlot('confirmed')) {
       await new Promise((r) => setTimeout(r, Math.min(60_000, (postedSlot + this.challengeSlots - now) * 400 + 1000)));
     }
-    const bits = claimedBits(data)!;
+    // Read it again after the window: it may have been vetoed (closed), and owners may have claimed.
+    const now = await this.conn.getAccountInfo(this.accounts.epoch(file.epoch), 'confirmed');
+    if (!now || epochInfo(Buffer.from(now.data)).root !== file.root) {
+      this.log(`settler: epoch ${file.epoch} was vetoed or replaced during its window: nothing pushed`);
+      return { claimed: 0, failed: 0 };
+    }
+    const bits = claimedBits(Buffer.from(now.data))!;
     let claimed = 0;
     let failed = 0;
     let small = 0;
@@ -109,6 +143,8 @@ export class Settler {
       }
     }
     if (claimed || failed || small) this.log(`settler: epoch ${file.epoch}: pushed ${claimed} payouts${failed ? `, ${failed} failed` : ''}${small ? `, ${small} too small to push` : ''}; the rest stay claimable by their owners`);
-    return { posted, claimed, failed };
+    return { claimed, failed };
   }
 }
+
+type Posted = { posted: boolean; data: Buffer; postedSlot: number };
