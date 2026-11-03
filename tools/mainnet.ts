@@ -19,11 +19,12 @@ const env = readFileSync('.env', 'utf8');
 const key = /^HELIUS_API_KEY=(.+)$/m.exec(env)?.[1]?.trim();
 if (!key) throw new Error('HELIUS_API_KEY missing from .env');
 const RPC = `https://mainnet.helius-rpc.com/?api-key=${key}`;
-// More routes for sending only (each provider limits sending on its own): the second Helius key, and
-// Solana's public endpoint.
+// More routes for sending only (each provider limits sending on its own): Alchemy (measured: 20+ per
+// second accepted) and the second Helius key. Solana's public endpoint refuses bulk sending.
 const key2 = /^HELIUS_BROWSER_API_KEY=(.+)$/m.exec(env)?.[1]?.trim();
-const SEND_VIA = [...(key2 ? [`https://mainnet.helius-rpc.com/?api-key=${key2}`] : []), 'https://api.mainnet-beta.solana.com'];
-const mask = (s: string) => (key2 ? s.split(key2).join('<key2>') : s).split(key).join('<key>');
+const alchemy = /^ALCHEMY_RPC_URL=(.+)$/m.exec(env)?.[1]?.trim();
+const SEND_VIA = [...(alchemy ? [alchemy] : []), ...(key2 ? [`https://mainnet.helius-rpc.com/?api-key=${key2}`] : [])];
+const mask = (s: string) => [[alchemy, '<alchemy>'], [key2, '<key2>'], [key, '<key>']].reduce((t, [v, r]) => (v ? t.split(v).join(r!) : t), s);
 const KEYS = 'C:/Users/Admin/neurals-keys';
 const WSL_KEYS = '/mnt/c/Users/Admin/neurals-keys';
 const config = JSON.parse(readFileSync('deploy/indexer.mainnet.json', 'utf8')) as { multisig: string; programId: string };
@@ -62,7 +63,7 @@ switch (cmd) {
     mkdirSync('out/inscribe', { recursive: true });
     if (existsSync(PIDFILE) && alive(Number(readFileSync(PIDFILE, 'utf8')))) { console.log(`an upload is already running (process ${readFileSync(PIDFILE, 'utf8')}): node tools/mainnet.ts stop first`); process.exit(1); }
     // Helius counts every request (sends and status checks): keep the send rate under the plan's limit.
-    const rps = argOf('--rps') ?? '12';
+    const rps = argOf('--rps') ?? '20';
     const log = 'out/inscribe/mainnet.log';
     const out = openSync(log, 'a');
     // Detached, so it keeps running after this command returns. Interrupting is safe: rerun to resume.
