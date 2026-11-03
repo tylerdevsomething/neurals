@@ -208,6 +208,18 @@ switch (cmd) {
     console.log(`the site and indexer deploy after the launch: node tools/mainnet.ts railway-deploy --yes`);
     break;
   }
+  case 'railway-volumes': {
+    // The CLI wants ids, not names, for volumes (with a name it crashes): look them up.
+    const j = JSON.parse(railway(['status', '--json']).out) as { environments: { edges: { node: { id: string; serviceInstances: { edges: { node: { serviceName: string; serviceId: string } }[] } } }[] } };
+    const envNode = j.environments.edges[0].node;
+    for (const name of [SITE, BRAIN]) {
+      const id = envNode.serviceInstances.edges.find((e) => e.node.serviceName === name)?.node.serviceId;
+      if (!id) { console.log(`${name}: no such service`); continue; }
+      const v = railway(['volume', '--service', id, '--environment', envNode.id, 'add', '--mount-path', '/data', '--json']);
+      console.log(`${name}: volume on /data ${v.code === 0 ? 'added' : 'FAILED'}`);
+    }
+    break;
+  }
   case 'railway-deploy': {
     need();
     const c = JSON.parse(readFileSync('deploy/indexer.mainnet.json', 'utf8')) as { mint?: string };
