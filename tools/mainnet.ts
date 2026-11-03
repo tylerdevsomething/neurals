@@ -3,14 +3,18 @@
 //
 //   node tools/mainnet.ts deploy --yes     step 3: deploy the checked build (scripts/deploy-mainnet.sh, in WSL)
 //   node tools/mainnet.ts init --yes       step 4: initialize (treasury = the multisig, settler, 1.5%)
-//   node tools/mainnet.ts upload --yes     step 5: start the brain upload in the background (log: out/inscribe/mainnet.log)
+//   node tools/mainnet.ts upload --yes [--rps 8]   step 5: start the brain upload in the background (log: out/inscribe/mainnet.log)
+//   node tools/mainnet.ts stop             stops the upload (safe: upload again to resume where it stopped)
 //   node tools/mainnet.ts status           balances, program, config, upload progress (read-only)
 
-import { readFileSync, existsSync, mkdirSync, openSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, openSync, writeFileSync, rmSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 
 const [cmd] = process.argv.slice(2);
 const yes = process.argv.includes('--yes');
+const argOf = (n: string) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : undefined; };
+const PIDFILE = 'out/inscribe/mainnet.pid';
+const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const env = readFileSync('.env', 'utf8');
 const key = /^HELIUS_API_KEY=(.+)$/m.exec(env)?.[1]?.trim();
 if (!key) throw new Error('HELIUS_API_KEY missing from .env');
@@ -52,14 +56,26 @@ switch (cmd) {
   case 'upload': {
     need();
     mkdirSync('out/inscribe', { recursive: true });
+    if (existsSync(PIDFILE) && alive(Number(readFileSync(PIDFILE, 'utf8')))) { console.log(`an upload is already running (process ${readFileSync(PIDFILE, 'utf8')}): node tools/mainnet.ts stop first`); process.exit(1); }
+    // Helius counts every request (sends and status checks): keep the send rate under the plan's limit.
+    const rps = argOf('--rps') ?? '8';
     const log = 'out/inscribe/mainnet.log';
     const out = openSync(log, 'a');
     // Detached, so it keeps running after this command returns. Interrupting is safe: rerun to resume.
     const child = spawn('node', ['tools/inscribe.ts', '--rpc', RPC, '--key', `${KEYS}/mainnet/writer.json`, '--model', MODEL,
-      ...RUNTIME.flatMap((r) => ['--runtime', r]), '--rps', '10', '--micro-lamports', '5000'],
+      ...RUNTIME.flatMap((r) => ['--runtime', r]), '--rps', rps, '--micro-lamports', '5000'],
     { detached: true, stdio: ['ignore', out, out], windowsHide: true });
     child.unref();
+    writeFileSync(PIDFILE, String(child.pid));
     console.log(`brain upload started (process ${child.pid}); progress: node tools/mainnet.ts status, or the log ${log}`);
+    break;
+  }
+  case 'stop': {
+    const pid = Number(argOf('--pid') ?? (existsSync(PIDFILE) ? readFileSync(PIDFILE, 'utf8') : NaN));
+    if (!pid || !alive(pid)) { console.log('no upload running'); rmSync(PIDFILE, { force: true }); break; }
+    process.kill(pid);
+    rmSync(PIDFILE, { force: true });
+    console.log(`stopped the upload (process ${pid}); its progress is saved: upload again to resume`);
     break;
   }
   case 'status': {
