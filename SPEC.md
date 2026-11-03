@@ -250,6 +250,18 @@ For each paid message:
    (With 1,318 parts the average share is about 760 ppm; basis points would be too coarse.)
 4. A **receipt** (model hash, prompt tokens, reply tokens, the 1,318 shares) is hashed and posted
    with the fee payment.
+   - **The visitor pays.** Before the message is sent, the visitor's wallet pays the message fee to the
+     brain's key in a transaction with the memo `neurals:chat:<sha256 of the message>`. The brain checks
+     that payment on chain (confirmed, under 15 minutes old, the full fee, the memo naming this exact
+     message, never used before), replies, and forwards the fee into the pool with the receipt
+     (`pay_fee`). The memo binds a payment to one message, so nobody who sees it on chain can spend it.
+     A message the brain turns away (busy) or fails to answer keeps its payment for a retry.
+   - **Only the brain's receipts count.** The brain signs every receipt it publishes (Ed25519 with its
+     key) and indexers accept only signed receipts, so nobody can fill an indexer or the activity map
+     with made-up ones. A fee is split by its receipt only when the brain's key paid it; a fee anyone
+     else pays naming a receipt is split evenly within each kind's budget, so a made-up receipt cannot
+     steer fees. An independent indexer may fetch receipts without a signature: the brain named their
+     hashes on chain when it paid their fees.
 5. **Checking a receipt.** A verifier replays it **teacher-forced**: it feeds the posted reply
    instead of generating its own, so a near-tie between two next tokens on another machine cannot
    change the reply. The receipt is valid if every replayed share is within a small tolerance of the

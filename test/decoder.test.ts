@@ -139,7 +139,7 @@ test('program instructions become ledger events with the right accounts', () => 
     [{ type: 'checkpointHolder', slot: 10, checkpoint: 'cp1', holder: carol }]);
   assert.deepEqual(d({ name: 'withdraw' }, { checkpoint: 'cp1' }), [{ type: 'withdraw', slot: 10, checkpoint: 'cp1' }]);
   assert.deepEqual(d({ name: 'payFee', receipt: 'cd'.repeat(32), lamports: 77 }, { payer: 'api' }),
-    [{ type: 'feeReceipt', slot: 10, lamports: 77, receipt: 'cd'.repeat(32) }]);
+    [{ type: 'feeReceipt', slot: 10, lamports: 77, receipt: 'cd'.repeat(32), payer: 'api' }]);
   assert.deepEqual(d({ name: 'list', price: 1n }, {}), []);
 });
 

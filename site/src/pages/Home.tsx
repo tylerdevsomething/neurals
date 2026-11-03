@@ -27,9 +27,10 @@ export function Home() {
       <section className="hero">
         <h1>An AI brain you can own a piece of.</h1>
         <p>
-          A 1.5-billion-parameter language model, written byte for byte onto Solana. Its 250,880 neurons are
-          numbered and owned through a pump.fun token: every 3,000 tokens bought off the curve is one neuron.
-          When the brain thinks, each paid message pays the neurons that fired.
+          A 1.5-billion-parameter language model, written byte for byte onto Solana, and owned through a pump.fun
+          token: every one of the 793.1 million tokens on the curve is a piece of it. Its 250,880 MLP neurons are
+          3,000 tokens each; its 336 attention heads, the Embedding and the Unembedding are sold the same way.
+          When the brain thinks, each paid message pays the parts that fired.
         </p>
       </section>
       <section className="stats">

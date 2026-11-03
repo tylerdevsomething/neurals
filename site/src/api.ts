@@ -65,8 +65,16 @@ export async function receiptJob(brainUrl: string, job: string): Promise<Receipt
   return body as ReceiptJob;
 }
 
-export async function chat(brainUrl: string, message: string): Promise<ChatReply> {
-  const res = await fetch(`${brainUrl}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
+export type BrainHealth = { model: string; served: number; payer: string; fee: number; requirePayment?: boolean };
+
+export async function brainHealth(brainUrl: string): Promise<BrainHealth> {
+  const res = await fetch(`${brainUrl}/health`);
+  if (!res.ok) throw new Error(`the brain is not answering (HTTP ${res.status})`);
+  return (await res.json()) as BrainHealth;
+}
+
+export async function chat(brainUrl: string, message: string, payment?: string): Promise<ChatReply> {
+  const res = await fetch(`${brainUrl}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message, payment }) });
   const body = await res.json();
   if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
   return body as ChatReply;

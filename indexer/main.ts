@@ -81,7 +81,7 @@ if (settlerSecret) {
 }
 
 startApi({
-  indexer, store, model: config.model,
+  indexer, store, model: config.model, brainKey: config.brainKey,
   site: { rpcUrl: publicRpcUrl, brainUrl: config.brainUrl, cluster: config.cluster },
   staticDir: process.env.STATIC_DIR,
 }, config.port);

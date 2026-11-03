@@ -18,5 +18,6 @@
   "cluster": "devnet",
   "rulesFile": "deploy/rules.devnet.json",
   "revealFile": "deploy/reveal.devnet.json",
-  "challengeSlots": 20
+  "challengeSlots": 20,
+  "brainKey": "Aas9bHk3u6uRvCScxRGvy3kNUUGJVtJbHGvnUqT6kztn"
 }

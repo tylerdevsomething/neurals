@@ -38,7 +38,7 @@ export type Event =
    * then is split evenly within each kind's budget, so the outcome depends only on which receipts
    * were published, never on timing.
    */
-  | { type: 'feeReceipt'; slot: number; lamports: number; receipt: string };
+  | { type: 'feeReceipt'; slot: number; lamports: number; receipt: string; payer?: string };
 
 export type Settlement = {
   epoch: number;
@@ -57,6 +57,11 @@ export type LedgerOptions = {
   epochSlots: number;
   /** The checked shares of a receipt by its hash, or null if unavailable (see the feeReceipt event). */
   resolveReceipt?: (receipt: string) => readonly number[] | null;
+  /**
+   * The official brain's key (SPEC §7). When set, only fees it paid are split by their receipt; a fee
+   * anyone else pays naming a receipt is split evenly, so a made-up receipt cannot steer fees.
+   */
+  brainKey?: string;
 };
 
 /** The split used for a fee whose receipt is unavailable: each kind's budget, evenly over its parts. */
@@ -243,7 +248,8 @@ export class Ledger {
       case 'feeReceipt': {
         if (!Number.isSafeInteger(e.lamports) || e.lamports < 0) throw new Error(`bad fee ${e.lamports}`);
         if (!/^[0-9a-f]{64}$/.test(e.receipt)) throw new Error(`bad receipt hash ${e.receipt}`);
-        this.pending.set(e.receipt, (this.pending.get(e.receipt) ?? 0n) + BigInt(e.lamports));
+        if (this.options.brainKey && e.payer !== this.options.brainKey) this.addToPool(BigInt(e.lamports), EVEN_SHARES);
+        else this.pending.set(e.receipt, (this.pending.get(e.receipt) ?? 0n) + BigInt(e.lamports));
         this.fees += BigInt(e.lamports);
         break;
       }

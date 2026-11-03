@@ -11,6 +11,7 @@ import type { Settlement } from '../brain/ledger.ts';
 import type { ClaimTree } from '../brain/claims.ts';
 import { receiptHash, PPM, type Receipt } from '../brain/receipt.ts';
 import { SEGMENT_COUNT } from '../brain/model.ts';
+import { verifyReceipt } from '../brain/signature.ts';
 
 export type LogLine =
   | { kind: 'tx'; tx: DecodedTx }
@@ -101,7 +102,7 @@ export class Store {
   }
 
   /** Stores a receipt after checking its shape; returns its hash. The model must be the brain's. */
-  addReceipt(r: Receipt, model: string): string {
+  addReceipt(r: Receipt & { signature?: string }, model: string, brainKey?: string): string {
     if (r.model !== model) throw new Error('receipt is for a different model');
     if (!Array.isArray(r.prompt) || !Array.isArray(r.output) || !r.output.length) throw new Error('receipt needs prompt and reply tokens');
     for (const t of [...r.prompt, ...r.output]) if (!Number.isInteger(t) || t < 0) throw new Error('bad token id');
@@ -114,8 +115,10 @@ export class Store {
     if (sum !== PPM) throw new Error('shares must add up to 1,000,000');
     const clean: Receipt = { model: r.model, prompt: r.prompt, output: r.output, shares: r.shares };
     const hash = receiptHash(clean);
+    // Only the official brain's receipts are kept: anyone else's would fill the disk and the activity map.
+    if (brainKey && !verifyReceipt(hash, r.signature, brainKey)) throw new Error('receipt is not signed by the brain');
     if (!this.receipts.has(hash)) {
-      atomicWrite(join(this.dir, 'receipts', `${hash}.json`), JSON.stringify(clean));
+      atomicWrite(join(this.dir, 'receipts', `${hash}.json`), JSON.stringify(r.signature ? { ...clean, signature: r.signature } : clean));
       this.receipts.set(hash, clean);
       this.order.push(hash);
     }

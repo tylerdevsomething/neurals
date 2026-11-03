@@ -27,6 +27,8 @@ export type ApiOptions = {
   indexer: Indexer;
   store: Store;
   model: string;
+  /** The official brain's key: only receipts it signed are accepted. */
+  brainKey?: string;
   traitNames?: Record<number, string>;
   /** Public settings for the site: program, mint, RPC, brain URL. */
   site?: { rpcUrl: string; brainUrl?: string; cluster?: string };
@@ -92,8 +94,8 @@ export function startApi(o: ApiOptions, port: number): Server {
       }
 
       if (req.method === 'POST' && parts[0] === 'receipts') {
-        const r = JSON.parse(await body(req)) as Receipt;
-        return json(res, 200, { hash: store.addReceipt(r, o.model) });
+        const r = JSON.parse(await body(req)) as Receipt & { signature?: string };
+        return json(res, 200, { hash: store.addReceipt(r, o.model, o.brainKey) });
       }
       if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
 

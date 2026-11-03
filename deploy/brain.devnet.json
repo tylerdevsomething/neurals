@@ -10,5 +10,7 @@
   "feeLamports": 1000000,
   "threads": 4,
   "maxTokens": 96,
-  "wsl": false
+  "wsl": false,
+  "requirePayment": true,
+  "paymentsFile": "/data/payments.txt"
 }

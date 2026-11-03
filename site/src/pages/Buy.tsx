@@ -83,8 +83,9 @@ export function Buy() {
     <section>
       <h1>Buy neurons</h1>
       <p>
-        Neurons come from buying the token. Every {fmt(TOKENS_PER_NEURON)} tokens bought off the curve is one
-        neuron, and the sale fills the brain's 1,318 slots in order, so nobody can aim a buy at a rare slot.
+        Neurons come from buying the token. On this site a "neuron" is {fmt(TOKENS_PER_NEURON)} tokens: exactly one MLP
+        neuron in a neuron column, and the same amount of an attention head, the Embedding or the Unembedding.
+        The sale fills the brain's 1,318 slots in order, so nobody can aim a buy at a rare slot.
         To own a <b>particular</b> slot, buy a sealed checkpoint that holds it on the <a href="#/market">Market</a>.
       </p>
 

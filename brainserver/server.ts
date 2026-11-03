@@ -12,19 +12,23 @@
 // Config: { port, probe, model (path as the probe sees it), modelPath (path here, for hashing),
 //           indexerUrl, rpcUrl, programId, payerKey, feeLamports, threads?, maxTokens?, wsl? }
 //
-//   POST /chat  { "message": "..." }  ->  { reply, tokens, job, fee }
+//   POST /chat  { "message": "...", "payment": "<signature>" }  ->  { reply, tokens, job, fee }
+//   The payment is a transaction from the visitor's wallet paying feeLamports to the brain's key with
+//   the memo paymentMemo(message) (brain/payment.ts); each payment buys one reply.
 //   GET  /jobs/<id>                    ->  { status: measuring | paying | done | failed, receipt?, signature? }
 //   GET  /health
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, readFileSync } from 'node:fs';
+import { appendFileSync, createReadStream, existsSync, readFileSync } from 'node:fs';
 import { Connection, Keypair, Transaction } from '@solana/web3.js';
 import { sendAndPoll } from '../brain/send.ts';
 import { NeuralsAccounts } from '../brain/accounts.ts';
 import { shares, receiptHash, type Receipt } from '../brain/receipt.ts';
 import { SEGMENT_COUNT } from '../brain/model.ts';
+import { signReceipt } from '../brain/signature.ts';
+import { paymentProblem } from '../brain/payment.ts';
 import { Worker } from 'node:worker_threads';
 import { randomBytes } from 'node:crypto';
 
@@ -44,6 +48,10 @@ type Config = {
   wasm?: string;
   /** Run the probe through WSL (Windows host, Linux probe). Default: true on Windows. */
   wsl?: boolean;
+  /** Whether each message must be paid for by the visitor (default true). */
+  requirePayment?: boolean;
+  /** Where used payments are recorded, so none buys two replies across restarts. */
+  paymentsFile?: string;
 };
 
 type ProbeRun = { prompt: number[]; output: number[]; text: string; mass: number[] };
@@ -130,6 +138,25 @@ export async function startBrain(config: Config) {
   let generating: Promise<unknown> = Promise.resolve();
   let receipts: Promise<unknown> = Promise.resolve();
   let served = 0;
+  // Payments already spent on a reply (kept across restarts), and those being spent right now.
+  const paymentsFile = config.paymentsFile ?? 'brain-payments.txt';
+  const spent = new Set(existsSync(paymentsFile) ? readFileSync(paymentsFile, 'utf8').split('\n').filter(Boolean) : []);
+  const spending = new Set<string>();
+  const requirePayment = config.requirePayment ?? true;
+
+  /** Checks a payment for this message; retries briefly, as the visitor's RPC may be ahead of ours. */
+  async function checkPayment(signature: string, message: string): Promise<string | null> {
+    if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(signature)) return 'bad payment signature';
+    if (spent.has(signature) || spending.has(signature)) return 'this payment was already used for a reply';
+    let problem: string | null = 'payment not found';
+    for (let i = 0; i < 8; i++) {
+      const tx = await conn.getTransaction(signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 }).catch(() => null);
+      problem = paymentProblem(tx, { payTo: payer.publicKey.toBase58(), lamports: config.feeLamports, message, now: Math.floor(Date.now() / 1000) });
+      if (!problem || !problem.startsWith('payment not found')) return problem;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return problem;
+  }
   // Messages waiting for the brain: beyond this, new ones are turned away rather than queued forever.
   const MAX_WAITING = 8;
   let queued = 0;
@@ -142,7 +169,7 @@ export async function startBrain(config: Config) {
     job.receipt = hash;
     job.status = 'paying';
     // Publish first: the indexer must have the receipt before the fee that names it settles.
-    const res = await fetch(`${config.indexerUrl}/receipts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(receipt) });
+    const res = await fetch(`${config.indexerUrl}/receipts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...receipt, signature: signReceipt(hash, payer.secretKey) }) });
     const body = (await res.json()) as { hash?: string; error?: string };
     if (!res.ok || body.hash !== hash) throw new Error(`indexer refused the receipt: ${body.error ?? body.hash}`);
     // Polled, never a websocket wait: a confirmation that never arrives would stall every later receipt.
@@ -168,15 +195,30 @@ export async function startBrain(config: Config) {
   const server = createServer(async (req, res) => {
     try {
       if (req.method === 'OPTIONS') return json(res, 204, null);
-      if (req.method === 'GET' && req.url === '/health') return json(res, 200, { model: modelHash, served, payer: payer.publicKey.toBase58(), fee: config.feeLamports });
+      if (req.method === 'GET' && req.url === '/health') return json(res, 200, { model: modelHash, served, payer: payer.publicKey.toBase58(), fee: config.feeLamports, requirePayment });
       if (req.method === 'POST' && req.url === '/chat') {
-        const { message } = JSON.parse(await readBody(req)) as { message?: string };
+        const { message, payment } = JSON.parse(await readBody(req)) as { message?: string; payment?: string };
         if (typeof message !== 'string' || !message.trim()) return json(res, 400, { error: 'message required' });
-        if (queued >= MAX_WAITING) return json(res, 503, { error: 'the brain is busy: try again in a minute' });
+        if (message.length > 4000) return json(res, 400, { error: 'message too long (4,000 characters at most)' });
+        // A busy brain turns a message away before its payment is used, so the visitor can retry with it.
+        if (queued >= MAX_WAITING) return json(res, 503, { error: 'the brain is busy: try again in a minute (your payment is kept for the retry)' });
+        if (requirePayment) {
+          if (typeof payment !== 'string') return json(res, 402, { error: 'payment required', payTo: payer.publicKey.toBase58(), fee: config.feeLamports });
+          const problem = await checkPayment(payment, message);
+          if (problem) return json(res, 402, { error: problem });
+          spending.add(payment);
+        }
         queued++;
-        const reply = generating.then(() => think(message.slice(0, 4000))).finally(() => { queued--; });
+        const reply = generating.then(() => think(message)).finally(() => { queued--; });
         generating = reply.catch(() => undefined);
-        return json(res, 200, await reply);
+        try {
+          const out = await reply;
+          if (requirePayment) { spent.add(payment!); appendFileSync(paymentsFile, payment + '\n'); }
+          return json(res, 200, out);
+        } finally {
+          // A reply that failed leaves its payment unspent: the visitor can retry with it.
+          if (requirePayment) spending.delete(payment!);
+        }
       }
       // The receipt of a reply: measuring, paying, done (with the receipt hash and payment) or failed.
       const jm = req.method === 'GET' ? /^\/jobs\/([0-9a-f]{24})$/.exec(req.url ?? '') : null;

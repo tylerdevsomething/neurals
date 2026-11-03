@@ -127,7 +127,7 @@ export class Decoder {
       case 'withdraw':
         return { type: 'withdraw', slot, checkpoint: a[accountIndex('withdraw', 'checkpoint')] };
       case 'payFee':
-        return { type: 'feeReceipt', slot, lamports: p.lamports, receipt: p.receipt };
+        return { type: 'feeReceipt', slot, lamports: p.lamports, receipt: p.receipt, payer: a[accountIndex('payFee', 'payer')] };
       case 'list':
       case 'cancel':
       case 'postEpoch':

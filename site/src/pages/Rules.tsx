@@ -8,8 +8,10 @@ export function Rules() {
 
       <h2>Neurons and slots</h2>
       <p>
-        pump.fun's curve sells 793,100,000 tokens. Every 3,000 tokens bought off the curve is one MLP neuron of the brain.
-        The sale fills 1,318 slots in buying order:
+        pump.fun's curve sells 793,100,000 tokens, and every one of them is a piece of the brain. In a neuron column, 3,000
+        tokens are one MLP neuron (250,880 in all); the attention heads, the Embedding and the Unembedding are sold by
+        the token too, and the site counts every holding in units of 3,000 tokens ("neurons"). The sale fills 1,318
+        slots in buying order:
       </p>
       <table>
         <thead><tr><th>Slot</th><th>Count</th><th>Tokens each</th></tr></thead>

@@ -27,6 +27,8 @@ export type IndexerConfig = DecoderConfig & {
    * this indexer has not been sent. Independent indexers settle on the same receipts this way.
    */
   receiptsFrom?: string;
+  /** The official brain's key: it pays the fees and signs the receipts (SPEC §7). */
+  brainKey?: string;
 };
 
 /** A checked reveal and the slot it takes effect (the first epoch boundary after its seed block). */
@@ -59,6 +61,7 @@ export class Indexer {
       startSlot: config.startSlot,
       epochSlots: config.epochSlots,
       resolveReceipt: (h) => store.receipt(h)?.shares ?? null,
+      brainKey: config.brainKey,
     });
     this.syncedSlot = config.startSlot - 1;
   }
@@ -167,10 +170,12 @@ export class Indexer {
     if (!this.config.receiptsFrom) return;
     for (const a of tx.actions) {
       if (a.type !== 'feeReceipt' || this.store.receipt(a.receipt)) continue;
+      if (this.config.brainKey && a.payer !== this.config.brainKey) continue; // split evenly anyway
       const res = await fetch(`${this.config.receiptsFrom}/receipts/${a.receipt}`).catch(() => null);
       if (!res?.ok) continue; // unpublished: the fee is split evenly by kind, as for everyone
       const r = (await res.json()) as Receipt;
       try {
+        // No signature needed here: the brain itself named this hash on chain when it paid the fee.
         if (this.store.addReceipt(r, r.model) !== a.receipt) continue; // hashed: it cannot be faked
       } catch { /* malformed: treated as unpublished */ }
     }
