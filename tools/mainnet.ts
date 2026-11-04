@@ -8,6 +8,7 @@
 //   node tools/mainnet.ts status           balances, program, config, upload progress (read-only)
 //   node tools/mainnet.ts rules --yes      step 6: write deploy/rules.mainnet.json (deadline 7 days out) and post its commit memo
 //   node tools/mainnet.ts verify           step 5 end: add the rules to the brain on chain, write the manifest, read everything back
+//   node tools/mainnet.ts readback         read every inscribed file back and compare it with the local copy (light, resumable, shows progress)
 //   node tools/mainnet.ts preflight [--stage before-token|after-token|handed-over] [--brain <url>]
 //   node tools/mainnet.ts launch --creator <wallet> --yes   step 7: watch for the token, record its mint (set_mint), write the config
 //   node tools/mainnet.ts offer --yes      step 8: offer the admin role to the multisig (it accepts in Squads)
@@ -138,6 +139,18 @@ switch (cmd) {
     writeFileSync(path, JSON.stringify(rules, null, 2) + '\n');
     console.log(`wrote ${path}: deadline slot ${rules.seed.deadlineSlot} (about 7 days from now)`);
     process.exit(run('node', ['tools/commit.ts', path, '--post', '--key', `${KEYS}/mainnet/deployer.json`, '--rpc', RPC]));
+  }
+  case 'readback': {
+    if (existsSync(PIDFILE) && alive(Number(readFileSync(PIDFILE, 'utf8')))) { console.log('another upload or check is running: node tools/mainnet.ts stop first'); process.exit(1); }
+    const WRITER = '3d6VFWZK9dyvTqYGjHpEwPCbxsNXFbNuBLFUznq2HwDH';
+    const log = 'out/inscribe/readback.log';
+    const out = openSync(log, 'a');
+    const child = spawn('node', ['tools/readback.ts', '--rpc', RPC, '--writer', WRITER, '--rps', argOf('--rps') ?? '40',
+      'out/inscribe/manifest-5eykt4Us.json', 'deploy/rules.mainnet.json', ...RUNTIME, MODEL], { detached: true, stdio: ['ignore', out, out], windowsHide: true });
+    child.unref();
+    writeFileSync(PIDFILE, String(child.pid));
+    console.log(`read-back started (process ${child.pid}); progress in ${log}. Stop it any time with: node tools/mainnet.ts stop (it resumes)`);
+    break;
   }
   case 'verify': {
     if (existsSync(PIDFILE) && alive(Number(readFileSync(PIDFILE, 'utf8')))) { console.log('the upload is still running: wait for it to finish'); process.exit(1); }
