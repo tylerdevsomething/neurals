@@ -16,6 +16,7 @@
 //   node tools/mainnet.ts upgrade-authority --yes   step 8: move the program's upgrade authority to the multisig
 //   node tools/mainnet.ts railway-setup --yes       step 7.1: create the mainnet services, volumes, domains and
 //                                                   variables (secrets go through stdin, never printed), and deploy the brain
+//   node tools/mainnet.ts railway-fallback --yes    Alchemy as the RPC fallback on both mainnet services; redeploys the brain
 //   node tools/mainnet.ts railway-deploy --yes      step 7.3: deploy the site and indexer (after the launch wrote the mint)
 
 import { readFileSync, existsSync, mkdirSync, openSync, writeFileSync, rmSync } from 'node:fs';
@@ -231,6 +232,19 @@ switch (cmd) {
       const v = railway(['volume', '--service', id, '--environment', envNode.id, 'add', '--mount-path', '/data', '--json']);
       console.log(`${name}: volume on /data ${v.code === 0 ? 'added' : 'FAILED'}`);
     }
+    break;
+  }
+  case 'railway-fallback': {
+    // Alchemy behind Helius on both mainnet services: if Helius refuses (quota, rate limit), they carry on.
+    need();
+    const alchemyUrl = /^ALCHEMY_RPC_URL=(.+)$/m.exec(env)?.[1]?.trim();
+    if (!alchemyUrl) throw new Error('ALCHEMY_RPC_URL missing from .env');
+    setVar(SITE, 'RPC_FALLBACK_URLS', alchemyUrl, true);
+    setVar(BRAIN, 'RPC_FALLBACK_URLS', alchemyUrl, true);
+    console.log('redeploying the brain with the failover');
+    if (run('bash', ['scripts/stage-brain.sh']) !== 0) process.exit(1);
+    const up = railway(['up', 'out/brain-deploy', '--path-as-root', '--service', BRAIN, '--detach']);
+    console.log(up.code === 0 ? 'brain redeploying; the site and indexer pick it up at railway-deploy' : 'brain deploy FAILED');
     break;
   }
   case 'railway-deploy': {
