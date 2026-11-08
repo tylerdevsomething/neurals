@@ -187,10 +187,10 @@ switch (cmd) {
     // The same files as the upload, plus the rules: only what is missing is sent; then the manifest, then the read-back.
     const child = spawn('node', ['tools/inscribe.ts', '--rpc', RPC, '--key', `${KEYS}/mainnet/writer.json`, '--model', MODEL,
       ...RUNTIME.flatMap((r) => ['--runtime', r]), '--rules', 'deploy/rules.mainnet.json', '--rps', '20', '--micro-lamports', '5000',
-      ...SEND_VIA.flatMap((u) => ['--send-rpc', u]), '--verify'], { detached: true, stdio: ['ignore', out, out], windowsHide: true });
+      ...SEND_VIA.flatMap((u) => ['--send-rpc', u])], { detached: true, stdio: ['ignore', out, out], windowsHide: true });
     child.unref();
     writeFileSync(PIDFILE, String(child.pid));
-    console.log(`final pass and read-back started (process ${child.pid}); log ${log}. It prints the brain's address when done.`);
+    console.log(`final pass started (process ${child.pid}); log ${log}. It prints the brain's address when done; then node tools/mainnet.ts readback checks it on chain (files already checked are skipped).`);
     break;
   }
   case 'preflight': {
