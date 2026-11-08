@@ -31,6 +31,7 @@ import { signReceipt } from '../brain/signature.ts';
 import { paymentProblem } from '../brain/payment.ts';
 import { Worker } from 'node:worker_threads';
 import { randomBytes } from 'node:crypto';
+import { failoverFetch, hostOf, rpcList } from '../brain/rpcs.ts';
 
 type Config = {
   port: number;
@@ -97,7 +98,10 @@ export async function startBrain(config: Config) {
   const modelHash = await hashFile(config.modelPath);
   // The payer's key: PAYER_KEY (its JSON array) when hosted, or a file path in the config.
   const payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.PAYER_KEY ?? readFileSync(config.payerKey, 'utf8'))));
-  const conn = new Connection(config.rpcUrl, 'confirmed');
+  // RPC_FALLBACK_URLS: endpoints used in turn when the main one refuses (quota, rate limit, outage).
+  const rpcUrls = rpcList(config.rpcUrl, process.env.RPC_FALLBACK_URLS);
+  console.log(`rpc: ${rpcUrls.map(hostOf).join(" then ")}`);
+  const conn = new Connection(config.rpcUrl, { commitment: 'confirmed', fetch: failoverFetch(rpcUrls) });
   const accounts = new NeuralsAccounts(config.programId);
   // Receipts are measured by the WebAssembly build (SPEC §7): bit-identical on every machine and
   // browser, so any verifier gets exactly these shares. It runs in a worker thread, after the reply
@@ -245,6 +249,8 @@ if (process.argv[1]?.replaceAll('\\', '/').endsWith('brainserver/server.ts')) {
   const config = JSON.parse(readFileSync(path, 'utf8')) as Config;
   // Hosting: secrets and addresses from the environment.
   if (process.env.PORT) config.port = Number(process.env.PORT);
+  // The config file's own (public) endpoint stays as the last resort behind RPC_URL and its fallbacks.
+  if (process.env.RPC_URL && process.env.RPC_URL !== config.rpcUrl) process.env.RPC_FALLBACK_URLS = [process.env.RPC_FALLBACK_URLS, config.rpcUrl].filter(Boolean).join(',');
   if (process.env.RPC_URL) config.rpcUrl = process.env.RPC_URL;
   if (process.env.INDEXER_URL) config.indexerUrl = process.env.INDEXER_URL;
   await startBrain(config);

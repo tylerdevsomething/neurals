@@ -6,10 +6,13 @@ export class Rpc {
   private inFlight = 0;
   private readonly max: number;
   private readonly waiting: (() => void)[] = [];
+  private readonly fetcher: typeof fetch;
 
-  constructor(url: string, maxInFlight = 8) {
+  /** `fetcher` lets several endpoints stand behind one (brain/rpcs.ts failoverFetch). */
+  constructor(url: string, maxInFlight = 8, fetcher: typeof fetch = fetch) {
     this.url = url;
     this.max = maxInFlight;
+    this.fetcher = fetcher;
   }
 
   async call<T>(method: string, params: unknown[] = []): Promise<T> {
@@ -19,7 +22,7 @@ export class Rpc {
       for (let attempt = 0; ; attempt++) {
         let retryable = false;
         try {
-          const res = await fetch(this.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+          const res = await this.fetcher(this.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
           if (res.status === 429 || res.status >= 500) {
             retryable = true;
             throw new Error(`${method}: HTTP ${res.status}`);

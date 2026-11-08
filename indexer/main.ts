@@ -18,6 +18,7 @@ import { startApi } from './api.ts';
 import { Settler } from './settler.ts';
 import { NeuralsAccounts } from '../brain/accounts.ts';
 import { checkReveal, checkRules, type Reveal, type Rules } from '../brain/reveal.ts';
+import { failoverFetch, hostOf, rpcList } from '../brain/rpcs.ts';
 
 type Config = IndexerConfig & {
   rpcUrl: string;
@@ -49,11 +50,16 @@ const config = JSON.parse(readFileSync(path, 'utf8')) as Config;
 // PUBLIC_RPC_URL (hosted): a key meant for browsers, restricted to the site's domain.
 const publicRpcUrl = process.env.PUBLIC_RPC_URL ?? config.publicRpcUrl ?? config.rpcUrl;
 // Hosting: secrets and paths from the environment, never from the config file or the image.
+// RPC_FALLBACK_URLS: comma-separated endpoints used in turn when the main one refuses (quota, rate limit,
+// outage); the config file's own public endpoint is always the last resort.
+const rpcUrls = rpcList(process.env.RPC_URL ?? config.rpcUrl, process.env.RPC_FALLBACK_URLS, config.rpcUrl);
+const rpcFetch = failoverFetch(rpcUrls);
 if (process.env.RPC_URL) config.rpcUrl = process.env.RPC_URL;
+console.log(`rpc: ${rpcUrls.map(hostOf).join(" then ")}`);
 if (process.env.PORT) config.port = Number(process.env.PORT);
 if (process.env.DATA_DIR) config.dataDir = process.env.DATA_DIR;
 if (process.env.BRAIN_URL) config.brainUrl = process.env.BRAIN_URL;
-const rpc = new Rpc(config.rpcUrl);
+const rpc = new Rpc(config.rpcUrl, 8, rpcFetch);
 const store = new Store(config.dataDir);
 const indexer = new Indexer(config, rpc, store);
 // The rules fix the reveal (SPEC §6): the indexer finds the seed block itself once the curve sells out
@@ -84,7 +90,7 @@ const settlerSecret = process.env.SETTLER_KEY ?? (config.settlerKey ? readFileSy
 let settler: Settler | null = null;
 if (settlerSecret) {
   const key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(settlerSecret)));
-  settler = new Settler(new Connection(config.rpcUrl, 'confirmed'), key, new NeuralsAccounts(config.programId));
+  settler = new Settler(new Connection(config.rpcUrl, { commitment: 'confirmed', fetch: rpcFetch }), key, new NeuralsAccounts(config.programId));
   const st = settler;
   if (config.challengeSlots !== undefined) st.challengeSlots = config.challengeSlots;
   if (config.minPushLamports !== undefined) st.minPushLamports = config.minPushLamports;
