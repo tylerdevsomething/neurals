@@ -104,7 +104,14 @@ else {
     const rules = checkRules(JSON.parse(readFileSync(config.rulesFile, 'utf8')) as Rules);
     check(rules.model === config.model, 'rules are for this model', 'the rules are for a different model');
     ok(`${Object.keys(rules.traits).length} traits; seed ${JSON.stringify(rules.seed)}`);
-    if (mainnet) check(rules.seed.deadlineSlot > (await conn.getSlot('confirmed')), 'the reveal deadline is in the future', 'the reveal deadline slot has passed');
+    if (mainnet) {
+      // Measured slot speed, not an assumed 0.4 s: the deadline must leave days for the curve to bond.
+      const now = await conn.getSlot('finalized');
+      const [t1, t0] = [await conn.getBlockTime(now), await conn.getBlockTime(now - 20_000)];
+      const perSlot = t1 && t0 ? (t1 - t0) / 20_000 : 0.4;
+      const days = ((rules.seed.deadlineSlot - now) * perSlot) / 86_400;
+      check(days >= 2, `the reveal deadline is ${days.toFixed(1)} days away`, days > 0 ? `the reveal deadline is only ${days.toFixed(1)} days away: rules --replace before the token exists` : 'the reveal deadline slot has passed: rules --replace before the token exists');
+    }
     note(`commit memo: node tools/commit.ts ${config.rulesFile}  (post it before the token exists)`);
   } catch (e) {
     fail(`rules: ${(e as Error).message}`);

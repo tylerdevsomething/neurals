@@ -30,7 +30,29 @@ const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catc
 const env = readFileSync('.env', 'utf8');
 const key = /^HELIUS_API_KEY=(.+)$/m.exec(env)?.[1]?.trim();
 if (!key) throw new Error('HELIUS_API_KEY missing from .env');
-const RPC = `https://mainnet.helius-rpc.com/?api-key=${key}`;
+const HELIUS = `https://mainnet.helius-rpc.com/?api-key=${key}`;
+const alchemyRpc = /^ALCHEMY_RPC_URL=(.+)$/m.exec(env)?.[1]?.trim();
+/** Helius, unless it refuses right now (quota or outage): then Alchemy. */
+async function pickRpc(): Promise<string> {
+  try {
+    const r = await fetch(HELIUS, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: ['11111111111111111111111111111111'] }) });
+    if (r.ok) return HELIUS;
+  } catch { /* fall through */ }
+  if (!alchemyRpc) return HELIUS;
+  console.log('(Helius is refusing requests: using Alchemy)');
+  return alchemyRpc;
+}
+const RPC = await pickRpc();
+async function rpcCall<T>(method: string, params: unknown[]): Promise<T> {
+  const j = (await (await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })).json()) as { result: T };
+  return j.result;
+}
+/** Seconds per slot, measured over the last ~20,000 finalized slots (mainnet slots have run near 0.21 s, not 0.4). */
+async function slotSeconds(): Promise<{ slot: number; perSlot: number }> {
+  const slot = await rpcCall<number>('getSlot', [{ commitment: 'finalized' }]);
+  const [t1, t0] = [await rpcCall<number>('getBlockTime', [slot]), await rpcCall<number>('getBlockTime', [slot - 20_000])];
+  return { slot, perSlot: (t1 - t0) / 20_000 };
+}
 // More routes for sending only (each provider limits sending on its own): Alchemy (measured: 20+ per
 // second accepted) and the second Helius key. Solana's public endpoint refuses bulk sending.
 const key2 = /^HELIUS_BROWSER_API_KEY=(.+)$/m.exec(env)?.[1]?.trim();
@@ -133,12 +155,16 @@ switch (cmd) {
   case 'rules': {
     need();
     const path = 'deploy/rules.mainnet.json';
-    if (existsSync(path)) { console.log(`${path} exists already: its memo may be posted; delete it only if it was never posted`); process.exit(1); }
-    const slot = ((await (await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getSlot', params: [{ commitment: 'finalized' }] }) })).json()) as { result: number }).result;
+    // --replace: only before the token exists (a later commit memo supersedes the earlier one; the
+    // rules then go on chain again with the next verify, which gives the brain a new address).
+    if (existsSync(path) && !process.argv.includes('--replace')) { console.log(`${path} exists already: its memo may be posted. Before the token exists, --replace writes and posts a new one`); process.exit(1); }
+    const days = Number(argOf('--days') ?? 7);
+    const { slot, perSlot } = await slotSeconds();
     const rules = JSON.parse(readFileSync('rules/neurals-v1.draft.json', 'utf8'));
-    rules.seed = { delaySlots: 150, deadlineSlot: slot + 1_512_000 }; // the fallback if the curve never bonds: ~7 days
+    // The fallback if the curve never bonds, from the slot speed measured now.
+    rules.seed = { delaySlots: 150, deadlineSlot: slot + Math.ceil((days * 86_400) / perSlot) };
     writeFileSync(path, JSON.stringify(rules, null, 2) + '\n');
-    console.log(`wrote ${path}: deadline slot ${rules.seed.deadlineSlot} (about 7 days from now)`);
+    console.log(`wrote ${path}: deadline slot ${rules.seed.deadlineSlot} (slots now ${perSlot.toFixed(3)} s: about ${days} days, ${new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 16)} UTC)`);
     process.exit(run('node', ['tools/commit.ts', path, '--post', '--key', `${KEYS}/mainnet/deployer.json`, '--rpc', RPC]));
   }
   case 'readback': {
@@ -261,6 +287,16 @@ switch (cmd) {
     process.kill(pid);
     rmSync(PIDFILE, { force: true });
     console.log(`stopped the upload (process ${pid}); its progress is saved: upload again to resume`);
+    break;
+  }
+  case 'slots': {
+    const { slot, perSlot } = await slotSeconds();
+    const r = existsSync('deploy/rules.mainnet.json') ? JSON.parse(readFileSync('deploy/rules.mainnet.json', 'utf8')) as { seed: { deadlineSlot: number } } : null;
+    console.log(`slot ${slot}, ${perSlot.toFixed(4)} s per slot; 9,000 slots = ${((9000 * perSlot) / 60).toFixed(1)} minutes`);
+    if (r) {
+      const left = (r.seed.deadlineSlot - slot) * perSlot;
+      console.log(left > 0 ? `rules deadline in ${(left / 86_400).toFixed(1)} days (${new Date(Date.now() + left * 1000).toISOString().slice(0, 16)} UTC)` : `rules deadline PASSED ${(-left / 86_400).toFixed(1)} days ago: run rules --replace --yes, then verify`);
+    }
     break;
   }
   case 'status': {
