@@ -30,7 +30,7 @@ async function rpc<T>(url: string, method: string, params: unknown[]): Promise<T
   return body.result as T;
 }
 
-type Health = { synced: number; finalized: number; epoch: number; settler: { alerts: string[]; lastError: string | null } | null };
+type Health = { synced: number; finalized: number; epoch: number; settler: { alerts: string[]; lastError: string | null; paused?: boolean } | null };
 type Config = { rpcUrl: string; brainUrl?: string };
 
 let config: Config | null = null;
@@ -46,7 +46,8 @@ try {
   else {
     for (const a of h.settler.alerts) problems.push(a);
     if (h.settler.lastError) problems.push(`settler failing: ${h.settler.lastError}`);
-    if (!h.settler.alerts.length && !h.settler.lastError) ok.push('settler: no alerts');
+    if (h.settler.paused) ok.push('settler: PAUSED on purpose (SETTLER_PAUSED), nothing is being paid out');
+    else if (!h.settler.alerts.length && !h.settler.lastError) ok.push('settler: no alerts');
   }
 } catch (e) {
   problems.push(`site/indexer ${site} not answering: ${(e as Error).message}`);

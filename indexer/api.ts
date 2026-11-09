@@ -36,7 +36,7 @@ export type ApiOptions = {
   /** The built website (site/dist), served for every path the API does not answer. */
   staticDir?: string;
   /** The settler's alerts and last error, shown in /health for monitoring. */
-  settler?: () => { alerts: string[]; lastError: string | null };
+  settler?: () => { alerts: string[]; lastError: string | null; paused?: boolean };
 };
 
 const json = (res: ServerResponse, status: number, body: unknown) => {

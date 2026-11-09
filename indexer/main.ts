@@ -88,22 +88,28 @@ console.log(`restored to slot ${indexer.syncedSlot}, epoch ${indexer.ledger.epoc
 // The settler's key: SETTLER_KEY (its JSON array) when hosted, or a file path in the config.
 const settlerSecret = process.env.SETTLER_KEY ?? (config.settlerKey ? readFileSync(config.settlerKey, 'utf8') : null);
 let settler: Settler | null = null;
+const paused = !!process.env.SETTLER_PAUSED && process.env.SETTLER_PAUSED !== '0';
 if (settlerSecret) {
   const key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(settlerSecret)));
   settler = new Settler(new Connection(config.rpcUrl, { commitment: 'confirmed', fetch: rpcFetch }), key, new NeuralsAccounts(config.programId));
   const st = settler;
   if (config.challengeSlots !== undefined) st.challengeSlots = config.challengeSlots;
   if (config.minPushLamports !== undefined) st.minPushLamports = config.minPushLamports;
-  indexer.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); };
-  // Epochs settled before a restart may not have been posted or pushed yet.
-  for (const s of indexer.settlements) { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); }
+  // SETTLER_PAUSED: payouts are still worked out and kept, but nothing is posted or pushed. Unset it and
+  // restart to resume: every epoch not yet posted is posted then, in order.
+  if (paused) console.log('settler PAUSED (SETTLER_PAUSED): epochs are kept, nothing is posted until it is unset');
+  else {
+    indexer.onSettled = (s) => { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); };
+    // Epochs settled before a restart may not have been posted or pushed yet.
+    for (const s of indexer.settlements) { const f = store.readEpoch(s.epoch); if (f) void st.enqueue(f); }
+  }
 }
 
 startApi({
   indexer, store, model: config.model, brainKey: config.brainKey,
   site: { rpcUrl: publicRpcUrl, brainUrl: config.brainUrl, cluster: config.cluster },
   staticDir: process.env.STATIC_DIR,
-  settler: settler ? () => ({ alerts: settler!.alerts, lastError: settler!.lastError }) : undefined,
+  settler: settler ? () => ({ alerts: settler!.alerts, lastError: settler!.lastError, ...(paused ? { paused: true } : {}) }) : undefined,
 }, config.port);
 console.log(`api on :${config.port}`);
 
