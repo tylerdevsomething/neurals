@@ -1954,3 +1954,14 @@ main > section:has(> .home-copy) { margin-bottom: 0 !important; }
 :root .wallet-grid .wallet-sec > .wallet-title:not(#x):not(#y):not(#z) { margin: 0 !important; line-height: 1.2 !important; align-self: center; }
 :root .wallet-grid .wallet-sec > .wallet-title + *:not(#x):not(#y):not(#z) { border-top: 1px dashed var(--dash) !important; margin-top: 21px !important; margin-left: -28px !important; margin-right: -28px !important; padding-top: 21px !important; padding-left: 28px !important; padding-right: 28px !important; width: auto !important; align-self: stretch; box-sizing: border-box; }
 :root .wallet-grid .ws-tools > .wallet-title + .split.even.tools:not(#x):not(#y):not(#z):not(.q) { border-top: 1px dashed var(--dash) !important; margin: 21px -28px 0 !important; padding: 21px 28px 0 !important; width: auto !important; }
+
+/* chat: a failed payment as a plain card (title, what to do, raw details folded away) */
+.chat-alert { display: flex; align-items: flex-start; gap: 12px; margin: 14px 0; padding: 12px 14px; border: 1px dashed #c2334f; background: #ffffff; max-width: 70%; box-sizing: border-box; }
+.chat-alert-mark { flex: none; display: grid; place-items: center; width: 20px; height: 20px; background: #c2334f; color: #ffffff; font-weight: 700; font-size: 12px; }
+.chat-alert-body { flex: 1; min-width: 0; }
+.chat-alert-body b { display: block; color: #c2334f; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+.chat-alert-body p { margin: 4px 0 6px; color: #17306e; font-size: 11px; line-height: 1.5; }
+.chat-alert details summary { cursor: pointer; color: #9aa0a8; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.chat-alert details code { display: block; margin-top: 6px; max-height: 120px; overflow: auto; white-space: pre-wrap; word-break: break-all; color: #9aa0a8; font-size: 9px; text-transform: none; }
+.chat-alert-x { flex: none; background: none; border: 0; color: #9aa0a8; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.chat-alert-x:hover { color: #17306e; }

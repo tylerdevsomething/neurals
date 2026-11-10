@@ -14,6 +14,39 @@ type Turn = { id?: string; message: string; payment?: string; status?: string; r
 /** Errors after which the same payment can be sent again. */
 const retryable = (e: string) => !/already used|different message|too old|does not pay|failed on chain/.test(e);
 
+/** A wallet or network error in plain words: a title, one line on what to do, and the raw text kept for Details. */
+function explain(raw: string, cluster: string): { title: string; line: string } {
+  const net = cluster === 'mainnet' ? 'Mainnet' : 'Devnet';
+  if (/L2TExMFKDjpN9kozasaURPirfhy9P8sBXoAN1qa3s95|0x1900/i.test(raw))
+    return { title: 'Wrong network in your wallet', line: `This site runs on Solana ${net}. Switch your wallet to ${net} and send again.` };
+  if (/user rejected|rejected the request|declined|cancel/i.test(raw))
+    return { title: 'Payment cancelled', line: 'You closed the wallet request.' };
+  if (/insufficient|no record of a prior credit|0x1/i.test(raw))
+    return { title: 'Not enough SOL', line: 'Your wallet needs the message fee plus a small network fee.' };
+  if (/blockhash|expired|block height exceeded/i.test(raw))
+    return { title: 'Payment timed out', line: 'It took too long to approve. Send again.' };
+  if (/busy|503|too many/i.test(raw))
+    return { title: 'The network is busy', line: 'Too many messages right now. Try again in a minute.' };
+  if (/failed to fetch|network ?error|load failed/i.test(raw))
+    return { title: 'Connection problem', line: 'Check your connection and send again.' };
+  return { title: 'Something went wrong', line: 'The payment did not go through.' };
+}
+
+function ChatError({ raw, cluster, onClose }: { raw: string; cluster: string; onClose: () => void }) {
+  const { title, line } = explain(raw, cluster);
+  return (
+    <div className="chat-alert" role="alert">
+      <span className="chat-alert-mark" aria-hidden>!</span>
+      <div className="chat-alert-body">
+        <b>{title}</b>
+        <p>{line} Nothing was sent and you were not charged.</p>
+        <details><summary>Details</summary><code>{raw}</code></details>
+      </div>
+      <button type="button" className="chat-alert-x" aria-label="Dismiss" onClick={onClose}>×</button>
+    </div>
+  );
+}
+
 /** The conversation is kept in this browser only (per network), so a refresh does not lose it. */
 const KEEP = 100;
 const load = (key: string): Turn[] => {
@@ -157,7 +190,7 @@ export function Chat() {
         </div>
       ))}
       {brainError && <p className="error">{brainError}</p>}
-      {notice && <p className="error">{notice}</p>}
+      {notice && <ChatError raw={notice} cluster={config.cluster ?? 'devnet'} onClose={() => alertLine('')} />}
       </div>
       {/* the bar sits at the bottom of the window; starter prompts wait just above it until the first message */}
       <div className="chat-foot">
