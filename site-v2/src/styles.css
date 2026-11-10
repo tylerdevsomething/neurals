@@ -1,0 +1,1956 @@
+:root {
+  --bg: #0b0f14;
+  --panel: #111821;
+  --line: #1f2a36;
+  --text: #dfe8f1;
+  --muted: #8193a6;
+  --accent: #7cf3c8;
+  --gold: #ffcf5a;
+  --red: #ff7a7a;
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header {
+  display: flex; align-items: center; gap: 24px; padding: 14px 28px;
+  border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(11, 15, 20, .92); backdrop-filter: blur(6px); z-index: 2;
+}
+.logo { font-weight: 700; letter-spacing: .08em; color: var(--text); font-size: 18px; }
+nav { display: flex; gap: 18px; flex: 1; }
+nav a { color: var(--muted); }
+nav a.on { color: var(--text); }
+.cluster { font-size: 12px; padding: 2px 8px; border: 1px solid var(--gold); color: var(--gold); border-radius: 99px; }
+main { max-width: 1280px; margin: 0 auto; padding: 28px; }
+footer { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 0; }
+h1 { font-size: 30px; margin: 8px 0 12px; }
+h2 { font-size: 20px; margin: 32px 0 10px; }
+h3 { margin: 0 0 6px; }
+p { line-height: 1.55; }
+.muted { color: var(--muted); }
+.error { color: var(--red); }
+.note { padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+button {
+  background: var(--accent); color: #062018; border: 0; border-radius: 8px; padding: 7px 14px; font-weight: 600; cursor: pointer;
+}
+button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+button:disabled { opacity: .45; cursor: default; }
+input, select {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit;
+}
+.inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hero h1 { font-size: 42px; max-width: 760px; }
+.hero p { font-size: 18px; max-width: 760px; color: #c3d0dc; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
+.stats div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.stats b { display: block; font-size: 24px; }
+.stats span { color: var(--muted); font-size: 13px; }
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 30px; }
+.cols div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.brainmap { width: 100%; height: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-top: 10px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+td.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+dl { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; }
+dt { color: var(--muted); }
+dd { margin: 0; }
+.chat .turn { margin: 18px 0; }
+.chat .you { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; display: inline-block; }
+.chat .brain p:first-child { font-size: 17px; }
+.chat .receipt { color: var(--muted); font-size: 13px; }
+.chat form input { flex: 1; min-width: 260px; }
+code { background: var(--panel); padding: 2px 6px; border-radius: 6px; font-size: 12px; }
+.rules li { margin: 6px 0; line-height: 1.5; }
+@media (max-width: 760px) {
+  .stats, .cols { grid-template-columns: 1fr 1fr; }
+  header { flex-wrap: wrap; gap: 12px; }
+}
+
+/* ---- brain map ---- */
+.brainmap-wrap { position: relative; }
+.brainmap .axis { fill: var(--muted); font-size: 10px; }
+.brainmap .axis.small { font-size: 8.5px; }
+.brainmap .axis.stage { fill: var(--text); font-size: 9.5px; }
+.brainmap .bracket { stroke: #3a4a5c; stroke-width: 2; }
+.brainmap .glyph { font-size: 9px; font-weight: 700; }
+.brainmap rect:hover { filter: brightness(1.25); }
+.tooltip {
+  position: absolute; z-index: 3; pointer-events: none; display: flex; flex-direction: column; gap: 2px;
+  background: #0d141c; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 240px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .45); font-size: 12.5px; color: var(--muted);
+}
+.tooltip strong { color: var(--text); font-size: 14px; }
+.legend .ramp { display: inline-flex; align-items: center; gap: 6px; }
+.legend .ramp i { width: 140px; height: 10px; border-radius: 3px; display: inline-block; margin: 0; }
+.legend .swatch.owned { width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(135deg, #f0efec 0 45%, #1a2531 45%); }
+.glyph-key { display: inline-block; min-width: 14px; text-align: center; background: #c3c2b7; color: #0b0f14; border-radius: 3px; font-size: 10px; padding: 0 2px; margin-right: 2px; }
+button.link { background: none; color: var(--accent); padding: 0; font-weight: 500; }
+.toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 4px 0 10px; }
+.toggle button { background: transparent; color: var(--muted); border-radius: 0; padding: 7px 14px; }
+.toggle button.on { background: var(--panel); color: var(--text); }
+.maptable td { font-size: 13px; }
+
+/* ---- v2 layout preview ---- */
+.walletbtn { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 8px); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 220px; display: flex; flex-direction: column; gap: 10px; z-index: 5; box-shadow: 0 8px 28px rgba(0,0,0,.5); }
+.menu p { margin: 0; font-size: 13px; }
+.menu .link, .menu a { text-align: left; color: var(--text); }
+.v2-hero { min-height: calc(80vh - 60px); display: flex; flex-direction: column; justify-content: center; }
+.v2-hero h1 { font-size: 56px; max-width: 820px; margin: 0 0 18px; line-height: 1.05; }
+.v2-hero p { font-size: 19px; max-width: 680px; color: #c3d0dc; }
+.btn { display: inline-block; background: var(--accent); color: #062018; border-radius: 8px; padding: 10px 18px; font-weight: 600; }
+.btn:hover { text-decoration: none; filter: brightness(1.1); }
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.btn.square { background: transparent; color: var(--text); border: 1px solid var(--line); width: 42px; text-align: center; padding: 10px 0; }
+.defs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0 24px; }
+.defs div { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.defs span { color: var(--muted); }
+.steps { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: s; }
+.steps li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.steps li::before { content: counter(s); color: var(--accent); font-weight: 700; font-size: 22px; }
+.steps span { color: var(--muted); line-height: 1.5; }
+.fold { border-bottom: 1px solid var(--line); }
+.fold-q { width: 100%; display: flex; justify-content: space-between; background: none; color: var(--text); padding: 14px 0; font-weight: 500; font-size: 16px; border-radius: 0; }
+.fold-a { color: var(--muted); padding: 0 0 14px; line-height: 1.55; }
+.spread { justify-content: space-between; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin: 14px 0; max-width: 640px; }
+.modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 20px; }
+.modal { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 20px 24px; width: min(640px, 100%); max-height: 85vh; overflow: auto; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.modal-head h2 { margin: 0; }
+.reveal { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 12px 0; }
+.reveal-card { background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; animation: pop .35s ease-out; }
+.reveal-card span { color: var(--muted); }
+@keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.boxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
+.box { text-align: left; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; font-weight: 400; }
+.box:hover { border-color: var(--accent); }
+.box .num { color: var(--accent); font-weight: 700; font-size: 22px; }
+.box span { color: var(--muted); line-height: 1.5; }
+.box .more { color: var(--accent); font-size: 13px; }
+.glossary { display: block; margin-top: 16px; }
+.glossary div { display: grid; grid-template-columns: 180px 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.suggest { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.trail { display: inline-flex; gap: 14px; flex-wrap: wrap; }
+.trail span { color: var(--muted); opacity: .45; }
+.trail span.done { opacity: 1; color: var(--accent); }
+.trail span.now { opacity: 1; color: var(--text); }
+.checks { list-style: none; padding: 0; }
+.checks li { padding: 4px 0; }
+.foot-links { display: flex; gap: 18px; justify-content: center; }
+@media (max-width: 760px) { .defs, .steps, .boxes { grid-template-columns: 1fr; } .v2-hero h1 { font-size: 38px; } }
+
+/* v2: brain map as the hero image, all text lowercase (inputs keep what is typed) */
+.v2-hero { min-height: auto; padding-top: 24px; }
+.v2-hero h1 { font-size: 48px; }
+.hero-brain { margin-top: 18px; }
+.hero-brain .brainmap { padding: 20px; }
+body { text-transform: lowercase; }
+input, textarea, code { text-transform: none; }
+button, select { text-transform: lowercase; }
+
+/* v2 alignment: one 1180px column, everything left-aligned to the same edge */
+:root { --w: 1180px; }
+header { padding: 0; display: block; }
+.bar { max-width: var(--w); margin: 0 auto; padding: 14px 28px; display: flex; align-items: center; gap: 28px; }
+.bar nav { flex: 1; }
+.bar-right { display: flex; align-items: center; gap: 18px; }
+.mine { color: var(--muted); }
+.mine.on { color: var(--text); }
+main { max-width: var(--w); padding: 28px; }
+footer { text-align: left; padding: 30px 0 40px; border-top: 1px solid var(--line); margin-top: 60px; }
+.foot { flex-direction: column; align-items: flex-start; gap: 6px; }
+.foot p { margin: 0; }
+.foot-links { justify-content: flex-start; }
+.hero-brain { width: 100%; }
+.v2-hero p, .v2-hero h1 { max-width: 760px; }
+section > h2:first-child { margin-top: 0; }
+main > section { margin-bottom: 40px; }
+.stats, .defs, .steps, .cols, .boxes { margin-left: 0; margin-right: 0; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.split.even { grid-template-columns: 1fr 1fr; }
+.split aside .panel { margin: 0 0 14px; max-width: none; }
+.split aside h3 { margin-top: 0; }
+.split aside input, .split.even input { width: 100%; }
+.split aside .inline, .split.even .inline { flex-wrap: wrap; }
+.panel { max-width: none; }
+.panel h3 { margin-top: 0; }
+@media (max-width: 900px) { .split, .split.even { grid-template-columns: 1fr; } .bar { flex-wrap: wrap; } }
+.split h2 { margin-top: 0; } .panel p:last-child { margin-bottom: 0; }
+
+/* footer always at the bottom, even on short pages */
+html, body, #root { min-height: 100vh; }
+#root { display: flex; flex-direction: column; }
+#root > main { flex: 1 0 auto; width: 100%; margin: 0 auto; }
+#root > footer { flex-shrink: 0; }
+
+/* ===== v2 structure, after Sequents: left sidebar, page heads, panels, card grids ===== */
+:root { --side: 220px; --w: 1180px; }
+#root { display: block; }
+.side { position: fixed; inset: 0 auto 0 0; width: var(--side); border-right: 1px solid var(--line); background: var(--bg); display: flex; flex-direction: column; padding: 26px 22px; gap: 34px; z-index: 4; }
+.side .logo { font-size: 20px; }
+.side nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.side nav a { color: var(--muted); padding: 9px 12px; border-radius: 8px; }
+.side nav a:hover { text-decoration: none; color: var(--text); background: var(--panel); }
+.side nav a.on { color: var(--text); background: var(--panel); }
+.side-foot { display: flex; flex-direction: column; gap: 12px; }
+.side-foot .mine { padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); color: var(--text); }
+.side-foot .mine.on { background: var(--panel); }
+.side-foot .walletbtn button { width: 100%; }
+.side-foot .menu { top: auto; bottom: calc(100% + 8px); left: 0; right: auto; }
+.shell { margin-left: var(--side); min-height: 100vh; display: flex; flex-direction: column; }
+.shell > main { flex: 1 0 auto; width: 100%; max-width: var(--w); margin: 0 auto; padding: 40px; }
+.shell > footer { border-top: 1px solid var(--line); padding: 22px 40px; margin: 0; text-align: left; color: var(--muted); font-size: 13px; }
+
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 32px; flex-wrap: wrap; }
+.page-head h1 { margin: 0 0 8px; }
+.page-sub { margin: 0; max-width: 62ch; line-height: 1.7; }
+.stat-box { display: grid; grid-auto-flow: column; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.stat-box > div { display: flex; flex-direction: column; gap: 6px; padding: 16px 24px; min-width: 140px; }
+.stat-box > div + div { border-left: 1px solid var(--line); }
+.stat-box strong { font-size: 22px; }
+.stat-box span { font-size: 13px; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 28px; margin: 0 0 28px; }
+.panel.empty { text-align: center; padding: 72px 28px; }
+.panel h2:first-child { margin-top: 0; }
+.tabs { display: flex; gap: 0; position: relative; z-index: 1; margin-bottom: -1px; }
+.tab { background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 0; border-radius: 10px 10px 0 0; padding: 11px 20px; font-weight: 500; }
+.tab.on { background: var(--panel); color: var(--text); border-color: var(--line); }
+.panel.tabbed { border-top-left-radius: 0; }
+.view-line { margin: 0 0 22px; max-width: 70ch; }
+
+.search-row { display: flex; gap: 8px; margin: 0 0 24px; }
+.search-row input { flex: 1; height: 46px; padding: 0 16px; }
+.search-row select { height: 46px; padding: 0 14px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 0 0 28px; }
+.card { border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel); padding: 22px; display: flex; flex-direction: column; gap: 18px; border-radius: 0; }
+.panel .cards .card { background: var(--bg); }
+.post-head { display: flex; align-items: center; gap: 12px; }
+.avatar { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--accent); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.post-who { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.post-head .price { font-size: 20px; font-weight: 700; align-self: flex-start; }
+.post-head .price small { font-size: 12px; color: var(--muted); }
+.post-details { display: grid; grid-template-columns: 96px 1fr; gap: 10px 12px; margin: 0; flex: 1; align-content: start; }
+.post-details dt { color: var(--muted); }
+.post-details dd { margin: 0; min-width: 0; }
+.small { font-size: 12px; }
+button.wide, input.wide { width: 100%; }
+.card-foot { display: flex; gap: 8px; }
+.card-foot button { flex: 1; }
+.amount { flex-wrap: nowrap; }
+.amount input { flex: 1; min-width: 0; }
+.tools { margin: 0 0 28px; }
+.tools .panel { margin: 0; background: var(--bg); }
+.tools input { width: 100%; }
+.modal .post-details { margin: 18px 0; }
+.crumbs { display: flex; gap: 18px; margin: 0 0 18px; }
+
+/* Rules boxes and overview grids share the card borders */
+.boxes { grid-template-columns: repeat(3, 1fr); gap: 0; margin: 0 0 28px; }
+.box { border-radius: 0; }
+.defs, .steps, .cols { gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.defs > div, .steps > li, .cols > div { border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0; background: var(--panel); padding: 20px; }
+.stats { gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.stats div { border: 0; border-radius: 0; }
+.stats div + div { border-left: 1px solid var(--line); }
+.cols { margin-top: 0; }
+
+.glossary-group { display: grid; grid-template-columns: 48px 1fr; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.glossary-group:last-child { border-bottom: 0; }
+.glossary-letter { font-size: 22px; font-weight: 700; color: var(--accent); }
+.glossary .glossary-row { display: grid; grid-template-columns: 180px 1fr; gap: 16px; padding: 6px 0; border: 0; }
+.glossary dd { margin: 0; }
+.glossary > input { margin-bottom: 8px; }
+.chat-panel .chat { margin: 0; }
+
+@media (max-width: 900px) {
+  .side { position: static; width: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .side nav { flex-direction: row; flex-wrap: wrap; }
+  .side-foot { flex-direction: row; }
+  .shell { margin-left: 0; }
+  .boxes { grid-template-columns: 1fr; }
+  .stat-box { grid-auto-flow: row; }
+}
+
+/* sidebar as a column of equal keys, joined like a keyboard */
+.side.keys { --key: max(108px, calc(100vh / 7)); width: var(--key); padding: 0; gap: 0; display: grid; grid-template-rows: repeat(7, 1fr); border-right: 1px solid var(--line); }
+.keys .key { display: flex; align-items: flex-end; padding: 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 14px; background: var(--bg); position: relative; }
+.keys .key:hover { text-decoration: none; color: var(--text); background: var(--panel); }
+.keys .key.on { color: var(--text); background: var(--panel); box-shadow: inset 3px 0 0 var(--accent); }
+.keys .key.logo { align-items: flex-start; color: var(--text); font-weight: 700; font-size: 16px; letter-spacing: .06em; }
+.keys .keywallet { padding: 0; border-bottom: 0; }
+.keys .keywallet .walletbtn { width: 100%; height: 100%; }
+.keys .keywallet .walletbtn > button { width: 100%; height: 100%; border-radius: 0; display: flex; align-items: flex-end; padding: 12px; font-size: 14px; }
+.keys .keywallet .walletbtn > button.ghost { border: 0; }
+.keys .menu { left: calc(100% + 8px); bottom: 8px; top: auto; right: auto; }
+.side.keys ~ .shell { margin-left: max(108px, calc(100vh / 7)); }
+@media (max-width: 900px) { .side.keys { width: auto; grid-template-rows: none; grid-template-columns: repeat(7, 1fr); } .side.keys ~ .shell { margin-left: 0; } .keys .key { border-bottom: 0; border-right: 1px solid var(--line); } }
+
+/* keys: text in the centre, the current page a solid square */
+.keys .key, .keys .key.logo { align-items: center; justify-content: center; text-align: center; padding: 8px; }
+.keys .key.on { box-shadow: none; background: var(--accent); color: #062018; }
+.keys .key.on:hover { background: var(--accent); color: #062018; }
+.keys .keywallet .walletbtn > button { align-items: center; justify-content: center; }
+
+/* square edges everywhere */
+*, *::before, *::after { border-radius: 0 !important; }
+/* connect key looks like every other key until it is the current one */
+.keys .keywallet .walletbtn > button, .keys .keywallet .walletbtn > button.ghost { background: var(--bg); color: var(--muted); border: 0; font-weight: 400; }
+.keys .keywallet .walletbtn > button:hover { background: var(--panel); color: var(--text); }
+
+/* the font from the 3D brain, with wider letter spacing */
+:root, body, button, input, select, textarea, code { font-family: 'JetBrains Mono', ui-monospace, monospace !important; letter-spacing: .06em; }
+h1, h2, h3, .logo { letter-spacing: .08em; }
+
+/* one letter spacing for all text, matching the nav, normal weight, a size smaller */
+:root { font-size: 13px; }
+body, p, span, td, th, dt, dd, li, label, input, select, button, a, .muted, .small { letter-spacing: .06em !important; font-weight: 400; }
+.keys .key, .keys .key.logo, .keys .keywallet .walletbtn > button { font-size: 12px; font-weight: 400; letter-spacing: .06em; }
+.keys .key.logo { font-weight: 600; }
+h1 { font-size: 24px; font-weight: 600; } h2 { font-size: 16px; font-weight: 600; } h3 { font-size: 14px; font-weight: 600; }
+.v2-hero h1 { font-size: 34px; } .v2-hero p { font-size: 15px; }
+.stat-box strong, .stats b { font-size: 18px; font-weight: 600; }
+.post-head .price { font-size: 16px; }
+.small, .stat-box span, .stats span { font-size: 11px; }
+
+/* subtitles and all small text: exactly the nav size */
+p, .page-sub, .v2-hero p, .muted, .view-line, td, th, dt, dd, li, label, input, select, button, .note, .post-who, .stat-box span, .stats span, .small, .fold-q, .fold-a, footer, .defs span, .steps span, .box span, .cols p { font-size: 12px !important; line-height: 1.7; }
+
+/* ===== new branding: the onion colours. purple leads, a slight green behind, cream on purple ===== */
+:root {
+  --bg: #dfe7e1; --panel: #eaf0eb; --line: rgba(91, 34, 214, .28); --text: #2a1650; --muted: #6b5a8e;
+  --accent: #8b4dff; --purple: #8b4dff; --deep: #5b22d6; --cream: #fbf1e4; --lime: #b6ff2e; --pink: #f6b3a6; --mint: #8fe3c4;
+  color-scheme: light; background: var(--bg); color: var(--text);
+}
+body { background: var(--bg); color: var(--text); }
+a { color: var(--deep); }
+.muted, .page-sub { color: var(--muted) !important; }
+h1, h2, h3, .logo { color: var(--text); }
+button, .btn { background: var(--purple); color: var(--cream); }
+button:hover, .btn:hover { background: var(--deep); filter: none; }
+button.ghost, .btn.ghost { background: transparent; color: var(--deep); border: 1px solid var(--purple); }
+button.link { background: none; color: var(--deep); }
+input, select { background: var(--cream); color: var(--text); border: 1px solid var(--line); }
+.panel, .card, .stat-box, .defs > div, .steps > li, .cols > div, .stats div, .note, .modal, .menu { background: var(--panel); border-color: var(--line); color: var(--text); }
+.cards, .defs, .steps, .cols, .stats, .panel, .stat-box, .tabs .tab.on { border-color: var(--line); }
+.cards .card, .defs > div, .steps > li, .cols > div { border-color: var(--line) !important; }
+.panel .cards .card { background: var(--cream); }
+.tab { color: var(--muted); } .tab.on { background: var(--panel); color: var(--deep); border-color: var(--line); }
+.toggle button.on { background: var(--purple); color: var(--cream); }
+.steps li::before, .box .num, .glossary-letter { color: var(--purple); }
+.box .more { color: var(--deep); }
+.avatar { border-color: var(--purple); color: var(--deep); background: var(--cream); }
+.post-head .price small { color: var(--muted); }
+.error { color: #c2334f; }
+.modal-back { background: rgba(42, 22, 80, .35); }
+.fold { border-color: var(--line); } .fold-q { color: var(--text); background: none; }
+table th, table td { border-color: var(--line); } th { color: var(--muted); }
+.shell > footer { border-color: var(--line); color: var(--muted); }
+.tooltip { background: var(--cream); border-color: var(--line); color: var(--muted); } .tooltip strong { color: var(--text); }
+.trail span.done { color: var(--deep); } .trail span.now { color: var(--text); }
+.chat .you { background: var(--cream); border-color: var(--line); }
+/* the nav: thin purple lines, purple text, the current page solid purple with cream text */
+.side.keys { background: var(--bg); border-right: 1px solid var(--purple); }
+.keys .key { background: var(--bg); color: var(--purple); border-bottom: 1px solid var(--purple); }
+.keys .key.logo { color: var(--deep); }
+.keys .key:hover { background: var(--panel); color: var(--deep); }
+.keys .key.on, .keys .key.on:hover { background: var(--purple); color: var(--cream); }
+.keys .keywallet .walletbtn > button, .keys .keywallet .walletbtn > button.ghost { background: var(--bg); color: var(--purple); }
+.keys .keywallet .walletbtn > button:hover { background: var(--purple); color: var(--cream); }
+/* the hero: one wide title, then the live 3D brain */
+.v2-hero h1 { max-width: none; white-space: nowrap; font-size: 40px; }
+.v2-hero p { color: var(--muted); }
+.hero-brain .onion { display: block; width: 100%; height: 640px; border: 0; background: transparent; }
+
+/* ===== themes: light (slight green) and dark (black). dark purple leads, text on purple is the page colour ===== */
+:root, :root[data-theme="light"] { --bg: #dfe7e1; --panel: #e8eee9; --text: #1e1240; --muted: #5d5378; --purple: #3f1d9e; --deep: #3f1d9e; --accent: #3f1d9e; --line: rgba(63, 29, 158, .32); --on: var(--bg); --cream: var(--bg); color-scheme: light; }
+:root[data-theme="dark"] { --bg: #050407; --panel: #0d0b13; --text: #e8e6ee; --muted: #9a94ad; --purple: #6d3cf0; --deep: #8b63ff; --accent: #6d3cf0; --line: rgba(109, 60, 240, .4); --on: var(--bg); --cream: var(--bg); color-scheme: dark; }
+button, .btn, .keys .key.on, .keys .key.on:hover, .toggle button.on, .keys .keywallet .walletbtn > button:hover { color: var(--on) !important; }
+button.ghost, .btn.ghost, button.link, .fold-q { color: var(--deep) !important; }
+input, select, .chat .you, .panel .cards .card, .avatar, .tooltip { background: var(--panel); }
+
+/* connect key: one square, exactly like the other keys */
+.keys .keywallet { padding: 0 !important; display: block; border-bottom: 0 !important; }
+.keys .keywallet .walletbtn { width: 100%; height: 100%; }
+.keys .keywallet .walletbtn > button, .keys .keywallet .walletbtn > button.ghost {
+  all: unset; box-sizing: border-box; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 12px; letter-spacing: .06em; background: var(--bg) !important; color: var(--purple) !important; border: 0 !important; outline: 0 !important; box-shadow: none !important;
+}
+.keys .keywallet .walletbtn > button:hover { background: var(--panel) !important; color: var(--deep) !important; }
+.keys .keywallet .walletbtn > button:focus-visible { outline: 0; }
+
+/* the brain runs edge to edge: from the nav to the right of the screen */
+.hero-brain { position: relative; }
+.hero-brain .onion {
+  --key: max(108px, calc(100vh / 7));
+  width: calc(100vw - var(--key)); height: 82vh; max-width: none;
+  margin-left: calc(50% - (100vw - var(--key)) / 2);
+  border-top: 1px solid var(--purple); border-bottom: 1px solid var(--purple);
+}
+body { overflow-x: hidden; }
+
+/* dark: white nav text, black on the purple key */
+:root[data-theme="dark"] .keys .key, :root[data-theme="dark"] .keys .key.logo, :root[data-theme="dark"] .keys .keywallet .walletbtn > button { color: #ffffff !important; }
+:root[data-theme="dark"] .keys .key.on, :root[data-theme="dark"] .keys .key.on:hover { color: #000000 !important; background: var(--purple) !important; }
+:root[data-theme="dark"] .keys .key:hover, :root[data-theme="dark"] .keys .keywallet .walletbtn > button:hover { color: #ffffff !important; }
+
+/* the brain fills the top of the homepage, nav to right edge, no lines; title and subtitle below */
+.brain-top { margin: -40px 0 0; }
+.brain-top .hero-brain { margin: 0; }
+.brain-top .hero-brain .onion { height: 100vh; border: 0 !important; }
+.v2-hero { padding-top: 40px; min-height: 0; }
+.v2-hero h1 { white-space: normal; }
+
+/* poster titles: heavy condensed type on every title, the hero spanning the full width */
+:root[data-font] h1, :root[data-font] h2, :root[data-font] h3 { font-weight: 400 !important; letter-spacing: -.005em !important; line-height: .92 !important; }
+:root[data-font="1"] h1, :root[data-font="1"] h2, :root[data-font="1"] h3 { font-family: 'Anton', sans-serif !important; }
+:root[data-font="2"] h1, :root[data-font="2"] h2, :root[data-font="2"] h3 { font-family: 'Bebas Neue', sans-serif !important; letter-spacing: .01em !important; }
+:root[data-font="3"] h1, :root[data-font="3"] h2, :root[data-font="3"] h3 { font-family: 'Archivo Black', sans-serif !important; letter-spacing: -.03em !important; }
+:root[data-font="4"] h1, :root[data-font="4"] h2, :root[data-font="4"] h3 { font-family: 'Barlow Condensed', sans-serif !important; font-weight: 800 !important; }
+:root[data-font] h1 { font-size: 46px; } :root[data-font] h2 { font-size: 26px; } :root[data-font] h3 { font-size: 18px; }
+:root[data-font] .v2-hero { max-width: none; }
+:root[data-font] .v2-hero h1 { font-size: clamp(48px, 6.6vw, 120px) !important; max-width: none !important; white-space: nowrap; margin-bottom: 18px; }
+:root[data-font] .v2-hero p { max-width: none !important; }
+.fontswitch { position: fixed; right: 16px; bottom: 16px; z-index: 20; display: flex; gap: 6px; align-items: center; padding: 8px 10px; background: var(--bg); border: 1px solid var(--purple); font-size: 11px; }
+.fontswitch span { color: var(--muted); margin-right: 4px; }
+.fontswitch button { all: unset; cursor: pointer; padding: 5px 8px; border: 1px solid var(--line); color: var(--text) !important; font-size: 11px; }
+.fontswitch button.on { background: var(--purple); color: var(--on) !important; }
+
+/* the font switch changes every piece of text on the site: nav, titles, small text, buttons */
+:root[data-font="1"] *, :root[data-font="1"] body, :root[data-font="1"] button, :root[data-font="1"] input { font-family: 'Anton', sans-serif !important; font-weight: 400 !important; }
+:root[data-font="2"] *, :root[data-font="2"] body, :root[data-font="2"] button, :root[data-font="2"] input { font-family: 'Bebas Neue', sans-serif !important; font-weight: 400 !important; }
+:root[data-font="3"] *, :root[data-font="3"] body, :root[data-font="3"] button, :root[data-font="3"] input { font-family: 'Archivo Black', sans-serif !important; font-weight: 400 !important; }
+:root[data-font="4"] *, :root[data-font="4"] body, :root[data-font="4"] button, :root[data-font="4"] input { font-family: 'Barlow Condensed', sans-serif !important; font-weight: 800 !important; }
+/* condensed type reads small, so the small text steps up a little */
+:root[data-font] p, :root[data-font] .page-sub, :root[data-font] .v2-hero p, :root[data-font] .muted, :root[data-font] td, :root[data-font] th, :root[data-font] dt, :root[data-font] dd, :root[data-font] li, :root[data-font] button, :root[data-font] .keys .key, :root[data-font] .fold-q, :root[data-font] .fold-a, :root[data-font] footer, :root[data-font] .defs span, :root[data-font] .steps span, :root[data-font] .cols p, :root[data-font] .stat-box span { font-size: 15px !important; letter-spacing: .03em !important; }
+:root[data-font="3"] p, :root[data-font="3"] .keys .key, :root[data-font="3"] button, :root[data-font="3"] .muted { font-size: 13px !important; }
+.fontswitch span { font-size: 11px !important; }
+:root[data-font] .v2-hero h1 { font-size: clamp(40px, 5vw, 96px) !important; white-space: normal !important; }
+/* a small hint over the brain that the page scrolls on */
+.brain-top { position: relative; }
+
+
+/* dark: everything outside the brain is white on black. the only colour is the brain */
+:root[data-theme="dark"] { --text: #ffffff; --muted: #ffffff; --purple: #ffffff; --deep: #ffffff; --accent: #ffffff; --line: rgba(255, 255, 255, .35); --on: #000000; --panel: #000000; --bg: #000000; }
+:root[data-theme="dark"] .side.keys { border-right-color: #ffffff; }
+:root[data-theme="dark"] .keys .key { border-bottom-color: #ffffff !important; }
+:root[data-theme="dark"] .keys .key.on, :root[data-theme="dark"] .keys .key.on:hover { background: #ffffff !important; color: #000000 !important; }
+:root[data-theme="dark"] .keys .key:hover, :root[data-theme="dark"] .keys .keywallet .walletbtn > button:hover { background: #ffffff !important; color: #000000 !important; }
+:root[data-theme="dark"] button, :root[data-theme="dark"] .btn { background: #ffffff; color: #000000 !important; }
+:root[data-theme="dark"] button.ghost, :root[data-theme="dark"] .btn.ghost { background: transparent; color: #ffffff !important; border-color: #ffffff; }
+:root[data-theme="dark"] .steps li::before, :root[data-theme="dark"] .box .num, :root[data-theme="dark"] .glossary-letter, :root[data-theme="dark"] a { color: #ffffff; }
+
+/* light: black on the light background, colour only in the brain */
+:root[data-theme="light"], :root:not([data-theme="dark"]) { --text: #000000; --muted: #000000; --purple: #000000; --deep: #000000; --accent: #000000; --line: rgba(0, 0, 0, .45); --on: #dfe7e1; --panel: #dfe7e1; }
+:root:not([data-theme="dark"]) .side.keys { border-right-color: #000000; }
+:root:not([data-theme="dark"]) .keys .key { border-bottom-color: #000000 !important; }
+:root:not([data-theme="dark"]) .keys .key.on, :root:not([data-theme="dark"]) .keys .key.on:hover,
+:root:not([data-theme="dark"]) .keys .key:hover, :root:not([data-theme="dark"]) .keys .keywallet .walletbtn > button:hover { background: #000000 !important; color: #dfe7e1 !important; }
+:root:not([data-theme="dark"]) button, :root:not([data-theme="dark"]) .btn { background: #000000; color: #dfe7e1 !important; }
+:root:not([data-theme="dark"]) button.ghost, :root:not([data-theme="dark"]) .btn.ghost { background: transparent; color: #000000 !important; border-color: #000000; }
+:root:not([data-theme="dark"]) a { color: #000000; }
+
+/* every line a hairline */
+.side.keys { border-right-width: .5px !important; }
+.keys .key { border-bottom-width: .5px !important; }
+.panel, .card, .stat-box, .stats, .defs, .steps, .cols, .cards, .modal, .menu, .tab.on, input, select, button.ghost, .btn.ghost, table th, table td, .fold, .shell > footer, .title-box, .stat-box > div + div, .stats div + div { border-width: .5px !important; }
+.cards .card, .defs > div, .steps > li, .cols > div { border-right-width: .5px !important; border-bottom-width: .5px !important; }
+
+/* a finer weight of the same font */
+body, p, span, td, th, dt, dd, li, label, input, select, button, a, .muted, .small, .keys .key { font-weight: 300 !important; }
+h1, h2, h3, .keys .key.logo, b, strong { font-weight: 400 !important; }
+
+/* the title in a box, upper left over the brain, seen on landing */
+.brain-top .title-box { position: absolute; z-index: 3; top: 60px; left: 24px; max-width: 460px; padding: 18px 20px; background: var(--bg); border: .5px solid var(--purple); }
+.brain-top .title-box h1 { font-size: 26px !important; line-height: 1.15; margin: 0 0 10px; white-space: normal !important; }
+.brain-top .title-box p { margin: 0; font-size: 12px !important; color: var(--muted); }
+
+.brain-top .title-box { --key: max(108px, calc(100vh / 7)); top: 20px; left: calc(50% - (100vw - var(--key)) / 2 + 20px); }
+
+/* a fine grain over the whole site, brain included */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: .16; mix-blend-mode: multiply;
+}
+:root[data-theme="dark"] body::after { filter: invert(1); mix-blend-mode: screen; opacity: .1; }
+/* dark: a stronger, visible film grain on the black */
+:root[data-theme="dark"] body::after { filter: invert(1) contrast(1.4); mix-blend-mode: screen; opacity: .2; }
+
+/* ===== paper version: off white paper, heavy grain, black, blue, red, yellow; condensed mono titles, narrow uppercase labels ===== */
+:root[data-theme="paper"] { --bg: #e9e5dc; --panel: #e9e5dc; --text: #111111; --muted: #111111; --purple: #111111; --deep: #111111; --accent: #2f66e8; --line: #111111; --on: #e9e5dc; --blue: #2f66e8; --red: #f0482a; --yellow: #f2d21b; color-scheme: light; }
+:root[data-theme="paper"] body { background: var(--bg); color: #111; }
+:root[data-theme="paper"] body, :root[data-theme="paper"] p, :root[data-theme="paper"] span, :root[data-theme="paper"] td, :root[data-theme="paper"] th, :root[data-theme="paper"] dt, :root[data-theme="paper"] dd, :root[data-theme="paper"] li, :root[data-theme="paper"] a, :root[data-theme="paper"] button, :root[data-theme="paper"] input, :root[data-theme="paper"] .keys .key, :root[data-theme="paper"] .muted { font-family: 'Archivo Narrow', sans-serif !important; font-weight: 600 !important; text-transform: uppercase; letter-spacing: .08em !important; }
+:root[data-theme="paper"] h1, :root[data-theme="paper"] h2, :root[data-theme="paper"] h3 { font-family: 'Share Tech Mono', monospace !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: .02em !important; }
+:root[data-theme="paper"] .brain-top .title-box h1 { font-size: 34px !important; line-height: 1; }
+:root[data-theme="paper"] body::after { opacity: .38; mix-blend-mode: multiply; filter: contrast(1.3); }
+:root[data-theme="paper"] button, :root[data-theme="paper"] .btn { background: var(--blue) !important; color: #e9e5dc !important; }
+:root[data-theme="paper"] button.ghost, :root[data-theme="paper"] .btn.ghost { background: transparent !important; color: #111 !important; border: 1px solid #111 !important; }
+:root[data-theme="paper"] .steps li::before, :root[data-theme="paper"] .box .num, :root[data-theme="paper"] .glossary-letter { color: var(--red); }
+:root[data-theme="paper"] .panel, :root[data-theme="paper"] .card, :root[data-theme="paper"] .stat-box, :root[data-theme="paper"] .cards, :root[data-theme="paper"] .defs, :root[data-theme="paper"] .steps, :root[data-theme="paper"] .cols, :root[data-theme="paper"] .stats, :root[data-theme="paper"] .title-box { border: 1px solid #111 !important; background: var(--bg) !important; }
+/* the nav as file folders, each with its tab, stacked down the left */
+:root[data-theme="paper"] .side.keys { border-right: 0 !important; background: var(--bg); padding: 10px 8px; gap: 0; grid-template-rows: repeat(7, 1fr); }
+:root[data-theme="paper"] .keys .key, :root[data-theme="paper"] .keys .keywallet { border: 0 !important; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0.5 14 V99.5 H99.5 V14 H46 L38 0.5 H0.5 Z' fill='%23dcd6c8' stroke='%23111' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important; margin-top: -14px; padding-top: 22px !important; align-items: center; justify-content: center; color: #111 !important; font-size: 11px !important; }
+:root[data-theme="paper"] .keys .key:first-child { margin-top: 0; }
+:root[data-theme="paper"] .keys .key:hover { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0.5 14 V99.5 H99.5 V14 H46 L38 0.5 H0.5 Z' fill='%23f2d21b' stroke='%23111' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important; color: #111 !important; }
+:root[data-theme="paper"] .keys .key.on, :root[data-theme="paper"] .keys .key.on:hover { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0.5 14 V99.5 H99.5 V14 H46 L38 0.5 H0.5 Z' fill='%232f66e8' stroke='%23111' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important; color: #e9e5dc !important; }
+:root[data-theme="paper"] .keys .keywallet .walletbtn > button { background: transparent !important; color: #111 !important; padding-top: 10px !important; }
+:root[data-theme="paper"] .keys .keywallet .walletbtn > button:hover { background: transparent !important; color: var(--red) !important; }
+
+/* ===== paper version, take two: sampled colours, Departure Mono, a file tree nav like tr.af ===== */
+@font-face { font-family: 'Departure Mono'; src: url('https://cdn.jsdelivr.net/gh/rektdeckard/departure-mono@main/public/assets/DepartureMono-Regular.woff2') format('woff2'); font-display: swap; }
+:root[data-theme="paper"] { --bg: #e3dfd6; --panel: #e3dfd6; --text: #222423; --muted: #222423; --purple: #222423; --deep: #222423; --line: rgba(34, 36, 35, .55); --on: #e3dfd6; --blue: #2a5dff; --red: #e2471f; --yellow: #ffe20a; }
+:root[data-theme="paper"] body { background: #e3dfd6; color: #222423; }
+:root[data-theme="paper"] *, :root[data-theme="paper"] body, :root[data-theme="paper"] button, :root[data-theme="paper"] input { font-family: 'Departure Mono', ui-monospace, monospace !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: .04em !important; }
+:root[data-theme="paper"] h1 { font-size: 30px !important; letter-spacing: 0 !important; }
+:root[data-theme="paper"] body::after { opacity: .1 !important; filter: none !important; mix-blend-mode: multiply !important; }
+:root[data-theme="paper"] button, :root[data-theme="paper"] .btn { background: var(--blue) !important; color: #e3dfd6 !important; }
+:root[data-theme="paper"] .steps li::before, :root[data-theme="paper"] .box .num, :root[data-theme="paper"] .glossary-letter { color: var(--red) !important; }
+:root[data-theme="paper"] .panel, :root[data-theme="paper"] .card, :root[data-theme="paper"] .stat-box, :root[data-theme="paper"] .cards, :root[data-theme="paper"] .defs, :root[data-theme="paper"] .steps, :root[data-theme="paper"] .cols, :root[data-theme="paper"] .stats, :root[data-theme="paper"] .title-box { border: 1px dashed var(--dash) !important; background: #e3dfd6 !important; }
+/* the tree */
+.side.tree { position: fixed; inset: 0 auto 0 0; width: 230px; padding: 22px 18px; background: var(--bg); border-right: 0; display: block; z-index: 4; }
+.tree-logo { display: flex; align-items: center; gap: 10px; color: var(--text) !important; font-size: 13px; margin-bottom: 12px; text-decoration: none; }
+.tree-tag { margin: 0 0 22px; font-size: 10px !important; font-style: italic; line-height: 1.5; color: var(--text); }
+.tree-logo .mark { width: 14px; height: 14px; background: var(--text); display: inline-block; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 70%, 55% 70%, 55% 30%, 0 30%); }
+.tree-root { margin-left: 7px; border-left: 1px dotted var(--dash); padding-left: 0; }
+.tree-group { margin-bottom: 12px; position: relative; }
+.tree-folder { all: unset; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 9px 0 9px 14px; color: var(--text) !important; font-size: 12px; position: relative; }
+.tree-folder::before { content: ""; position: absolute; left: 0; top: 50%; width: 10px; border-top: 1px dotted var(--dash); }
+.tree-folder .chev { width: 10px; color: var(--text); font-size: 12px; line-height: 1; }
+.tree-items { margin-left: 30px; border-left: 1px dotted var(--dash); }
+.tree-item { display: flex; align-items: center; gap: 10px; padding: 9px 0 9px 16px; color: color-mix(in srgb, var(--text) 70%, transparent) !important; font-size: 12px; text-decoration: none !important; position: relative; }
+.tree-item::before { content: ""; position: absolute; left: 0; top: 50%; width: 10px; border-top: 1px dotted var(--dash); }
+.tree-item:hover, .tree-item.on { color: var(--text) !important; }
+.tree-item.on .ti { color: var(--red); }
+.tree-item .ti { flex: none; }
+.tree-wallet .walletbtn > button { all: unset; cursor: pointer; color: color-mix(in srgb, var(--text) 70%, transparent); font-size: 12px; }
+.tree-wallet .walletbtn > button:hover { color: var(--text); }
+.tree-wallet .menu { left: 0; top: calc(100% + 6px); }
+/* the breadcrumb across the top */
+.crumbbar { display: flex; align-items: center; gap: 12px; height: 54px; padding: 0 28px; font-size: 12px; color: color-mix(in srgb, var(--text) 60%, transparent); background: var(--bg); position: sticky; top: 0; z-index: 5; }
+.crumbbar b { font-weight: 400; color: color-mix(in srgb, var(--text) 40%, transparent); }
+.crumbbar .here { color: var(--text); }
+.crumbbar .crumb-right { margin-left: auto; color: var(--text) !important; text-decoration: none; }
+.crumbbar .crumb-right:hover { color: var(--red) !important; }
+.shell { margin-left: 230px; }
+.hero-brain .onion, .brain-top .title-box { --key: 230px !important; }
+.brain-top { margin-top: -40px; }
+:root[data-theme="paper"] .hero-brain .onion { height: calc(100vh - 54px); border: 1px dashed var(--dash) !important; }
+:root[data-theme="paper"] .tree-folder, :root[data-theme="paper"] .tree-wallet .walletbtn > button { background: transparent !important; color: #222423 !important; padding-top: 9px; }
+:root[data-theme="paper"] .tree-wallet .walletbtn > button { color: rgba(34,36,35,.7) !important; padding: 0 !important; }
+:root[data-theme="paper"] .tree-wallet .walletbtn > button:hover { color: #222423 !important; }
+
+/* ===== the tr.af formatting on every version: Departure Mono in capitals, dashed hairline boxes ===== */
+:root *, :root body, :root button, :root input { font-family: 'Departure Mono', ui-monospace, monospace !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: .04em !important; }
+:root h1 { font-size: 30px !important; letter-spacing: 0 !important; line-height: 1.1 !important; }
+:root h2 { font-size: 18px !important; } :root h3 { font-size: 14px !important; }
+:root .panel, :root .card, :root .stat-box, :root .cards, :root .defs, :root .steps, :root .cols, :root .stats, :root .title-box, :root .modal, :root .menu { border: 1px dashed var(--dash) !important; }
+:root .cards .card, :root .defs > div, :root .steps > li, :root .cols > div { border: 0 !important; border-right: 1px dashed var(--dash) !important; border-bottom: 1px dashed var(--dash) !important; }
+.side.tree { position: fixed; inset: 0 auto 0 0; width: 230px; padding: 22px 18px; background: var(--bg); display: block; z-index: 4; border-right: 1px dashed var(--dash); }
+.tree-logo .mark { background: var(--text); }
+.tree-folder, .tree-wallet .walletbtn > button { background: transparent !important; color: var(--text) !important; }
+.tree-wallet .walletbtn > button { color: color-mix(in srgb, var(--text) 70%, transparent) !important; padding: 0 !important; }
+.tree-wallet .walletbtn > button:hover { color: var(--text) !important; }
+.shell { margin-left: 230px !important; }
+.hero-brain .onion, .brain-top .title-box { --key: 230px !important; }
+.hero-brain .onion { height: calc(100vh - 54px) !important; border: 1px dashed var(--dash) !important; }
+.crumbbar { color: color-mix(in srgb, var(--text) 60%, transparent); background: var(--bg); }
+.crumbbar b { color: color-mix(in srgb, var(--text) 40%, transparent); }
+.crumbbar .here, .crumbbar .crumb-right { color: var(--text) !important; }
+.tree-item.on .ti { color: var(--text); }
+
+/* paper: strictly the image's colours, used more boldly */
+:root[data-theme="paper"] .tree-item.on { color: #222423 !important; }
+:root[data-theme="paper"] .tree-item.on::after { content: ""; position: absolute; left: 36px; right: -6px; top: 6px; bottom: 6px; background: #ffe20a; z-index: -1; }
+:root[data-theme="paper"] .tree-item.on .ti { color: #e2471f !important; }
+:root[data-theme="paper"] .tree-item:hover .ti { color: #2a5dff; }
+:root[data-theme="paper"] .crumbbar .crumb-right { color: #e3dfd6 !important; background: #e2471f; padding: 4px 8px; }
+:root[data-theme="paper"] .crumbbar .crumb-right:hover { background: #2a5dff; color: #e3dfd6 !important; }
+:root[data-theme="paper"] .crumbbar .here { color: #2a5dff !important; }
+:root[data-theme="paper"] .tree-logo .mark { background: #e2471f; }
+:root[data-theme="paper"] .stat-box strong, :root[data-theme="paper"] .stats b { color: #2a5dff; }
+:root[data-theme="paper"] .brain-top .title-box h1 { color: #222423; }
+:root[data-theme="paper"] .brain-top .title-box { border-left: 6px solid #e2471f !important; }
+:root[data-theme] .tree-folder, :root .tree-folder { color: var(--text) !important; background: transparent !important; }
+:root[data-theme] .tree-wallet .walletbtn > button { color: color-mix(in srgb, var(--text) 70%, transparent) !important; background: transparent !important; }
+
+/* ===== micro: the Microscopic pack. spaced header row, huge condensed titles filled with bitmap texture,
+   an orange accent word, swatch tiles labelled like ASSET - 001 ===== */
+:root[data-variant="micro"] .wordrow { display: flex; justify-content: space-between; padding: 14px 28px 0; font-family: 'Archivo Narrow', sans-serif !important; font-weight: 700 !important; font-size: 10px; letter-spacing: .08em !important; color: #212321; }
+:root[data-variant="micro"] .wordrow span { font-family: 'Archivo Narrow', sans-serif !important; font-weight: 700 !important; }
+:root[data-variant="micro"] h1, :root[data-variant="micro"] h2 { font-family: 'Martian Mono', monospace !important; font-stretch: 75%; font-variation-settings: 'wdth' 75; font-weight: 400 !important; letter-spacing: -.01em !important; }
+:root[data-variant="micro"] .brain-top .title-box { border: 0 !important; border-left: 0 !important; background: transparent !important; padding: 0; max-width: 620px; }
+:root[data-variant="micro"] .brain-top .title-box h1 { font-size: 64px !important; line-height: .92 !important; color: transparent; background: var(--bm1) 0 0 / 220px 220px; image-rendering: pixelated; -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 1.2px #212321; margin-bottom: 14px; }
+:root[data-variant="micro"] .brain-top .title-box h1 .accent { color: #e2471f; -webkit-text-stroke: 0; background: none; display: block; text-align: right; font-size: 56px; }
+:root[data-variant="micro"] .brain-top .title-box p { font-family: 'Martian Mono', monospace !important; font-variation-settings: 'wdth' 75; font-size: 12px !important; letter-spacing: 0 !important; color: #212321; background: #e5e1d8; display: inline; }
+/* small labels in the pack's bold narrow capitals */
+:root[data-variant="micro"] .crumbbar, :root[data-variant="micro"] .crumbbar *, :root[data-variant="micro"] th, :root[data-variant="micro"] .stat-box span, :root[data-variant="micro"] .stats span, :root[data-variant="micro"] .defs b, :root[data-variant="micro"] .steps b, :root[data-variant="micro"] .tree-item, :root[data-variant="micro"] .tree-folder, :root[data-variant="micro"] .tree-logo { font-family: 'Archivo Narrow', sans-serif !important; font-weight: 700 !important; letter-spacing: .06em !important; }
+/* swatch tiles: every card gets a bitmap square on top, numbered like the pack */
+:root[data-variant="micro"] .steps, :root[data-variant="micro"] .defs, :root[data-variant="micro"] .cols, :root[data-variant="micro"] .stats { border: 0 !important; gap: 22px !important; overflow: visible; }
+:root[data-variant="micro"] .steps > li, :root[data-variant="micro"] .defs > div, :root[data-variant="micro"] .cols > div { border: 0 !important; background: transparent !important; padding: 0 !important; counter-increment: tile; }
+:root[data-variant="micro"] .steps > li::before, :root[data-variant="micro"] .defs > div::before, :root[data-variant="micro"] .cols > div::before { content: ""; display: block; aspect-ratio: 1; width: 100%; background: var(--bm2) 0 0 / 160px 160px; image-rendering: pixelated; margin-bottom: 8px; border: 1px solid #212321; }
+:root[data-variant="micro"] .steps > li:nth-child(2n)::before, :root[data-variant="micro"] .defs > div:nth-child(2n)::before, :root[data-variant="micro"] .cols > div:nth-child(2n)::before { background-image: var(--bm3); }
+:root[data-variant="micro"] .steps > li:nth-child(3n)::before, :root[data-variant="micro"] .defs > div:nth-child(3n)::before, :root[data-variant="micro"] .cols > div:nth-child(3n)::before { background-image: var(--bm4); }
+:root[data-variant="micro"] .steps > li::after, :root[data-variant="micro"] .defs > div::after, :root[data-variant="micro"] .cols > div::after { content: "ASSET - 0" counter(tile, decimal-leading-zero); order: -1; font: 700 10px 'Archivo Narrow', sans-serif; letter-spacing: .06em; text-align: right; margin-top: -4px; }
+:root[data-variant="micro"] .steps li::before { color: transparent !important; font-size: 0 !important; }
+:root[data-variant="micro"] .defs, :root[data-variant="micro"] .cols { grid-template-columns: repeat(3, 1fr); }
+:root[data-variant="micro"] main { counter-reset: tile; }
+:root[data-variant="micro"] .stats div { border: 1px solid #212321 !important; }
+:root[data-variant="micro"] body::after { opacity: .2 !important; }
+
+/* ===== hud: a black console on light paper, white readouts, clean sans, black and white folders ===== */
+:root[data-theme="hud"] { --bg: #f1eded; --panel: #f1eded; --text: #111111; --muted: #6d6a6a; --purple: #111111; --deep: #111111; --accent: #111111; --line: rgba(17,17,17,.3); --on: #f1eded; color-scheme: light; }
+:root[data-theme="hud"] *, :root[data-theme="hud"] body, :root[data-theme="hud"] button, :root[data-theme="hud"] input { font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 400 !important; }
+:root[data-theme="hud"] h1, :root[data-theme="hud"] h2 { font-weight: 300 !important; letter-spacing: -.01em !important; }
+:root[data-theme="hud"] body { background: #f1eded; color: #111; }
+:root[data-theme="hud"] body::after { opacity: .05 !important; }
+:root[data-theme="hud"] button, :root[data-theme="hud"] .btn { background: #111 !important; color: #f1eded !important; border-radius: 0; }
+:root[data-theme="hud"] .tree-item.on { background: #111; color: #f1eded !important; margin-left: 4px; }
+:root[data-theme="hud"] .tree-item.on .ti { color: #f1eded; }
+:root[data-theme="hud"] .tree-folder, :root[data-theme="hud"] .tree-item, :root[data-theme="hud"] .tree-logo { font-size: 13px !important; }
+:root[data-theme="hud"] .tree-logo { font-weight: 600 !important; }
+:root[data-theme="hud"] .tree-logo .mark { background: #111; }
+:root[data-theme="hud"] .crumbbar .crumb-right { background: #111; color: #f1eded !important; padding: 4px 10px; }
+:root[data-theme="hud"] .panel, :root[data-theme="hud"] .card, :root[data-theme="hud"] .stat-box, :root[data-theme="hud"] .cards, :root[data-theme="hud"] .defs, :root[data-theme="hud"] .steps, :root[data-theme="hud"] .cols, :root[data-theme="hud"] .stats { border: 1px solid #111 !important; border-radius: 0; }
+:root[data-theme="hud"] .cards .card, :root[data-theme="hud"] .defs > div, :root[data-theme="hud"] .steps > li, :root[data-theme="hud"] .cols > div { border-right: 1px solid rgba(17,17,17,.25) !important; border-bottom: 1px solid rgba(17,17,17,.25) !important; }
+:root[data-theme="hud"] .steps li::before { color: #111 !important; }
+
+.hud-home { position: relative; padding: 70px 28px 90px; margin: -40px 0 30px; }
+.hud-corner { position: absolute; font-size: 14px; font-weight: 600 !important; color: #111; }
+.hud-corner.tl { top: 18px; left: 28px; display: grid; grid-template-columns: auto 22px; gap: 0 8px; align-items: center; line-height: 1.2; }
+.hud-corner.tl i { height: 1.5px; background: #111; display: block; }
+.hud-corner.tr { top: 18px; right: 28px; }
+.hud-corner.bl { bottom: 22px; left: 28px; } .hud-corner.bl b { background: #111; color: #f1eded; padding: 6px 10px; font-weight: 600 !important; }
+.hud-corner.br { bottom: 22px; right: 28px; border: 1px solid #111; padding: 6px 10px; font-weight: 400 !important; font-size: 12px; }
+.hud-rails { display: flex; justify-content: space-between; margin: 0 6% 10px; font-size: 10px; font-weight: 600 !important; color: #111; text-transform: uppercase !important; }
+.hud-rails > div { display: flex; align-items: center; gap: 8px; width: 34%; border-bottom: 1px solid #111; padding-bottom: 4px; position: relative; }
+.hud-rails > div:first-child i { display: block; height: 3px; background: #111; position: absolute; bottom: -2px; left: 62px; }
+.hud-rails > div:last-child { justify-content: flex-end; }
+.hud-rails b { font-weight: 400 !important; letter-spacing: .2em !important; }
+.console { position: relative; display: grid; grid-template-columns: 280px 1fr 300px; height: 64vh; min-height: 520px; background: #000; color: #f1eded; border-radius: 12px; box-shadow: 0 40px 60px -30px rgba(0,0,0,.35); }
+.console::before, .console::after { content: ""; position: absolute; top: 34%; width: 14px; height: 32%; background: #f1eded; }
+.console::before { left: -2px; border-radius: 0 10px 10px 0; } .console::after { right: -2px; border-radius: 10px 0 0 10px; }
+.console .col { padding: 26px 26px; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 1; }
+.console .mid { padding: 0; }
+.console .mid .onion { width: 100%; height: 100%; border: 0; background: transparent; }
+.console .sys { display: flex; flex-direction: column; gap: 6px; } .console .sys b { font-size: 12px; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: .04em !important; }
+.console .tag { border: 1px solid #f1eded; font-size: 8px; padding: 1px 5px; align-self: flex-start; text-transform: uppercase !important; letter-spacing: .1em !important; }
+.console .readout { background: #f1eded; color: #111; display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; margin-left: -40px; width: calc(100% + 40px); position: relative; z-index: 3; }
+.console .readout .side { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 9px; text-transform: uppercase !important; letter-spacing: .12em !important; border-right: 1px solid #111; padding-left: 4px; }
+.console .readout b { font-size: 52px; font-weight: 200 !important; line-height: 1; flex: 1; }
+.console .readout .unit { font-size: 14px; border-left: 1px solid #111; padding-left: 8px; }
+.console .dials { display: flex; gap: 22px; }
+.dial { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 9px; color: #b9b5b5; }
+.dial svg { fill: none; stroke: #f1eded; stroke-width: 1; } .dial polygon { fill: #f1eded; stroke: none; }
+.console .facts { display: flex; flex-direction: column; gap: 0; margin: 0; font-size: 12px; }
+.console .facts div { display: grid; grid-template-columns: 1fr auto; padding: 7px 8px; }
+.console .facts dt { color: #f1eded; } .console .facts dd { margin: 0; color: #f1eded; }
+.console .facts .on { background: #f1eded; } .console .facts .on dt, .console .facts .on dd { color: #111; }
+.console .graph { background: #f1eded; color: #111; padding: 10px 12px; margin-right: -40px; position: relative; z-index: 3; }
+.console .gh { display: flex; justify-content: space-between; font-size: 9px; font-weight: 600 !important; text-transform: uppercase !important; margin-bottom: 8px; }
+.console .graph svg { width: 100%; height: 90px; display: block; }
+.console .graph polygon { fill: #111; } .console .graph polyline { fill: none; stroke: #111; stroke-width: .8; }
+.console .gx { display: flex; justify-content: space-between; font-size: 8px; color: #6d6a6a; margin-top: 4px; }
+.console .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: auto; }
+.console .tile { position: relative; border: 1px solid rgba(241,237,237,.35); padding: 8px 8px 8px 14px; display: flex; flex-direction: column; gap: 2px; min-height: 64px; }
+.console .tile .n { font-size: 7px; color: #9a9696; }
+.console .tile b { font-size: 22px; font-weight: 300 !important; line-height: 1; }
+.console .tile span:last-of-type { font-size: 9px; }
+.console .tile i { position: absolute; left: 4px; bottom: 6px; width: 3px; background: #f1eded; }
+
+/* paper: the title in the page's own font and size, nothing special about any word */
+:root[data-theme="paper"]:not([data-variant]) .brain-top .title-box h1, :root[data-theme="paper"]:not([data-variant]) .brain-top .title-box h1 .accent { font-family: 'Departure Mono', monospace !important; font-size: 18px !important; font-weight: 400 !important; letter-spacing: .04em !important; line-height: 1.3 !important; color: #222423 !important; -webkit-font-smoothing: antialiased; }
+:root[data-theme="paper"]:not([data-variant]) .brain-top .title-box { max-width: 420px; }
+
+/* paper: one font everywhere, the nav's and the stages box's. titles only a little larger */
+:root[data-theme="paper"]:not([data-variant]) *, :root[data-theme="paper"]:not([data-variant]) body, :root[data-theme="paper"]:not([data-variant]) p, :root[data-theme="paper"]:not([data-variant]) button, :root[data-theme="paper"]:not([data-variant]) input { font-family: 'Departure Mono', ui-monospace, monospace !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: .04em !important; }
+:root[data-theme="paper"]:not([data-variant]) p, :root[data-theme="paper"]:not([data-variant]) li, :root[data-theme="paper"]:not([data-variant]) td, :root[data-theme="paper"]:not([data-variant]) dd, :root[data-theme="paper"]:not([data-variant]) span { font-size: 12px !important; line-height: 1.6 !important; }
+:root[data-theme="paper"]:not([data-variant]) h1 { font-size: 18px !important; line-height: 1.3 !important; }
+:root[data-theme="paper"]:not([data-variant]) h2 { font-size: 15px !important; }
+:root[data-theme="paper"]:not([data-variant]) h3 { font-size: 13px !important; }
+
+/* ===== white: the paper theme on a white backdrop, blue as the only accent ===== */
+:root[data-white] { --bg: #ffffff; --panel: #ffffff; color-scheme: light; --dash: #a1a2a2; }
+:root[data-white] body, :root[data-white] .side.tree, :root[data-white] .crumbbar, :root[data-white] .brain-top .title-box, :root[data-white] .panel, :root[data-white] .card, :root[data-white] .stat-box, :root[data-white] .cards, :root[data-white] .defs, :root[data-white] .steps, :root[data-white] .cols, :root[data-white] .stats, :root[data-white] .title-box { background: #ffffff !important; }
+:root[data-white] body::after { opacity: .05 !important; }
+:root[data-white] .tree-item.on::after { background: #2a5dff !important; }
+:root[data-white] .tree-item.on, :root[data-white] .tree-item.on .ti { color: #ffffff !important; }
+:root[data-white] .crumbbar .here { color: #2a5dff !important; }
+:root[data-white] .tree-logo .mark { background: #2a5dff !important; }
+:root[data-white] .crumbbar .crumb-right { background: #2a5dff !important; color: #ffffff !important; }
+:root[data-white] .brain-top .title-box { border-left: 6px solid #2a5dff !important; }
+:root[data-white] button, :root[data-white] .btn { background: #2a5dff !important; color: #ffffff !important; }
+:root[data-white] .steps li::before, :root[data-white] .box .num, :root[data-white] .glossary-letter, :root[data-white] .stat-box strong, :root[data-white] .stats b { color: #2a5dff !important; }
+
+/* ===== head options: the brain alone on the homepage, the title up in the top bar ===== */
+:root[data-head] .brain-top .title-box, :root[data-head] .brain-top ~ section { display: none !important; }
+:root[data-head] .brain-top { margin: -40px 0 -200px !important; }
+:root[data-head] .brain-top .hero-brain .onion { height: calc(100vh - 55px) !important; display: block; }
+:root[data-head="3"] .brain-top .hero-brain .onion { height: calc(100vh - 55px - 61px) !important; }
+:root[data-head] body { overflow: hidden !important; }
+.crumbbar .crumb-title { color: var(--text) !important; text-transform: uppercase; letter-spacing: .04em; font-size: 13px !important; }
+.crumbbar .crumb-title.mid { position: absolute; left: 50%; transform: translateX(-50%); }
+.crumb-sub { display: flex; flex-direction: column; gap: 4px; padding: 10px 28px 12px; background: #ffffff; border-bottom: 1px dashed var(--dash); font-size: 12px; position: sticky; top: 54px; z-index: 5; }
+.crumb-sub span { font-size: 11px !important; line-height: 1.5 !important; color: color-mix(in srgb, var(--text) 75%, transparent); }
+.crumb-sub .crumb-title { font-size: 12px !important; color: var(--text) !important; }
+:root[data-head] footer { display: none !important; } /* brain-only homepage: nothing under it */
+/* homepage: brain fills the window between the top bar and the footer, footer sits on the bottom edge */
+.shell > main:has(.brain-top) { padding-bottom: 0; }
+:root[data-white] .brain-top .hero-brain .onion { height: 100vh !important; }
+/* no top bar: buy sits at the bottom of the sidebar, centred */
+.side-buy { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); white-space: nowrap; text-decoration: none; font-size: 12px; padding: 4px 10px; color: var(--text) !important; }
+:root[data-white] .side-buy { background: #2a5dff; color: #ffffff !important; }
+:root[data-white] .side-buy:hover { background: #222423; }
+/* one line only between the brain and the footer: the frame drops its own bottom edge */
+:root[data-white] .brain-top .hero-brain .onion { border-bottom: 0 !important; }
+/* buy: a full width bar across the bottom of the sidebar, same height as a nav row */
+.side-buy { left: 22px !important; right: 22px; transform: none !important; text-align: center; padding: 9px 0 !important; }
+:root[data-white] .tree-logo .logo-n { color: #17306e; flex-shrink: 0; }
+/* the landing page row: bigger, solid, always first */
+.tree-home { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px 12px; font-size: 13px; text-decoration: none; color: var(--text) !important; border: 1px solid var(--text); }
+.tree-home .ti { flex: none; }
+:root[data-white] .tree-home { border-color: #2a5dff; color: #2a5dff !important; }
+:root[data-white] .tree-home.on { background: #2a5dff; color: #ffffff !important; }
+:root[data-white] .tree-home.on .ti, :root[data-white] .tree-home:hover .ti { color: inherit !important; }
+:root[data-white] .tree-home:hover { background: #2a5dff; color: #ffffff !important; }
+/* active row: the cobalt fill now reaches back under the icon so the white icon shows */
+:root[data-white] .tree-item.on::after { left: 12px !important; }
+/* live marker on the Network row: a solid pink dot that blinks, no glow */
+.tree-home .live-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50% !important; background: #ff3fa4; animation: live-blink 1.2s steps(1, end) infinite; }
+@keyframes live-blink { 50% { opacity: 0; } }
+/* navy: the Network row and the buy bar share the logo's navy */
+:root[data-white] .tree-home, :root[data-white] .tree-home.on, :root[data-white] .tree-home:hover { background: #17306e !important; border-color: #17306e !important; color: #ffffff !important; }
+:root[data-white] .tree-home .ti { color: #ffffff !important; }
+:root[data-white] .side-buy { background: #17306e !important; color: #ffffff !important; }
+:root[data-white] .side-buy:hover { background: #111111 !important; }
+/* live marker: a square box like the hero's tick boxes, pink border always on, pink fill blinking inside */
+.tree-home .live-dot { width: 14px !important; height: 14px !important; border-radius: 0 !important; background: none !important; border: 2px solid #ff3fa4; box-sizing: border-box; display: grid; place-items: center; animation: none !important; }
+.tree-home .live-dot::after { content: ""; width: 6px; height: 6px; background: #ff3fa4; animation: live-blink 1.2s steps(1, end) infinite; }
+/* live marker, final: solid pink square with a black border like the hero's pink icons, the whole square blinks */
+.tree-home .live-dot { width: 12px !important; height: 12px !important; background: #ff3fa4 !important; border: 2px solid #111111 !important; animation: live-blink 1.2s steps(1, end) infinite !important; }
+.tree-home .live-dot::after { content: none; }
+/* loading text sits in the centre of the main area, not the top left */
+.page-loading { position: fixed; top: 50%; left: calc(var(--side) + (100vw - var(--side)) / 2); transform: translate(-50%, -50%); margin: 0; }
+/* loading: the word stays put, only the dots after it count up */
+.page-loading { width: 10ch; margin-left: -1.5ch !important; text-align: left; transform: translateY(-50%) !important; }
+.page-loading .dots::after { content: ''; animation: dots 1.2s steps(1, end) infinite; }
+@keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+/* Network row: no navy fill, navy text and icon on the page */
+:root[data-white] .tree-home, :root[data-white] .tree-home.on, :root[data-white] .tree-home:hover { background: none !important; border-color: transparent !important; color: #17306e !important; }
+:root[data-white] .tree-home .ti { color: #17306e !important; }
+/* Network: a plain row like the folders, dotted dash, icon, name, and the pink live box */
+.tree-net { text-decoration: none; }
+.tree-net .live-dot { margin-left: 8px; width: 12px; height: 12px; background: #ff3fa4; border: 2px solid #111111; box-sizing: border-box; animation: live-blink 1.2s steps(1, end) infinite; }
+.page-loading { margin: 0 !important; transform: translate(-50%, -50%) !important; text-align: left; z-index: 3; }
+.tree-net .live-dot { width: 10px !important; height: 10px !important; border: 1.5px solid #222423 !important; }
+/* virtual tour: cobalt bar just above buy, same shape */
+.side-tour { all: unset; cursor: pointer; position: absolute; left: 22px; right: 22px; bottom: 69px; text-align: center; padding: 9px 0; font-size: 12px; background: #2a5dff !important; color: #ffffff !important; letter-spacing: .06em; }
+.side-tour:hover { background: #111111 !important; }
+/* logo row: the mark, then the tagline beside it, no wordmark */
+.tree-logo { align-items: center; margin-bottom: 22px !important; }
+.tree-logo .tree-tag { margin: 0; font-size: 10px !important; font-style: italic; line-height: 1.45; text-transform: uppercase; }
+.tree-logo .logo-n { width: 28px; height: 28px; }
+/* tagline back under the logo, plain text; only the logo is a link */
+.tree-logo { display: inline-flex !important; align-self: flex-start; margin-bottom: 12px !important; }
+.tree-tag { margin: 0 0 22px !important; font-size: 10px !important; font-style: italic; line-height: 1.5; text-transform: uppercase; cursor: default; }
+.tree-logo { margin-bottom: 16px !important; }
+/* glossary: each group is letter then a plain list, each row term then definition (the global dl grid had squeezed rows side by side) */
+.glossary dl { display: block !important; margin: 0; }
+.glossary .glossary-group { display: grid !important; grid-template-columns: 48px 1fr !important; gap: 12px; align-items: start; }
+.glossary .glossary-row { display: grid !important; grid-template-columns: 200px 1fr !important; gap: 24px; padding: 8px 0; }
+.glossary .glossary-row dt { margin: 0; }
+/* rules boxes are buttons: keep their text ink on the white card, not the white of a normal button */
+:root[data-white] button.card.box, :root[data-white] button.card.box b, :root[data-white] button.card.box span { color: #222423 !important; }
+:root[data-white] button.card.box .num, :root[data-white] button.card.box .more { color: #2a5dff !important; }
+/* market cards: the seller bar is navy with white text */
+:root[data-white] .post-head { background: #17306e !important; color: #ffffff !important; }
+:root[data-white] .post-head a, :root[data-white] .post-head .muted, :root[data-white] .post-head .price, :root[data-white] .post-head .price small, :root[data-white] .post-head span { color: #ffffff !important; }
+:root[data-white] .post-head .avatar { color: #222423 !important; }
+/* chat: one window filling the screen, the conversation scrolls, the type bar stays on the bottom edge */
+:root[data-white] .chat { display: flex; flex-direction: column; height: calc(100vh - 80px); }
+:root[data-white] .chat .chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 !important; }
+:root[data-white] .chat .chat-log { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 24px; }
+:root[data-white] .chat .chat-foot { border-top: 1px dashed var(--dash); padding: 16px 24px 18px; background: #ffffff; }
+:root[data-white] .chat .suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 12px; }
+:root[data-white] .chat .suggest-label { width: 100%; font-size: 9px !important; color: #9aa0a8; }
+:root[data-white] .chat .suggest-q { all: unset; cursor: pointer; font-size: 12px; color: #9aa0a8 !important; text-transform: uppercase; letter-spacing: .06em; }
+:root[data-white] .chat .suggest-q:hover { color: #2a5dff !important; }
+:root[data-white] .chat .chat-foot form { margin: 0; }
+:root[data-white] .chat .chat-foot form input { flex: 1; }
+/* chat starter prompts: plain grey words, no button fill */
+:root[data-white] .chat .suggest-q, :root[data-white] .chat .suggest-q:hover { background: none !important; border: 0 !important; padding: 0 !important; box-shadow: none !important; }
+/* market: each listing its own dashed card, no outline running across empty space */
+:root[data-white] .cards { border: 0 !important; border-radius: 0; gap: 16px; overflow: visible; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+:root[data-white] .cards .card { border: 1px dashed var(--dash) !important; border-radius: 0; }
+:root[data-white] .post-head { padding: 10px 12px 10px 10px; gap: 12px; }
+:root[data-white] .post-head .avatar { background: #ffffff !important; border: 0 !important; border-radius: 0; padding: 0; overflow: hidden; }
+:root[data-white] .post-head .price { margin-left: auto; align-self: center; }
+/* wallet pop up: centred on the screen, the rest dims, an X to close; flat, no shadow */
+.menu-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(17, 17, 17, .45); display: grid; place-items: center; }
+.menu.menu-modal { position: static !important; width: 320px; max-width: calc(100vw - 40px); background: #ffffff !important; border: 1px dashed var(--dash) !important; border-radius: 0 !important; box-shadow: none !important; padding: 16px 18px 18px !important; gap: 10px; }
+.menu-modal .menu-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px dashed var(--dash); font-size: 12px; text-transform: uppercase; }
+.menu-modal .menu-x { all: unset; cursor: pointer; width: 14px; height: 14px; border: 1.5px solid #111111; box-sizing: border-box; display: grid; place-items: center; background: #ffffff; }
+.menu-modal .menu-x svg { stroke: #111111; stroke-width: 1.6; display: block; }
+.menu-modal .menu-x:hover { background: #111111; } .menu-modal .menu-x:hover svg { stroke: #ffffff; }
+.menu-modal .link, .menu-modal a { padding: 10px 0; border-bottom: 1px dashed #c3c7ce; }
+.connect-host { position: absolute; width: 0; height: 0; overflow: visible; }
+/* the pop up's X is the tour's X: 14px white square, 1.5px black edge, thin black cross; black with a white cross on hover */
+:root[data-white] .menu-backdrop .menu-modal button.menu-x, .menu-modal .menu-x { all: unset !important; cursor: pointer !important; width: 14px !important; height: 14px !important; min-width: 0 !important; padding: 0 !important; margin: 0 !important; border: 1.5px solid #111111 !important; border-radius: 0 !important; box-sizing: border-box !important; display: grid !important; place-items: center !important; background: #ffffff !important; box-shadow: none !important; }
+.menu-modal .menu-x svg { width: 10px !important; height: 10px !important; stroke: #111111 !important; stroke-width: 1.6 !important; fill: none !important; display: block !important; }
+:root[data-white] .menu-backdrop .menu-modal button.menu-x:hover, .menu-modal .menu-x:hover { background: #111111 !important; } .menu-modal .menu-x:hover svg { stroke: #ffffff !important; }
+:root[data-white] .chat .suggest-label { color: #c3c7ce !important; }
+/* starter prompts stacked one per line under the label */
+:root[data-white] .chat .suggest { flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; }
+/* no footer: the copyright sits small and light grey at the very bottom of the sidebar, like the chat's prompt label */
+.side-copy { position: absolute; left: 22px; right: 22px; bottom: 10px; margin: 0; text-align: center; font-size: 9px !important; color: #c3c7ce !important; text-transform: uppercase; letter-spacing: .06em; }
+.side-buy { bottom: 34px !important; }
+.side-tour { bottom: 77px !important; }
+.side-copy { font-size: 7px !important; letter-spacing: .08em; }
+/* market price sort: a plain box like the search field, our own thin chevron sitting just inside the right edge */
+:root[data-white] .search-row select { appearance: none; -webkit-appearance: none; height: 46px; padding: 0 34px 0 14px !important; min-width: 150px; border-radius: 0; cursor: pointer; text-transform: uppercase; font-family: inherit;
+  background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='10' height='10'%3E%3Cpath d='M2.5 4.5 L6 8 L9.5 4.5' fill='none' stroke='%23222423' stroke-width='1.4' stroke-linecap='square'/%3E%3C/svg%3E") no-repeat right 14px center !important; }
+:root[data-white] .search-row select:hover { border-color: #2a5dff; }
+/* market filters: a second row of the same plain boxes */
+:root[data-white] .filter-row { margin-top: -14px; }
+:root[data-white] .filter-row select { flex: 1; }
+:root[data-white] .filter-row .filter-clear { all: unset; cursor: pointer; align-self: center; padding: 0 6px; font-size: 11px; text-transform: uppercase; color: #2a5dff !important; background: none !important; }
+/* every pop up matches: navy tinted dim behind, white box, dashed edge, title row with the same X, no shadow */
+.menu-backdrop, :root[data-white] .modal-back { background: rgba(23, 48, 110, .42) !important; }
+:root[data-white] .modal { background: #ffffff !important; border: 1px dashed var(--dash) !important; border-radius: 0 !important; box-shadow: none !important; padding: 16px 18px 18px !important; width: min(480px, 100%); }
+:root[data-white] .modal .menu-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px dashed var(--dash); font-size: 12px; text-transform: uppercase; }
+:root[data-white] .modal .menu-head button.menu-x, :root[data-white] .modal .menu-x { all: unset !important; cursor: pointer !important; width: 14px !important; height: 14px !important; border: 1.5px solid #111111 !important; box-sizing: border-box !important; display: grid !important; place-items: center !important; background: #ffffff !important; }
+:root[data-white] .modal .menu-x svg { width: 10px !important; height: 10px !important; stroke: #111111 !important; stroke-width: 1.6 !important; fill: none !important; display: block !important; }
+:root[data-white] .modal .menu-head button.menu-x:hover { background: #111111 !important; } :root[data-white] .modal .menu-x:hover svg { stroke: #ffffff !important; }
+/* our dropdown: closed it is the same box as the search field; open, a white list with a dashed edge, the chosen row marked, navy on hover */
+.dd { position: relative; min-width: 150px; }
+.filter-row .dd { flex: 1; }
+:root[data-white] .dd button.dd-box, .dd .dd-box { all: unset !important; box-sizing: border-box !important; cursor: pointer !important; width: 100% !important; height: 46px !important; padding: 0 14px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px; background: #ffffff !important; border: 1px solid #c3c7ce !important; color: #222423 !important; font-size: 12px !important; text-transform: uppercase; letter-spacing: .06em; }
+.dd .dd-box svg { fill: none; stroke: #222423; stroke-width: 1.4; flex: none; transition: transform .15s; }
+.dd.open .dd-box svg { transform: rotate(180deg); }
+:root[data-white] .dd button.dd-box:hover, :root[data-white] .dd.open button.dd-box, .dd .dd-box:hover, .dd.open .dd-box { border-color: #2a5dff !important; }
+.dd-list { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px 0; list-style: none; background: #ffffff; border: 1px dashed var(--dash); max-height: 280px; overflow-y: auto; }
+.dd-list li { padding: 10px 14px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #222423; cursor: pointer; }
+.dd-list li.on { color: #2a5dff; }
+.dd-list li:hover { background: #17306e; color: #ffffff; }
+/* verify holdings: one box with a black edge; navy fills it left to right as each check passes, the words turn white under the fill */
+:root[data-white] .modal button.verify-bar { all: unset !important; box-sizing: border-box !important; position: relative !important; display: block !important; width: 100% !important; height: 40px !important; border: 1.5px solid #111111 !important; background: #ffffff !important; cursor: pointer !important; overflow: hidden !important; text-align: center; }
+:root[data-white] .modal button.verify-bar.running { cursor: default !important; }
+.verify-bar .vb-text { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #222423; white-space: nowrap; }
+.verify-bar .vb-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #17306e; overflow: hidden; transition: width .6s linear; }
+.verify-bar .vb-fill .vb-text { color: #ffffff; width: var(--vbw, 100%); }
+:root[data-white] .modal button.verify-bar:hover:not(.running) { border-color: #2a5dff !important; }
+/* the white words under the fill line up exactly with the dark words: same full width as the box */
+:root[data-white] .modal button.verify-bar { container-type: inline-size; }
+.verify-bar .vb-fill .vb-text { inset: 0 auto 0 0 !important; width: 100cqw !important; }
+/* verify screen inside the pop up */
+.verify { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 10px 0 4px; }
+.verify-title { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.verify-bar2 { width: 100%; height: 14px; border: 1.5px solid #111111; background: #ffffff; box-sizing: border-box; }
+.verify-bar2 > div { height: 100%; background: #17306e; transition: width .55s linear; }
+.verify-steps { list-style: none; margin: 4px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.verify-steps li { display: flex; align-items: center; gap: 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #222423; }
+.verify-steps li.wait { color: #c3c7ce; }
+.verify-steps .vs-box { width: 14px; height: 14px; box-sizing: border-box; border: 1.5px solid #c3c7ce; display: grid; place-items: center; flex: none; }
+.verify-steps li.now .vs-box { border-color: #111111; background: #ff3fa4; animation: live-blink 1.2s steps(1, end) infinite; }
+.verify-steps li.ok .vs-box { border-color: #17306e; background: #17306e; }
+.verify-steps li.bad .vs-box { border-color: #111111; background: #ff3fa4; }
+.verify-steps .vs-box svg { width: 10px; height: 10px; fill: none; stroke: #ffffff; stroke-width: 1.8; }
+.verify-steps li.bad .vs-box svg { stroke: #111111; }
+.verify .wide { width: 100%; margin-top: 4px; }
+:root[data-white] .verify button.verify-back { all: unset !important; cursor: pointer !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: .06em; color: #9aa0a8 !important; }
+:root[data-white] .verify button.verify-back:hover { color: #2a5dff !important; }
+/* dropdown lists: shorter, with a thin navy scrollbar */
+.dd-list { max-height: 196px !important; }
+.dd-list::-webkit-scrollbar { width: 4px; }
+.dd-list::-webkit-scrollbar-track { background: transparent; }
+.dd-list::-webkit-scrollbar-thumb { background: #17306e; }
+/* the scrollbar: square navy thumb, thin, and the track is inset top and bottom so the thumb runs shorter */
+.dd-list::-webkit-scrollbar { width: 4px !important; }
+.dd-list::-webkit-scrollbar-track { background: transparent !important; margin: 26px 0 !important; }
+.dd-list::-webkit-scrollbar-thumb { background: #17306e !important; border-radius: 0 !important; }
+/* market sort: wider so each choice sits on one line; the search field gives up the room */
+:root[data-white] .search-row > .dd { flex: 0 0 240px; }
+.dd-list li { white-space: nowrap; }
+/* buy window: one fixed size whether it shows the details or the checks; the button always sits at the bottom */
+:root[data-white] .modal .buybox { height: 300px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
+:root[data-white] .modal .buybox .post-details { margin: 14px 0 0; }
+:root[data-white] .modal .buybox > .wide, :root[data-white] .modal .buybox > button.verify-bar { width: 100% !important; height: 40px !important; margin: 0; flex: none; }
+.verify { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 0; }
+.verify .morph-logo { display: block; }
+/* the hero's tick boxes: 16px, 2px black edge; waiting is empty, checking blinks pink, passed is cobalt with a white tick, failed is pink with a black cross */
+.verify-steps { gap: 12px; }
+.verify-steps .vs-tick { position: relative; width: 16px; height: 16px; box-sizing: border-box; border: 2px solid #222423; background: transparent; flex: none; display: grid; place-items: center; }
+.verify-steps li.wait { color: #c3c7ce; } .verify-steps li.wait .vs-tick { border-color: #c3c7ce; }
+.verify-steps li.now .vs-tick { background: #ff3fa4; animation: live-blink 1.2s steps(1, end) infinite; }
+.verify-steps li.ok .vs-tick { background: #2a5dff; }
+.verify-steps li.ok .vs-tick::after { content: ""; width: 7px; height: 3.5px; border-left: 2px solid #ffffff; border-bottom: 2px solid #ffffff; transform: translateY(-1.5px) rotate(-45deg); }
+.verify-steps li.bad .vs-tick { background: #ff3fa4; }
+.verify-steps li.bad .vs-tick::after { content: "\00d7"; color: #111111; font-size: 13px; line-height: 1; }
+.page-empty { width: auto !important; }
+/* scrollbar with white space either side: a 10px gutter, the 4px navy thumb drawn in its middle, so it touches neither the edge nor the hovered rows */
+.dd-list::-webkit-scrollbar { width: 12px !important; }
+.dd-list::-webkit-scrollbar-thumb { background: #17306e !important; border: 4px solid #ffffff !important; background-clip: padding-box !important; border-radius: 0 !important; }
+/* constraints: one vertical list, numbered, every part shown in full */
+.rule-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.rule-item { padding: 26px 0; border-bottom: 1px dashed var(--dash); }
+.rule-item:first-child { border-top: 1px dashed var(--dash); }
+.rule-head { display: flex; align-items: baseline; gap: 14px; }
+.rule-head .num { color: #2a5dff; font-size: 16px; min-width: 18px; }
+.rule-head h3 { margin: 0; font-size: 14px; font-weight: 400; text-transform: uppercase; letter-spacing: .06em; }
+.rule-short { margin: 8px 0 0 32px; }
+.rule-body { margin: 12px 0 0 32px; }
+.rule-body table { width: 100%; }
+/* The network row in bold */
+.tree-net { font-weight: 700 !important; }
+.tree-net { -webkit-text-stroke: .45px currentColor; } /* the font has one weight, so bold is drawn as a slightly thicker outline */
+/* ===== the live brain, mounted once ===== */
+.hero-spacer { height: 100vh; }
+.brain-dock { position: fixed; left: var(--side); right: 0; top: 0; z-index: 3; background: #ffffff; }
+.brain-dock.full { height: 100vh; }
+.brain-dock iframe.onion { display: block; width: 100% !important; max-width: none !important; margin: 0 !important; height: 100% !important; border: 0 !important; }
+.brain-dock.split { border-bottom: 0; }
+/* the bar between the two halves: drag it up or down */
+.split-bar { position: fixed; left: var(--side); right: 0; height: 12px; margin-top: -1px; z-index: 4; cursor: row-resize; background: #ffffff; border-top: 1.5px solid #111111; border-bottom: 1px dashed var(--dash); display: grid; place-items: center; }
+.split-bar .grip { width: 34px; height: 4px; border-top: 1.5px solid #111111; border-bottom: 1.5px solid #111111; }
+.split-bar:hover { background: #17306e; } .split-bar:hover .grip { border-color: #ffffff; }
+body.dragging-split { user-select: none; cursor: row-resize; } body.dragging-split .brain-dock { pointer-events: none; }
+/* the split switch on The network row */
+.tree-net { flex: 1; }
+.tree-group:first-child { display: flex; align-items: center; }
+:root[data-white] button.split-toggle { all: unset !important; cursor: pointer !important; margin-left: 8px !important; width: 20px !important; height: 20px !important; display: grid !important; place-items: center !important; }
+.split-toggle .split-ic { stroke: #222423; stroke-width: 1.4; }
+.split-toggle .split-ic rect:last-child { fill: transparent; stroke: #222423; }
+.split-toggle.on .split-ic rect:last-child { fill: #17306e; stroke: #17306e; }
+.split-toggle:hover .split-ic rect:last-child { fill: #2a5dff; stroke: #2a5dff; }
+/* hover tag on the split switch, the same as the brain's shortcut tags: small black label with a pointer */
+:root[data-white] button.split-toggle { position: relative !important; }
+.split-toggle::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #222423; color: #ffffff; font-size: 7px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 4px; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 5; }
+.split-toggle::before { content: ''; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid #222423; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.split-toggle:hover::after, .split-toggle:hover::before { opacity: 1; }
+/* split view, round two */
+.brain-dock { overflow: hidden; }
+/* the brain keeps its full window size; the pane just shows the top of it, and the bar slides over it */
+.brain-dock iframe.onion { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100vh !important; }
+.split-bar { border-bottom: 0 !important; }
+/* close split screen: the same X as the tour, at the right end of the bar */
+:root[data-white] .split-bar button.split-x { all: unset !important; position: absolute !important; right: 14px !important; top: 50% !important; transform: translateY(-50%) !important; width: 14px !important; height: 14px !important; border: 1.5px solid #111111 !important; box-sizing: border-box !important; background: #ffffff !important; display: grid !important; place-items: center !important; cursor: pointer !important; }
+.split-bar .split-x svg { stroke: #111111; stroke-width: 1.6; fill: none; display: block; }
+:root[data-white] .split-bar button.split-x:hover { background: #111111 !important; } .split-bar .split-x:hover svg { stroke: #ffffff; }
+.split-bar .split-x::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); right: -4px; white-space: nowrap; background: #222423; color: #ffffff; font-size: 7px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 4px; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.split-bar .split-x:hover::after { opacity: 1; }
+.split-bar { height: 22px; }
+/* loading in split view: centred in the lower half, not over the brain */
+.split-main .page-loading { top: calc(var(--split-top) + (100vh - var(--split-top)) / 2) !important; }
+/* verify holdings: a solid cobalt button that fills navy as it checks */
+:root[data-white] .modal button.verify-bar { background: #2a5dff !important; border-color: #2a5dff !important; }
+:root[data-white] .modal button.verify-bar .vb-text { color: #ffffff !important; }
+:root[data-white] .modal button.verify-bar:hover:not(.running) { background: #17306e !important; border-color: #17306e !important; }
+/* the verify button: always the last thing in the window, words always readable in white over cobalt or the navy fill */
+:root[data-white] .modal .buybox > button.verify-bar, :root[data-white] .modal .buybox > .wide { margin-top: auto !important; }
+.verify-bar .vb-fill .vb-text { color: #ffffff !important; }
+.brain-dock, .brain-dock.split { display: block !important; grid-template-columns: none !important; } /* an older ".split" grid rule had split the pane into two columns */
+/* the Mac scrollbar floats over the right edge while things move, so the X sits clear of it */
+:root[data-white] .split-bar button.split-x { right: 30px !important; }
+/* verify button: white words in every state, over cobalt or the navy fill */
+:root[data-white] .modal button.verify-bar, :root[data-white] .modal button.verify-bar *, :root[data-white] .modal button.verify-bar.running .vb-text, :root[data-white] .modal button.verify-bar:disabled .vb-text { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important; }
+:root[data-white] .modal button.verify-bar:disabled { opacity: 1 !important; background: #2a5dff !important; }
+/* verify loader: the listing's own neuron, spinning slowly while the checks run, still when they finish */
+.verify-spin { display: block; width: 64px; height: 64px; }
+.verify-spin svg { width: 64px; height: 64px; display: block; }
+.verify-spin.on svg { animation: neuron-spin 2.4s linear infinite; }
+@keyframes neuron-spin { to { transform: rotate(360deg); } }
+.pop-toggle { margin-left: 2px !important; }
+.pop-toggle .split-ic path { stroke: #222423; }
+.pop-toggle:hover .split-ic rect, .pop-toggle:hover .split-ic path { stroke: #2a5dff; }
+.verify-bar .vb-fill { z-index: 1; } .verify-bar > .vb-text { z-index: 2; color: #ffffff !important; }
+/* The network row back on one line; its two tools sit underneath as small labelled buttons */
+.tree-group:first-child { display: block !important; }
+.net-tools { display: flex; gap: 6px; margin: 2px 0 6px 14px; }
+:root[data-white] .net-tools button.net-tool { all: unset !important; cursor: pointer !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 4px 7px !important; border: 1px dashed var(--dash) !important; background: #ffffff !important; font-size: 8px !important; text-transform: uppercase !important; letter-spacing: .06em !important; color: #222423 !important; }
+:root[data-white] .net-tools button.net-tool .split-ic { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.4; }
+.net-tools .net-tool .split-ic rect:last-child { fill: transparent; }
+:root[data-white] .net-tools button.net-tool:hover { background: #17306e !important; color: #ffffff !important; border-style: solid !important; }
+:root[data-white] .net-tools button.net-tool.on { background: #17306e !important; color: #ffffff !important; border-style: solid !important; }
+.net-tools .net-tool.on .split-ic rect:last-child { fill: #ffffff; }
+:root[data-white] .net-tools button.net-tool { white-space: nowrap !important; font-size: 7.5px !important; padding: 4px 6px !important; }
+/* dropdown rows can carry the hero's little icons */
+.dd-ic { display: inline-flex; width: 16px; height: 16px; margin-right: 10px; vertical-align: -4px; flex: none; }
+.dd-ic svg { display: block; }
+.dd-cur { display: inline-flex; align-items: center; }
+.dd-list li { display: flex; align-items: center; }
+.dd-list li:hover .dd-ic svg g:first-child { stroke: #17306e; }
+/* ===== Home ===== */
+.tree-home-row { text-decoration: none; }
+.home { padding-bottom: 40px; }
+.home-hero { display: grid; grid-template-columns: 1fr 420px; gap: 40px; align-items: center; min-height: calc(100vh - 120px); border-bottom: 1px dashed var(--dash); margin-bottom: 8px; }
+.home-hero h1 { font-size: 34px !important; line-height: 1.15; margin: 0 0 18px; font-weight: 400; text-transform: uppercase; letter-spacing: .04em; max-width: 560px; }
+.home-hero p { max-width: 520px; margin: 0 0 26px; }
+.home-actions { display: flex; gap: 10px; }
+.home-actions .btn { display: inline-block; padding: 12px 18px; background: #2a5dff; color: #ffffff !important; text-decoration: none; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.home-actions .btn.ghost { background: #ffffff; color: #222423 !important; border: 1px dashed var(--dash); }
+.home-actions .btn:hover { background: #17306e; color: #ffffff !important; }
+.home-field { width: 420px; height: 420px; display: block; }
+.home-block { padding: 48px 0; border-bottom: 1px dashed var(--dash); }
+.home-block h2 { margin: 0 0 6px; font-size: 16px; font-weight: 400; text-transform: uppercase; letter-spacing: .06em; }
+.home-sub { margin: 0 0 22px; }
+.home-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.home-checks { grid-template-columns: repeat(3, 1fr); }
+.home-steps li { border: 1px dashed var(--dash); padding: 18px; display: flex; flex-direction: column; gap: 10px; background: #ffffff; }
+.home-steps .num { color: #2a5dff; font-size: 18px; }
+.home-steps b { font-weight: 400; text-transform: uppercase; letter-spacing: .06em; }
+.home-layers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.home-layer { border: 1px dashed var(--dash); padding: 18px; background: #ffffff; display: flex; flex-direction: column; gap: 8px; }
+.home-layer-ic { display: block; width: 40px; height: 40px; margin-bottom: 6px; }
+.home-layer b { font-weight: 400; text-transform: uppercase; letter-spacing: .06em; }
+.home-layer-range { font-size: 11px; color: #9aa0a8; text-transform: uppercase; }
+.home-layer p { margin: 0; }
+.home-layer-why { color: #222423; }
+.home-layer-why em { font-style: normal; color: #2a5dff; }
+.home-note { margin: 16px 0 0; font-size: 11px !important; color: #9aa0a8; }
+.home-faq { border-top: 1px dashed var(--dash); }
+:root[data-white] .home-hero h1 { font-size: 34px !important; line-height: 1.15 !important; }
+:root[data-white] .home-block h2 { font-size: 16px !important; }
+/* questions: plain rows with a dashed line under each, the plus on the right, never a filled button */
+:root[data-white] .fold button.fold-q { all: unset !important; box-sizing: border-box !important; cursor: pointer !important; width: 100% !important; display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 16px 0 !important; color: #222423 !important; font-size: 12px !important; text-transform: uppercase; letter-spacing: .06em; background: none !important; }
+:root[data-white] .fold { border: 0 !important; border-bottom: 1px dashed var(--dash) !important; background: none !important; }
+:root[data-white] .fold button.fold-q b { color: #2a5dff; font-weight: 400; font-size: 16px; }
+:root[data-white] .fold button.fold-q:hover { color: #2a5dff !important; }
+:root[data-white] .fold .fold-a { padding: 0 0 16px; }
+/* ===== Home, rebuilt on the Sequents structure: lots of space, no dividers between sections ===== */
+.home { max-width: 1040px; margin: 0 auto; padding-bottom: 120px; }
+.home-tag { margin: 8px 0 18px; font-size: 12px !important; text-transform: uppercase; letter-spacing: .06em; max-width: 220px; line-height: 1.5; }
+.home-frame { border: 1px dashed var(--dash); background: #ffffff; padding: 30px 20px; }
+.home-sketch { display: block; width: 100%; height: auto; }
+.home-terms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 16px; }
+.home-terms p { margin: 0; font-size: 11px !important; color: #9aa0a8; line-height: 1.6; }
+.home-terms p:nth-child(2) { text-align: center; } .home-terms p:nth-child(3) { text-align: right; }
+.home-terms b { color: #222423; font-weight: 400; margin-right: 8px; text-transform: uppercase; }
+.home-essay { max-width: 680px; margin: 220px auto; text-align: center; }
+.home-essay p { font-size: 17px !important; line-height: 1.75 !important; margin: 0 0 40px; text-transform: uppercase; letter-spacing: .04em; }
+.home-cta-label { display: block; font-size: 10px; color: #9aa0a8; text-transform: uppercase; margin-bottom: 10px; }
+.home-cta { display: inline-block; padding: 12px 20px; background: #17306e; color: #ffffff !important; text-decoration: none; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.home-cta:hover { background: #2a5dff; }
+.home-section { margin: 0 0 200px; text-align: center; }
+.home-section h2 { margin: 0 0 8px; font-size: 13px !important; font-weight: 400; text-transform: uppercase; letter-spacing: .08em; }
+.home-section .home-sub { max-width: 460px; margin: 0 auto 36px; color: #9aa0a8; font-size: 11px !important; }
+.home-panels { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px dashed var(--dash); text-align: left; background: #ffffff; }
+.home-panels-3 { grid-template-columns: repeat(3, 1fr); }
+.home-panel { padding: 28px 24px 32px; display: flex; flex-direction: column; gap: 12px; }
+.home-panel + .home-panel { border-left: 1px dashed var(--dash); }
+.home-panel .num { color: #2a5dff; font-size: 18px; }
+.home-panel b { font-weight: 400; text-transform: uppercase; letter-spacing: .06em; }
+.home-panel p { margin: 0; }
+.home-table { width: 100%; border-collapse: collapse; text-align: left; }
+.home-table th { font-weight: 400; font-size: 10px !important; color: #9aa0a8; text-transform: uppercase; padding: 0 12px 12px 0; border-bottom: 1.5px solid #222423; }
+.home-table td { padding: 16px 12px 16px 0; border-bottom: 1px solid #e3e5e8; vertical-align: top; font-size: 12px !important; }
+.home-table td:nth-child(2) { white-space: nowrap; color: #9aa0a8; }
+.home-st { display: inline-flex; align-items: center; gap: 10px; text-transform: uppercase; white-space: nowrap; }
+.home-st i { display: inline-flex; }
+.home-note { margin: 18px 0 0; font-size: 10px !important; color: #9aa0a8; }
+.home-section-narrow .home-faq { max-width: 720px; margin: 0 auto; text-align: left; border-top: 1px dashed var(--dash); }
+:root[data-white] .home-essay p { font-size: 17px !important; line-height: 1.75 !important; } :root[data-white] .home-section h2 { font-size: 13px !important; }
+/* ===== Home hero: the bouncing blob ===== */
+.home-hero2 { position: relative; height: calc(100vh - 80px); min-height: 560px; margin: -12px 0 0; overflow: hidden; }
+.home-blob { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; z-index: 0; }
+.home-panel2 { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(660px, 92%); z-index: 1; outline: 1px dashed var(--dash); }
+.home-panel2-title { padding: 30px 32px 28px; text-align: center; }
+:root[data-white] .home-panel2-title h1 { margin: 0; font-size: 36px !important; line-height: 1 !important; font-weight: 400; text-transform: uppercase; letter-spacing: .01em; color: transparent; }
+.home-panel2-terms { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px dashed var(--dash); background: #ffffff; text-align: left; }
+.home-panel2-terms > div { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 5px; }
+.home-panel2-terms > div + div { border-left: 1px dashed var(--dash); }
+.home-panel2-terms b { font-weight: 400; text-transform: uppercase; }
+.home-panel2-terms span { color: #9aa0a8; font-size: 11px !important; text-transform: uppercase; }
+.home-panel2-cta { position: absolute; left: 50%; top: calc(100% + 18px); transform: translateX(-50%); padding: 11px 18px; background: #17306e; color: #ffffff !important; text-decoration: none; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.home-panel2-cta:hover { background: #2a5dff; }
+.home-hero2 { border-bottom: 1px dashed var(--dash); } /* one dotted line between the hero and the next section */
+.home-hero2 { height: 68vh !important; min-height: 480px !important; max-width: none; } /* shorter hero */
+
+:root { --dash: #a1a2a2; } /* every dotted and dashed line on the site uses this one grey */
+/* the essay opens with one line on its own; the rest waits further down, so you scroll to read it */
+.home-essay { margin-top: 120px !important; }
+:root[data-white] .home-essay .home-essay-lead { margin: 0 0 46vh !important; }
+:root[data-white] .home-essay .home-essay-lead { margin: 0 0 28px !important; }
+:root[data-white] .home-essay .home-essay-until { margin: 0 0 46vh !important; } /* the big pause: you scroll to read on */
+:root[data-white] .home-essay p { margin-bottom: 28px; }
+.side-copy { font-size: 6px !important; letter-spacing: .1em; }
+/* the essay's paragraphs sit the same distance apart */
+:root[data-white] .home-essay .home-essay-until, :root[data-white] .home-essay .home-essay-lead, :root[data-white] .home-essay p { margin: 0 0 56px !important; }
+/* equal gaps, each big enough that on landing only the opening line shows above the fold */
+:root[data-white] .home-essay .home-essay-until, :root[data-white] .home-essay .home-essay-lead, :root[data-white] .home-essay p { margin: 0 0 26vh !important; }
+:root[data-white] .home-essay { margin-top: 90px !important; }
+/* the smallest equal gap that still keeps the next part just below the fold on landing, on any screen height */
+:root[data-white] .home-essay .home-essay-until, :root[data-white] .home-essay .home-essay-lead, :root[data-white] .home-essay p { margin: 0 0 max(110px, calc(32vh - 110px)) !important; }
+/* the layer grid: full width, three across, dotted lines between, symbol top centre and the words underneath */
+.home-layergrid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px dashed var(--dash); border-bottom: 1px dashed var(--dash); margin: 0 0 200px; }
+.home-lg-cell { padding: 44px 36px 48px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.home-lg-cell:not(:nth-child(3n + 1)) { border-left: 1px dashed var(--dash); }
+.home-lg-cell:nth-child(n + 4) { border-top: 1px dashed var(--dash); }
+.home-lg-ic { display: block; width: 44px; height: 44px; margin-bottom: 10px; }
+.home-lg-cell b { font-weight: 400; text-transform: uppercase; letter-spacing: .06em; font-size: 13px; }
+.home-lg-range { font-size: 10px; color: #9aa0a8; text-transform: uppercase; }
+.home-lg-cell p { margin: 4px 0 0; max-width: 280px; }
+.home-lg-why { color: #9aa0a8; }
+/* a small spinning neuron in the exact centre of each gap: the gap is split evenly above and below it */
+.home-spin { display: block; width: 64px; height: 64px; border: 0; margin: 0 auto; background: transparent; pointer-events: none; }
+:root[data-white] .home-essay .home-essay-until, :root[data-white] .home-essay .home-essay-lead, :root[data-white] .home-essay p { margin: 0 0 calc((max(110px, calc(32vh - 110px)) - 64px) / 2) !important; }
+.home-essay .home-spin { margin-bottom: calc((max(110px, calc(32vh - 110px)) - 64px) / 2); }
+/* the layer range: tiny, tucked into the top right corner of its cell */
+.home-lg-cell { position: relative; }
+.home-lg-range { position: absolute; top: 14px; right: 16px; font-size: 7.5px !important; letter-spacing: .08em; color: #9aa0a8; }
+.home-lg-3d { display: block; width: 96px; height: 96px; border: 0; background: transparent; pointer-events: none; margin-bottom: 4px; }
+.home-spin { width: 44px !important; height: 44px !important; }
+:root[data-white] .home-essay .home-essay-until, :root[data-white] .home-essay .home-essay-lead, :root[data-white] .home-essay p { margin: 0 0 calc((max(110px, calc(32vh - 110px)) - 44px) / 2) !important; }
+.home-essay .home-spin { margin-bottom: calc((max(110px, calc(32vh - 110px)) - 44px) / 2) !important; }
+.home-lg-range { font-size: 6.5px !important; top: 12px !important; right: 14px !important; }
+.home-layergrid { margin-bottom: 0 !important; }
+/* the key under the layer grid */
+.home-key { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 30px; padding: 28px 0 200px; text-align: center; }
+.home-key span { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.home-key span i:last-of-type { margin-right: 6px; }
+.home-key i { width: 11px; height: 11px; outline: 1.5px solid #222423; display: inline-block; }
+.home-key p { width: 100%; margin: 6px auto 0; max-width: 560px; color: #9aa0a8; font-size: 11px !important; }
+/* the essay neurons fade in once you scroll */
+.home-spin { opacity: 0; transition: opacity .8s ease; } .home-spin.show { opacity: 1; }
+/* small labels match the sidebar copyright: 6px */
+:root[data-white] .home-lg-cell .home-lg-range, :root[data-white] .home-essay .home-cta-label { font-size: 6px !important; letter-spacing: .1em !important; }
+/* icons at the network page's proportions, a little bigger than its 16px */
+.home-lg-ic { width: 24px !important; height: 24px !important; margin-bottom: 8px !important; }
+/* the key: its own full width dotted box, joined under the grid */
+.home-layergrid { border-bottom: 0 !important; }
+.home-key { border-top: 1px dashed var(--dash); border-bottom: 1px dashed var(--dash); padding: 22px 24px 24px !important; margin-bottom: 200px; }
+:root[data-white] .home-lg-cell .home-lg-range, :root[data-white] .home-essay .home-cta-label { font-size: 8px !important; letter-spacing: .08em !important; }
+/* the drop: fall from the hero's line with gravity, overshoot, and float softly back into place */
+.home-spin { opacity: 0; transition: none !important; }
+.home-spin.show { opacity: 1; animation: neuron-drop 2.1s cubic-bezier(.3, 0, .2, 1) both; }
+@keyframes neuron-drop {
+  0% { transform: translateY(var(--from)); animation-timing-function: cubic-bezier(.55, 0, .9, .45); opacity: 0; }
+  8% { opacity: 1; }
+  48% { transform: translateY(18px); animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
+  72% { transform: translateY(-5px); animation-timing-function: ease-in-out; }
+  88% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+/* how it works grid: four across, same lines as the layer grid */
+.home-grid-title { text-align: center; margin: 0 0 22px; font-size: 13px !important; font-weight: 400; text-transform: uppercase; letter-spacing: .08em; }
+.home-steps4 { grid-template-columns: repeat(4, 1fr) !important; border-bottom: 1px dashed var(--dash) !important; margin-bottom: 200px !important; }
+.home-steps4 .home-lg-cell:not(:nth-child(3n + 1)) { border-left: 0; }
+.home-steps4 .home-lg-cell + .home-lg-cell { border-left: 1px dashed var(--dash) !important; }
+.home-steps4 .home-lg-cell:nth-child(n + 4) { border-top: 0 !important; }
+.home-step-n { color: #2a5dff; font-size: 20px; margin-bottom: 6px; }
+.home-key { margin-bottom: 140px !important; }
+/* motion blur on the fall: stretched and soft while dropping, a small squash on landing, then sharp as it floats back */
+@keyframes neuron-drop {
+  0% { transform: translateY(var(--from)) scaleY(1.45); filter: blur(2.4px); animation-timing-function: cubic-bezier(.55, 0, .9, .45); opacity: 0; }
+  8% { opacity: 1; }
+  44% { transform: translateY(14px) scaleY(1.35); filter: blur(2px); animation-timing-function: linear; }
+  50% { transform: translateY(18px) scaleY(.88); filter: blur(0); animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
+  72% { transform: translateY(-5px) scaleY(1.02); animation-timing-function: ease-in-out; }
+  88% { transform: translateY(2px) scaleY(1); }
+  100% { transform: translateY(0) scaleY(1); filter: blur(0); }
+}
+/* the three small labels share one size: sidebar copyright, See it live, the layer ranges */
+.side-copy, :root[data-white] .home-lg-cell .home-lg-range, :root[data-white] .home-essay .home-cta-label { font-size: 9px !important; letter-spacing: .08em !important; }
+/* fainter motion blur on the fall */
+@keyframes neuron-drop {
+  0% { transform: translateY(var(--from)) scaleY(1.2); filter: blur(1.1px); animation-timing-function: cubic-bezier(.55, 0, .9, .45); opacity: 0; }
+  8% { opacity: 1; }
+  44% { transform: translateY(14px) scaleY(1.15); filter: blur(.9px); animation-timing-function: linear; }
+  50% { transform: translateY(18px) scaleY(.92); filter: blur(0); animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
+  72% { transform: translateY(-5px) scaleY(1.01); animation-timing-function: ease-in-out; }
+  88% { transform: translateY(2px) scaleY(1); }
+  100% { transform: translateY(0) scaleY(1); filter: blur(0); }
+}
+/* live marker: our N logo in pink, 3D and slowly spinning */
+.tree-net .live-logo { width: 22px; height: 22px; border: 0; margin-left: 6px; background: transparent; pointer-events: none; flex: none; display: block; }
+/* how it works: a winding dotted path through the four steps */
+.home-path { position: relative; height: 920px; max-width: 900px; margin: 0 auto 200px; }
+.home-path-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.home-path-line path { fill: none; stroke: var(--dash); stroke-width: 1.5; stroke-dasharray: 2 6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.home-path-step { position: absolute; display: flex; align-items: center; gap: 22px; transform: translateY(-50%); }
+.home-path-step.left { left: 25%; transform: translate(-21px, -50%); }
+.home-path-step.right { left: 75%; transform: translate(-21px, -50%); }
+.home-path-n { width: 42px; height: 42px; flex: none; display: grid; place-items: center; background: #2a5dff; color: #ffffff; font-size: 16px; }
+.home-path-text { width: 280px; }
+.home-path-step.right .home-path-text { order: -1; text-align: right; }
+.home-path-step.right { flex-direction: row; transform: translate(calc(-100% + 21px), -50%); }
+.home-path-text b { font-weight: 400; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 6px; }
+.home-path-text p { margin: 0; color: #9aa0a8; }
+/* the fall, back to the original: no blur or stretch, just the drop, overshoot and float back */
+@keyframes neuron-drop {
+  0% { transform: translateY(var(--from)); filter: none; animation-timing-function: cubic-bezier(.55, 0, .9, .45); opacity: 0; }
+  8% { opacity: 1; }
+  48% { transform: translateY(18px); animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
+  72% { transform: translateY(-5px); animation-timing-function: ease-in-out; }
+  88% { transform: translateY(2px); }
+  100% { transform: translateY(0); filter: none; }
+}
+.tree-net .live-logo { margin-left: 0 !important; width: 20px; height: 20px; }
+/* each step centred on its point of the curve: the bracketed number in a small box, the words centred under it */
+.home-path-step, .home-path-step.left, .home-path-step.right { flex-direction: column !important; align-items: center; gap: 12px; transform: translate(-50%, -21px) !important; text-align: center; }
+.home-path-step .home-path-text, .home-path-step.right .home-path-text { order: 0 !important; text-align: center !important; width: 260px; }
+.home-path-n { width: auto !important; height: auto !important; padding: 5px 8px; font-size: 11px !important; letter-spacing: .06em; }
+.home-path-text { background: var(--bg); padding: 4px 6px; }
+/* the path is centred on the whole area right of the sidebar, like the full width grids */
+.home-path-wrap { margin-bottom: 200px; }
+.home-path { margin: 0 auto !important; }
+/* the line ends in a cobalt [?] box, centred; a full width divider closes the section */
+.home-path-end { position: absolute; left: 50%; top: 100%; transform: translate(-50%, -50%); }
+.home-path-wrap { padding-bottom: 120px; border-bottom: 1px dashed var(--dash); margin-bottom: 160px !important; }
+/* the line stops at each step: the box and its words sit on a patch of page colour, so no dots run under them */
+.home-path-step { background: var(--bg); padding: 0 10px 6px; gap: 10px !important; }
+.home-path-text { background: none !important; }
+/* smaller number boxes and smaller numbers */
+.home-path-n { padding: 3px 6px !important; font-size: 9px !important; }
+/* the title box over the layer grid: as wide as the middle column, centred, joined onto the grid's top line */
+.home-gridhead { display: flex; justify-content: center; }
+.home-gridhead-box { width: 33.333%; box-sizing: border-box; border: 1px dashed var(--dash); border-bottom: 0; padding: 18px 12px; text-align: center; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; background: var(--bg); }
+.home-path-n { background: #17306e !important; } /* number boxes in navy */
+.home-path-line path { stroke-linejoin: miter; }
+.home-path { height: 660px !important; } /* tighter spacing down the How it works line */
+.home-path-end-3d { width: 58px; height: 58px; border: 0; background: transparent; pointer-events: none; }
+.home-path-end-3d { width: 76px !important; height: 76px !important; }
+.home-buyline { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 3; display: none; }
+/* the line ends in a flat pink question mark, drawn like the stage icons */
+.home-path-q { display: block; width: 30px; height: 30px; background: var(--bg); padding: 4px; box-sizing: content-box; }
+.home-path-q svg { display: block; }
+.home-path-q { width: 22px !important; height: 22px !important; }
+/* how we checked: three wide boxes stacked down the centre, the first with a code block */
+.home-checks2 { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.home-check2 { border: 1px dashed var(--dash); background: var(--bg); padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 10px; }
+.home-check2 b { font-weight: 400; text-transform: uppercase; letter-spacing: .06em; }
+.home-check2 p { margin: 0; }
+.home-code { margin: 6px 0 0; padding: 14px 16px; background: #17306e; color: #ffffff; font: 400 11px/1.7 'Departure Mono', monospace !important; text-transform: none; letter-spacing: .02em; white-space: pre-wrap; word-break: break-all; }
+.home-code .c-dim { color: #9fb2e6; }
+:root[data-white] .home-code, :root[data-white] .home-code * { text-transform: none !important; } /* code stays as typed, not in capitals */
+/* how we checked: one connected grid, the code tall on the left, the three checks stacked on the right */
+.home-checks2 { display: grid !important; grid-template-columns: 1.15fr 1fr; grid-template-rows: repeat(3, auto); gap: 0 !important; max-width: 960px !important; border: 1px dashed var(--dash); }
+.home-check2 { border: 0 !important; }
+.home-check2-code { grid-row: 1 / span 3; border-right: 1px dashed var(--dash) !important; display: flex; padding: 0 !important; }
+.home-check2-code .home-code { margin: 0; flex: 1; display: flex; align-items: center; padding: 26px 26px; }
+.home-check2:nth-child(n + 3) { border-top: 1px dashed var(--dash) !important; }
+/* the code reads as one block: the prompt sign sits at the start of its line */
+.home-check2-code { align-items: center; background: #17306e; }
+.home-check2-code .home-code { display: block !important; flex: 1; }
+/* the code is as tall as the top two checks; the third runs the full width underneath */
+.home-check2-code { grid-row: 1 / span 2 !important; }
+.home-check2:nth-child(4) { grid-column: 1 / -1; border-top: 1px dashed var(--dash) !important; }
+/* the code box links to the real writer account on Solscan, with the network page's little arrow box */
+.home-check2-code { flex-direction: column; align-items: stretch !important; justify-content: center; }
+.home-code-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 26px 22px; padding-top: 12px; border-top: 1px dashed #4a64a8; color: #ffffff !important; text-decoration: none; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.home-code-link .go { width: 16px; height: 16px; border: 1px solid #ffffff; display: grid; place-items: center; flex: none; }
+.home-code-link .go svg { fill: none; stroke: #ffffff; stroke-width: 1.4; }
+.home-code-link:hover .go { background: #ffffff; } .home-code-link:hover .go svg { stroke: #17306e; }
+/* the Solscan link sits in the code box's top right corner */
+.home-check2-code { position: relative; }
+.home-code-link { position: absolute; top: 14px; right: 18px; margin: 0 !important; padding: 0 !important; border: 0 !important; font-size: 9px !important; gap: 8px !important; }
+.home-check2-code .home-code { padding-top: 44px !important; }
+/* the Solscan link gets its own row across the top of the code box, a dotted line under it */
+.home-code-link { position: static !important; order: -1; justify-content: flex-end !important; padding: 12px 18px 11px !important; border-bottom: 1px dashed #4a64a8 !important; }
+.home-check2-code .home-code { padding-top: 22px !important; }
+/* How it works sits in the same dotted box as 28 layers, 6 stages; the timeline drops from its bottom edge */
+.home-path-head { border-bottom: 1px dashed var(--dash) !important; }
+.home-path-wrap .home-gridhead { margin-bottom: 0; }
+/* the audit trail's title box: centred, narrower than the grid, joined onto its top line */
+.home-audit-head { width: 46%; margin: 0 auto; box-sizing: border-box; border: 1px dashed var(--dash); border-bottom: 0; padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 6px; text-align: center; background: var(--bg); }
+.home-audit-head b { font-weight: 400; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.home-audit-head span { font-size: 11px !important; color: #9aa0a8; text-transform: uppercase; }
+/* a full width dotted divider between the audit trail and more information, with even space either side */
+.home-divider { border-top: 1px dashed var(--dash); margin: 0 0 140px; }
+.home-section:has(.home-checks2) { margin-bottom: 140px !important; }
+/* more information: the title box centred and joined onto the list's top line */
+.home-more-head { width: 34% !important; }
+.home-section-narrow .home-faq { max-width: 760px !important; }
+/* plus and minus signs in black, like the network page's minimise signs */
+:root[data-white] .fold button.fold-q b { color: #222423 !important; }
+.home-path { height: 520px !important; } /* steps closer together */
+/* more information: one narrow enclosed column, every question in a closed dotted box */
+.home-section-narrow .home-faq { max-width: 600px !important; border: 1px dashed var(--dash) !important; border-bottom: 0 !important; }
+:root[data-white] .home-section-narrow .fold { border-bottom: 1px dashed var(--dash) !important; }
+:root[data-white] .home-section-narrow .fold button.fold-q { padding: 16px 18px !important; }
+:root[data-white] .home-section-narrow .fold .fold-a { padding: 0 18px 16px !important; }
+.home-more-head { width: 300px !important; }
+/* the close-up strip sits flush on the very bottom of the page, under a dotted line */
+.home { padding-bottom: 0 !important; }
+.home-section-narrow { margin-bottom: 140px !important; }
+.home-strip { border-top: 1px dashed var(--dash); margin-bottom: -40px; }
+.home-strip iframe { display: block; width: 100%; height: 230px; border: 0; }
+.home-section-narrow .home-sub a { color: #2a5dff !important; text-decoration: none; }
+.home-section-narrow .home-sub a:hover { color: #17306e !important; }
+.home-section-narrow .home-faq { border-top: 1px dashed var(--dash) !important; }
+/* the strip now sits between the audit trail and more information, a dotted line above and below */
+.home-strip { margin: 0 0 140px !important; border-bottom: 1px dashed var(--dash); }
+.home { padding-bottom: 80px !important; }
+/* the line runs on a little past the last step and ends in a pink [Read our docs] button */
+.home-path-tail { position: absolute; left: 50%; top: 100%; height: 80px; border-left: 1.5px dashed var(--dash); transform: translateX(-.75px); }
+.home-path-docs { position: absolute; left: 50%; top: calc(100% + 80px); transform: translateX(-50%); padding: 9px 14px; background: #ff3fa4; color: #ffffff !important; text-decoration: none; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.home-path-docs:hover { background: #17306e; }
+.home-path-wrap { padding-bottom: 210px !important; }
+.home-path-tail { border-left: 2px dotted var(--dash) !important; transform: translateX(-1px) !important; }
+/* the render section: two short centred paragraphs with the same look as the essay, evenly spaced */
+:root[data-white] .home-essay.home-render { margin: 0 auto 160px !important; }
+:root[data-white] .home-essay.home-render p { margin: 0 0 48px !important; }
+:root[data-white] .home-essay.home-render p:last-child { margin-bottom: 0 !important; }
+/* the strip reaches the sidebar line again: only its bottom margin is set here, so the stretch to the sidebar can work */
+.home-strip { margin: 0 !important; margin-bottom: 140px !important; }
+.home-bleed.home-strip { margin-left: unset; }
+/* the divider before more information */
+.home-divider { border-top: 1px dashed var(--dash); margin: 0 0 140px !important; }
+:root[data-white] .home-essay.home-render { margin-bottom: 140px !important; }
+/* the bundle neuron, centred between the render paragraphs */
+.home-spin-bundle { width: 70px !important; height: 70px !important; margin: 0 auto 40px !important; }
+:root[data-white] .home-essay.home-render p:first-child { margin-bottom: 40px !important; }
+:root[data-white] .home-section-narrow .home-grid-title { margin: 0 0 22px; }
+/* the bundle: smaller, chunky */
+.home-spin-bundle { width: 52px !important; height: 52px !important; }
+/* every button on the site goes black on hover, whatever its colour */
+:root[data-white] button:not(.tree-folder):not(.fold-q):not(.dd-box):not(.menu-x):not(.split-x):not(.suggest-q):not(.verify-back):not(.link):not(.net-tool):not(:disabled):hover,
+:root[data-white] .btn:hover, :root[data-white] .cta:hover, :root[data-white] .side-buy:hover, :root[data-white] .side-tour:hover,
+:root[data-white] .home-cta:hover, :root[data-white] .home-path-docs:hover, :root[data-white] .home-panel2-cta:hover, :root[data-white] .modal button.verify-bar:hover:not(.running) {
+  background: #111111 !important; border-color: #111111 !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+:root[data-white] .net-tools button.net-tool:hover { background: #111111 !important; border-color: #111111 !important; color: #ffffff !important; }
+/* copyright: small and grey at the very bottom of the home page */
+.home-copy { text-align: center; margin: 120px 0 0; font-size: 9px !important; color: #c3c7ce; text-transform: uppercase; letter-spacing: .08em; }
+.home-section-narrow .home-sub { margin: -10px auto 28px !important; }
+/* hardly any space under the copyright: it sits near the very bottom */
+.home { padding-bottom: 0 !important; }
+.shell > main:has(.home) { padding-bottom: 18px !important; }
+.home-copy { margin-bottom: 0 !important; }
+/* the page scrollbar: a thin square black bar with white space either side, like the dropdown lists */
+html::-webkit-scrollbar { width: 12px; }
+html::-webkit-scrollbar-track { background: var(--bg); }
+html::-webkit-scrollbar-thumb { background: #111111; border: 4px solid var(--bg); background-clip: padding-box; border-radius: 0; }
+html::-webkit-scrollbar-thumb:hover { background-color: #17306e; }
+/* small grey labels above buttons, the same as See it live */
+.side-label { position: absolute; left: 22px; right: 22px; bottom: 118px; text-align: center; font-size: 9px !important; color: #9aa0a8; text-transform: uppercase; letter-spacing: .08em; }
+.home-path-tail { height: 64px !important; }
+.home-path-label { position: absolute; left: 50%; top: calc(100% + 72px); transform: translateX(-50%); font-size: 9px !important; color: #9aa0a8; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+.home-path-docs { top: calc(100% + 92px) !important; }
+.home-path-wrap { padding-bottom: 230px !important; }
+/* connect row hovers like every other sidebar row, no backing */
+:root[data-white] .tree-wallet .walletbtn > button:hover:not(#x) { background: transparent !important; color: #222423 !important; -webkit-text-fill-color: #222423 !important; }
+.verify-spin iframe { width: 64px; height: 64px; border: 0; display: block; background: transparent; }
+/* constraints: each part in its own dashed section, navy number, big centred title like the hero */
+.cons-list { display: flex; flex-direction: column; gap: 56px; max-width: 860px; margin: 40px auto 120px; }
+.cons-sec { border: 1px dashed var(--dash); background: var(--bg); padding: 48px 56px 52px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; }
+.cons-n { background: #17306e; color: #ffffff; padding: 3px 6px; font-size: 9px !important; letter-spacing: .06em; }
+:root .cons-sec .cons-title:not(#x) { margin: 0; font-size: 17px !important; line-height: 1.75 !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: .01em; color: #222423; max-width: 640px; }
+.cons-short { margin: 0; color: #9aa0a8; max-width: 560px; }
+.cons-body { width: 100%; text-align: left; margin-top: 14px; padding-top: 26px; border-top: 1px dashed var(--dash); }
+.cons-body p, .cons-body li { line-height: 1.7; }
+.cons-body ul { padding-left: 18px; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.cons-body table { width: 100%; border-collapse: collapse; margin: 18px 0; }
+.cons-body th { text-align: left; font-weight: 400; text-transform: uppercase; font-size: 10px !important; color: #9aa0a8; padding: 0 12px 10px 0; border-bottom: 1px dashed var(--dash); }
+.cons-body td { padding: 12px 12px 12px 0; border-bottom: 1px dashed var(--dash); vertical-align: top; }
+.cons-body b { font-weight: 400; text-transform: uppercase; }
+/* the seller stands out in its own dotted row in the review pop up */
+.seller-row { display: flex; align-items: center; gap: 14px; border: 1px dashed var(--dash); padding: 12px 14px; margin: 0 0 4px; color: #222423 !important; text-decoration: none !important; text-transform: uppercase; }
+.seller-row span { color: #9aa0a8; font-size: 10px !important; }
+.seller-row b { font-weight: 400; flex: 1; }
+.seller-row i { font-style: normal; width: 22px; height: 22px; display: grid; place-items: center; background: #17306e; color: #fff; }
+.seller-row:hover b { color: #2a5dff; }
+/* seller shortcut matches the split screen and pop out buttons */
+.seller-row i { all: unset; display: inline-flex !important; align-items: center; gap: 6px; padding: 4px 6px; border: 1px dashed var(--dash); background: #ffffff; font-size: 7.5px !important; text-transform: uppercase; letter-spacing: .06em; color: #222423; white-space: nowrap; width: auto; height: auto; }
+.seller-row i svg { stroke: currentColor; stroke-width: 1.4; }
+.seller-row:hover i { background: #111111; border-color: #111111; border-style: solid; color: #ffffff; }
+/* seller arrow: the same dashed arrow box as the network page, with a Solscan tip */
+.seller-go { position: relative; display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px dashed currentColor; color: #222423 !important; text-decoration: none !important; }
+.seller-go:hover { background: #111111; border-color: #111111; border-style: solid; color: #ffffff !important; }
+.seller-go::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #222423; color: #ffffff; font-size: 7px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 4px; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 5; }
+.seller-go:hover::after { opacity: 1; }
+.seller-row b a { color: #222423 !important; text-decoration: none !important; }
+.seller-row b a:hover { color: #2a5dff !important; }
+/* checkout: price lines, then the total you pay, big */
+.checkout { border: 1px dashed var(--dash); margin: 14px 0 16px; padding: 4px 14px; text-transform: uppercase; }
+.co-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px dashed var(--dash); }
+.co-row:last-child { border-bottom: 0; }
+.co-sub { color: #9aa0a8; font-size: 10px !important; }
+.co-sub span { font-size: 10px !important; }
+.co-total { padding: 14px 0 12px; align-items: baseline; }
+.co-total span:last-child { font-size: 22px !important; color: #17306e; }
+/* pop up scrollbars match the page: thin square black bar */
+.modal, .modal * { scrollbar-width: auto; scrollbar-color: auto; }
+.modal::-webkit-scrollbar, .modal *::-webkit-scrollbar { width: 12px; height: 12px; }
+.modal::-webkit-scrollbar-track, .modal *::-webkit-scrollbar-track { background: var(--bg); }
+.modal::-webkit-scrollbar-thumb, .modal *::-webkit-scrollbar-thumb { background: #111111; border: 4px solid var(--bg); background-clip: padding-box; border-radius: 0; }
+.modal::-webkit-scrollbar-thumb:hover, .modal *::-webkit-scrollbar-thumb:hover { background-color: #17306e; }
+/* seller row in navy like the front of a listing, with the pfp */
+.modal .seller-row { background: #17306e; border: 0; color: #ffffff !important; padding: 10px 12px; }
+.modal .seller-row .avatar { width: 36px; height: 36px; background: #ffffff; display: grid; place-items: center; flex: none; }
+.modal .seller-row .avatar svg { width: 36px; height: 36px; }
+.modal .seller-row > span:not(.avatar) { color: #c3c7ce; }
+.modal .seller-row b a { color: #ffffff !important; }
+.modal .seller-row b a:hover { color: #ffffff !important; text-decoration: underline !important; }
+.modal .seller-go { color: #ffffff !important; border-color: #ffffff; }
+.modal .seller-go:hover { background: #ffffff; border-color: #ffffff; color: #17306e !important; }
+/* the review pop up fits the screen: taller, tighter rows */
+:root .modal-back .modal:not(#x) { max-height: calc(100vh - 32px); }
+.modal .checkout { margin: 10px 0 12px; }
+.modal .co-row { padding: 8px 0; }
+.modal .seller-row { margin-bottom: 0; }
+/* buybox grows with the checkout; seller stacked like the listing front, address over Seller */
+:root[data-white] .modal .buybox { height: auto !important; min-height: 300px; }
+.modal .seller-who { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.modal .seller-who a { color: #ffffff !important; text-decoration: none !important; }
+.modal .seller-who a:hover { text-decoration: underline !important; }
+.modal .seller-who span { color: #c3c7ce; }
+:root .modal .co-total span:last-child:not(#x) { font-size: 20px !important; color: #17306e !important; }
+/* one dim only: connect opened over a pop up lifts above it and the pop up drops its own dim */
+body:has(.menu-backdrop) .side.tree { z-index: 70 !important; }
+body:has(.menu-backdrop) .modal-back { background: transparent !important; }
+/* clear all: on hover the text just goes black, no fill behind */
+:root[data-white] button.clear-all:not(#x), :root[data-white] button.clear-all:not(#x):hover { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+:root[data-white] button.clear-all:not(#x):hover { color: #111111 !important; -webkit-text-fill-color: #111111 !important; }
+/* page head number boxes: navy with white text, like the data in panel on the network */
+:root[data-white] .stat-box:not(#x) { background: #17306e !important; border: 0 !important; }
+:root[data-white] .stat-box:not(#x) > div + div { border-left: 1px dashed #ffffff !important; }
+:root[data-white] .stat-box:not(#x) strong, :root[data-white] .stat-box:not(#x) span { color: #ffffff !important; }
+/* other models under Qwen, greyed out, not clickable, as if coming soon */
+.net-soon { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+:root[data-white] .net-soon-row:not(#x) { color: #c3c7ce !important; -webkit-text-stroke: 0 !important; font-weight: 400 !important; cursor: default !important; pointer-events: none; background: transparent !important; }
+.net-soon-row svg { opacity: 1; color: #c3c7ce; stroke: #c3c7ce; }
+:root[data-white] .net-soon .net-soon-row:not(#x) { padding-top: 3px !important; padding-bottom: 3px !important; margin: 0 !important; min-height: 0 !important; }
+:root[data-white] .net-soon .net-soon-row:not(#x) { color: #dcdfe3 !important; padding-left: 38px !important; }
+:root .side .side-label:not(#x), :root .home-path-label:not(#x) { font-size: 9px !important; letter-spacing: .08em !important; }
+/* constraints page title: the big hero size, centred, with its line under it */
+:root .rules .page-head:not(#x) { justify-content: center; text-align: center; margin-top: 30px; }
+:root .rules .page-head h1:not(#x) { font-size: 36px !important; line-height: 1 !important; font-weight: 400 !important; letter-spacing: .01em !important; margin: 0 0 12px; }
+:root .rules .cons-title:not(#x) { letter-spacing: .04em !important; }
+:root .rules .page-head .page-sub:not(#x) { color: #9aa0a8 !important; }
+:root[data-white] .net-soon .net-soon-row:not(#x) { white-space: normal !important; line-height: 1.6 !important; font-size: 10px !important; display: block !important; }
+/* bullet points everywhere: a small black square */
+main ul:not([class]) { list-style: none; padding-left: 18px; }
+main ul:not([class]) > li { position: relative; }
+main ul:not([class]) > li::before { content: ""; position: absolute; left: -16px; top: .72em; width: 5px; height: 5px; background: #111111; }
+/* copyright sits as low as on home on every page that has it */
+.shell > main:has(.home-copy) { padding-bottom: 18px !important; }
+.rules .cons-list { margin-bottom: 0 !important; }
+.rules .home-copy:not(#x) { margin-top: 140px !important; }
+/* glossary title matches constraints: big, centred, grey line under */
+:root .glossary-page .page-head:not(#x) { justify-content: center; text-align: center; margin-top: 30px; }
+:root .glossary-page .page-head h1:not(#x) { font-size: 36px !important; line-height: 1 !important; font-weight: 400 !important; letter-spacing: .01em !important; margin: 0 0 12px; }
+:root .glossary-page .page-head .page-sub:not(#x) { color: #9aa0a8 !important; }
+:root .home-copy:not(#x) { font-size: 11px !important; }
+main > section:has(> .home-copy) { margin-bottom: 0 !important; }
+/* rarities: one container, a ranked list */
+.rar-sec { text-align: left; align-items: stretch; }
+.rar-sec > .cons-short { text-align: center; margin: 0 auto 10px; }
+.rar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rar-row { display: flex; gap: 18px; align-items: flex-start; padding: 26px 0; border-top: 1px dashed var(--dash); }
+.rar-row .cons-n { flex: none; margin-top: 2px; }
+.rar-main { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.rar-head { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; text-transform: uppercase; }
+.rar-head b { font-weight: 400; font-size: 17px !important; letter-spacing: .04em; }
+.rar-head span { color: #17306e; }
+.rar-meta { display: flex; gap: 18px; color: #9aa0a8; font-size: 10px !important; text-transform: uppercase; }
+.rar-meta span { font-size: 10px !important; }
+.rar-main p { margin: 0; line-height: 1.7; }
+.rar-best { color: #9aa0a8; }
+/* search boxes keep their colours when clicked */
+:root[data-white] .glossary input:focus, :root[data-white] .glossary input:focus-visible { background: #ffffff !important; color: #222423 !important; outline: 0 !important; box-shadow: none !important; border-color: #111111 !important; }
+/* rarities v2: tier column, the details, the share on the right */
+.rar-row { display: grid !important; grid-template-columns: 150px 1fr 150px; gap: 26px !important; align-items: start; }
+.rar-tier { display: flex; flex-direction: column; gap: 10px; }
+.rar-tier-name { display: inline-block; align-self: flex-start; padding: 4px 7px; font-size: 10px !important; text-transform: uppercase; letter-spacing: .06em; background: #17306e; color: #ffffff; }
+.rar-t0 .rar-tier-name { background: #0b1f6b; }
+.rar-t5 .rar-tier-name { background: #ffffff; color: #9aa0a8; outline: 1px dashed var(--dash); }
+.rar-pips { display: flex; gap: 4px; }
+.rar-pips i { width: 10px; height: 10px; outline: 1.5px solid #17306e; outline-offset: -1.5px; }
+.rar-pips i.on { background: #17306e; }
+.rar-name { font-weight: 400; font-size: 17px !important; text-transform: uppercase; letter-spacing: .04em; }
+.rar-stat { display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 4px; text-transform: uppercase; }
+.rar-stat b { font-weight: 400; font-size: 28px !important; line-height: 1; color: #17306e; }
+.rar-stat span { font-size: 10px !important; color: #9aa0a8; }
+.rar-t5 .rar-stat b { color: #9aa0a8; }
+/* rarities v3: picture on the right, share beside the name */
+.rar-row { grid-template-columns: 130px 1fr 110px !important; }
+.rar-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.rar-art { display: grid; place-items: center; width: 110px; height: 110px; outline: 1px dashed var(--dash); background: #ffffff; }
+.rar-art svg { width: 96px; height: 96px; }
+:root .rar-art svg:not(#x) { width: 96px !important; height: 96px !important; display: block; }
+/* rarities as a grid of cards: picture on top, tier and share, then the words */
+.rar-list { display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px dashed var(--dash); border-left: 1px dashed var(--dash); }
+.rar-row { display: flex !important; flex-direction: column; gap: 14px !important; padding: 22px !important; border-top: 0 !important; border-right: 1px dashed var(--dash); border-bottom: 1px dashed var(--dash); background: #ffffff; }
+.rar-row .rar-art { order: -1; width: 100%; height: 130px; outline: 0; border-bottom: 1px dashed var(--dash); background: transparent; padding-bottom: 14px; box-sizing: content-box; }
+.rar-tier { flex-direction: row; justify-content: space-between; align-items: center; }
+.rar-top { flex-direction: column; gap: 10px; }
+.rar-stat { align-items: flex-start; text-align: left; flex-direction: row; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.rar-stat b { font-size: 22px !important; }
+.cons-more { text-align: center; margin-top: 18px !important; }
+.rules .cons-body .cons-more a { display: inline-block; }
+.rarities .cons-list { max-width: 1120px !important; }
+.rarities .cons-sec { padding: 40px 36px 40px !important; }
+.rarities .rar-tier-name { white-space: nowrap; }
+/* glossary: each letter its own dotted container, letter in a navy box like the numbers */
+:root .glossary-page .panel.glossary:not(#x) { background: transparent !important; border: 0 !important; outline: 0 !important; padding: 0 !important; box-shadow: none !important; max-width: 960px; margin: 30px auto 0; }
+:root .glossary-page .glossary .glossary-group:not(#x) { border: 1px dashed var(--dash) !important; background: #ffffff; padding: 22px 26px !important; margin-top: 18px; grid-template-columns: 56px 1fr !important; }
+:root .glossary-page .glossary-letter:not(#x) { justify-self: start; background: #17306e; color: #ffffff !important; padding: 3px 6px; font-size: 9px !important; font-weight: 400 !important; letter-spacing: .06em; line-height: 1.4; margin-top: 8px; }
+:root .glossary-page .glossary .glossary-row:not(#x) { border-bottom: 1px dashed var(--dash) !important; padding: 10px 0 !important; }
+:root .glossary-page .glossary .glossary-row:last-child:not(#x) { border-bottom: 0 !important; }
+/* rarities v4: one box per rarity like constraints */
+.rarities .cons-list { max-width: 860px !important; }
+.rarities .cons-sec { padding: 48px 56px 52px !important; }
+.rar-box .rar-tier-name { margin-top: -6px; }
+.rar-body { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center !important; }
+.rar-body .rar-art { width: 140px; height: 140px; outline: 1px dashed var(--dash); background: #ffffff; padding: 0; border: 0; }
+.rar-facts { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; outline: 1px dashed var(--dash); }
+.rar-facts > div { display: flex; flex-direction: column; gap: 6px; padding: 16px 12px; text-transform: uppercase; }
+.rar-facts > div + div { border-left: 1px dashed var(--dash); }
+.rar-facts b { font-weight: 400; font-size: 22px !important; color: #17306e; line-height: 1; }
+.rar-facts span { font-size: 10px !important; color: #9aa0a8; }
+.rar-t5 .rar-facts b { color: #9aa0a8; }
+/* rarities v5: picture boxed in the top right corner, facts in one clean row with plain dividers */
+.rar-box { position: relative; }
+.rar-box .rar-tier-name { align-self: center !important; margin-top: -6px; }
+.rar-box .rar-body .rar-art { position: absolute; top: -1px; right: -1px; width: 96px; height: 96px; outline: 0; border: 1px dashed var(--dash); background: #ffffff; }
+.rar-box .rar-body .rar-art svg { width: 76px !important; height: 76px !important; }
+.rar-box .rar-body { border-top: 1px dashed var(--dash); }
+.rar-facts { outline: 0 !important; }
+.rar-facts > div { padding: 6px 12px !important; }
+/* rarity tag in the top right corner, picture box under it */
+.rar-box .rar-tier-name { position: absolute !important; top: -1px; right: -1px; margin: 0 !important; z-index: 1; }
+.rar-box .rar-body .rar-art { top: 22px !important; }
+.rar-box .rar-tier-name { width: 96px; box-sizing: border-box; text-align: center; padding: 4px 0 !important; height: 23px; } .rar-box .rar-body .rar-art { top: 21px !important; box-sizing: border-box; }
+.rar-box .rar-art iframe { width: 100%; height: 100%; border: 0; display: block; background: transparent; pointer-events: none; }
+:root .rar-box .rar-art:not(#x) { overflow: hidden; display: block; } :root .rar-box .rar-art iframe:not(#x) { width: 94px !important; height: 94px !important; }
+:root .rar-facts:not(#x) { outline: 1px dashed var(--dash) !important; } :root .rar-facts > div:not(#x) { padding: 16px 12px !important; }
+.title-star { width: 44px; height: 44px; border: 0; vertical-align: middle; margin: -8px 0 0 10px; background: transparent; pointer-events: none; }
+:root .page-head h1 .title-star:not(#x) { width: 44px !important; height: 44px !important; border: 0 !important; outline: 0 !important; display: inline-block; vertical-align: middle; margin: -10px 0 0 12px; }
+:root .page-head h1 .title-star:not(#x) { margin: -10px 12px 0 0 !important; }
+/* every type field: no blue ring when clicked, just a plain black line, square corners */
+:root[data-white] input:focus:not(#x), :root[data-white] input:focus-visible:not(#x), :root[data-white] textarea:focus:not(#x), :root[data-white] textarea:focus-visible:not(#x) { outline: 0 !important; box-shadow: none !important; border-color: #111111 !important; border-radius: 0 !important; background: #ffffff !important; color: #222423 !important; }
+:root .rarities .rar-box .cons-body:not(#x) { border-top: 0 !important; padding-top: 0 !important; margin-top: 6px !important; }
+/* after the checks the button keeps the navy the bar filled to; No wallet found stays as it is */
+:root[data-white] .modal .buybox > button.wide:not(:disabled):not(#x) { background: #17306e !important; border-color: #17306e !important; color: #ffffff !important; }
+:root[data-white] .modal .buybox > button.wide:not(:disabled):not(#x):hover { background: #111111 !important; border-color: #111111 !important; }
+/* rarity corner: the tag with a five star rating under it, no picture */
+.rar-box .rar-corner { position: absolute; top: -1px; right: -1px; display: flex; flex-direction: column; width: 96px; }
+:root .rar-box .rar-corner .rar-tier-name:not(#x) { position: static !important; width: 100%; }
+.rar-stars { display: flex; justify-content: center; gap: 3px; padding: 7px 0; border: 1px dashed var(--dash); border-top: 0; background: #ffffff; }
+.rar-stars svg { fill: none; stroke: #17306e; stroke-width: 1.3; stroke-linejoin: round; }
+.rar-stars svg.on { fill: #17306e; }
+/* someone else's wallet: navy seller row like the review pop up, numbers on the right */
+.wallet-head { display: flex; justify-content: space-between; align-items: stretch; gap: 24px; margin: 10px 0 26px; }
+:root .wallet-head .wallet-who:not(#x) { flex: 0 1 460px; background: #17306e; color: #ffffff !important; padding: 12px 14px; margin: 0; border: 0; display: flex; align-items: center; gap: 14px; text-transform: uppercase; }
+.wallet-who .avatar { width: 44px; height: 44px; background: #ffffff; display: grid; place-items: center; flex: none; }
+.wallet-who .avatar svg { width: 44px; height: 44px; }
+.wallet-who .seller-who { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.wallet-who .wallet-addr { color: #ffffff; font-size: 15px !important; }
+.wallet-who .seller-who span + span { color: #c3c7ce; font-size: 10px !important; }
+:root .wallet-who .seller-go:not(#x) { color: #ffffff !important; border-color: #ffffff; }
+:root .wallet-who .seller-go:not(#x):hover { background: #ffffff; color: #17306e !important; }
+.wallet-net { text-align: center; margin: 34px 0 6px; }
+/* wallet v2: big pfp with the address beside it, then each part in its own dotted section with a centred title */
+.wallet-head { flex-wrap: wrap; align-items: center !important; margin: 30px 0 10px !important; }
+:root .wallet-head .wallet-who:not(#x) { background: transparent; color: #222423 !important; padding: 0; flex: 1 1 auto; gap: 22px; }
+:root .wallet-who .avatar:not(#x) { width: 120px; height: 120px; background: #17306e; }
+:root .wallet-who .avatar svg:not(#x) { width: 104px; height: 104px; }
+:root .wallet-who .avatar svg path, :root .wallet-who .avatar svg line, :root .wallet-who .avatar svg circle { }
+:root .wallet-who .wallet-addr:not(#x) { color: #222423; font-size: 26px !important; letter-spacing: .04em; }
+:root .wallet-who .seller-who span + span:not(#x) { color: #9aa0a8; font-size: 11px !important; }
+:root .wallet-who .seller-go:not(#x) { color: #222423 !important; border-color: #222423; align-self: center; }
+:root .wallet-who .seller-go:not(#x):hover { background: #111111; border-color: #111111; color: #ffffff !important; }
+.wallet-sec { border: 1px dashed var(--dash); background: var(--bg); padding: 40px 40px 44px; margin-top: 40px; }
+.wallet-sec > .view-line { text-align: center; margin: 0 auto 26px !important; max-width: 620px; color: #9aa0a8 !important; }
+.wallet-sec .cards { justify-content: center; }
+:root .wallet-who .avatar:not(#x) { background: #ffffff; border: 2px solid #17306e; box-sizing: border-box; overflow: hidden; } :root .wallet-who .seller-go:not(#x) { margin-left: 8px; }
+/* profile feel: a navy cover banner, the big pfp overlapping its bottom edge, address and Solscan arrow beside it */
+:root .wallet-head:not(#x) { position: relative; padding: 130px 0 0; margin: 20px 0 10px !important; align-items: flex-end !important; }
+.wallet-head::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 150px; background: #17306e; }
+:root .wallet-head .wallet-who:not(#x) { position: relative; z-index: 1; align-items: flex-end; padding-left: 28px; }
+:root .wallet-who .seller-who:not(#x) { flex: 0 1 auto; padding-bottom: 6px; }
+:root .wallet-who .seller-go:not(#x) { align-self: flex-end; margin: 0 0 10px 4px; }
+:root .wallet-head .stat-box:not(#x) { position: relative; z-index: 1; align-self: flex-end; }
+/* wallet sections like constraints: big centred title, the tally in a small navy square raised like a notification */
+.wallet-sec { display: flex; flex-direction: column; align-items: center; padding: 48px 56px 52px !important; }
+.wallet-sec > * { width: 100%; }
+:root .wallet-sec .wallet-title:not(#x) { width: auto; position: relative; margin: 0 0 14px; text-align: center; }
+.wallet-count { position: absolute; top: -10px; right: -26px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; display: grid; place-items: center; background: #17306e; color: #ffffff; font-size: 9px !important; line-height: 1; letter-spacing: 0; }
+:root .wallet-sec .wallet-title:not(#x) { font-size: 17px !important; font-weight: 400 !important; letter-spacing: .04em !important; text-transform: uppercase; } :root .wallet-sec .wallet-count:not(#x) { right: -22px; top: -9px; } :root .wallet-sec .cards:not(#x) { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; }
+/* the pfp always fills its box, body on the bottom edge */
+:root .wallet-who .avatar svg:not(#x) { width: 100% !important; height: 100% !important; display: block; }
+:root .wallet-who .avatar:not(#x) { display: block; }
+.stage-av { background: #ffffff; display: grid !important; place-items: center; }
+/* the tally: a small pink square, like a notification */
+:root .wallet-sec .wallet-count:not(#x) { background: #ff3fa4; min-width: 13px; height: 13px; padding: 0 3px; font-size: 7.5px !important; top: -6px; right: -17px; }
+/* earnings: a joined dotted grid like the rarity facts, not a plain table */
+:root .wallet-sec table:not(#x) { width: 100%; border-collapse: collapse; outline: 1px dashed var(--dash); background: #ffffff; }
+:root .wallet-sec th:not(#x), :root .wallet-sec td:not(#x) { border: 1px dashed var(--dash) !important; padding: 14px 16px !important; text-align: center; text-transform: uppercase; }
+:root .wallet-sec th:not(#x) { color: #9aa0a8; font-size: 10px !important; font-weight: 400; background: transparent; }
+:root .wallet-sec td:not(#x) { color: #17306e; }
+:root .wallet-sec table:not(#x) { outline: 0 !important; border: 1px dashed var(--dash) !important; }
+/* default profile banner: faint grey neurons spread over white, the same for every wallet */
+:root .wallet-head:not(#x)::before { background: #ffffff url("/banner-neurons.svg") center / 600px 150px repeat; border: 1px dashed var(--dash); box-sizing: border-box; }
+/* neuron cards: the stage in its own row with its icon, and a pinpoint button that flies the network to the part */
+.stage-dd { display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+.stage-dd i { display: inline-grid; place-items: center; width: 16px; height: 16px; }
+.pin-btn { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 12px; padding: 4px 7px; border: 1px dashed var(--dash); background: #ffffff; font-size: 8px !important; text-transform: uppercase; letter-spacing: .06em; color: #222423 !important; text-decoration: none !important; }
+.pin-btn:hover { background: #111111; border-color: #111111; border-style: solid; color: #ffffff !important; }
+/* number boxes match the glossary letters exactly */
+:root .cons-n:not(#x) { font-size: 9px !important; line-height: 1.4 !important; padding: 3px 6px !important; }
+/* glossary letter centred on top of its section, like the numbers on constraints and rarities */
+:root .glossary-page .glossary .glossary-group:not(#x) { grid-template-columns: 1fr !important; padding: 30px 40px 26px !important; }
+:root .glossary-page .glossary-letter:not(#x) { justify-self: center; margin: 0 0 10px; }
+/* number boxes: no navy fill, a dotted white square like the panels on the network page */
+:root[data-white] .stat-box:not(#x) { background: #ffffff !important; border: 1px dashed var(--dash) !important; }
+:root[data-white] .stat-box:not(#x) > div + div { border-left: 1px dashed var(--dash) !important; }
+:root[data-white] .stat-box:not(#x) strong { color: #222423 !important; }
+:root[data-white] .stat-box:not(#x) span { color: #9aa0a8 !important; }
+/* stage chip like the layer labels in the network: icon in a white square, then a cobalt label */
+.stage-chip { display: inline-flex; align-items: stretch; border: 1px solid #2a5dff; }
+.stage-chip .stage-box { display: grid; place-items: center; width: 22px; background: #ffffff; }
+.stage-chip b { font-weight: 400; background: #2a5dff; color: #ffffff; padding: 3px 7px; font-size: 10px !important; text-transform: uppercase; letter-spacing: .06em; }
+/* market listing cards: the seller header uses the grey neuron banner, the review button is navy like the sidebar buy button */
+:root[data-white] .market-page .post-head:not(#x) { background: #ffffff url("/banner-neurons.svg") center / 600px 150px !important; border: 1px dashed var(--dash); color: #222423 !important; }
+:root[data-white] .market-page .post-head a:not(#x), :root[data-white] .market-page .post-head .price:not(#x) { color: #222423 !important; }
+:root[data-white] .market-page .post-head .muted:not(#x), :root[data-white] .market-page .post-head .price small:not(#x) { color: #9aa0a8 !important; }
+:root[data-white] .market-page .post-head .avatar:not(#x) { background: #ffffff; border: 1.5px solid #17306e; box-sizing: border-box; }
+:root[data-white] .market-page .card button.wide:not(#x) { background: #17306e !important; border-color: #17306e !important; color: #ffffff !important; }
+:root[data-white] .market-page .card button.wide:not(#x):hover { background: #111111 !important; border-color: #111111 !important; }
+/* back to market above the banner, small arrow beside the address */
+.back-link { display: inline-flex; align-items: center; gap: 6px; margin: 18px 0 0; font-size: 10px !important; text-transform: uppercase; letter-spacing: .06em; color: #222423 !important; text-decoration: none !important; }
+.back-link:hover { color: #2a5dff !important; }
+:root .wallet-who .wallet-addr:not(#x) { display: inline-flex; align-items: center; gap: 10px; }
+:root .wallet-who .wallet-addr .seller-go:not(#x) { width: 16px; height: 16px; margin: 0; align-self: center; }
+:root .wallet-who .wallet-addr .seller-go svg { width: 10px; height: 10px; }
+:root .wallet-head:not(#x) { margin-top: 10px !important; }
+/* seller page tidy: every card the same width in a centred grid, the network button full width and centred at the bottom */
+:root .wallet-sec .cards:not(#x) { display: grid !important; grid-template-columns: repeat(auto-fill, 320px); justify-content: center; gap: 18px; width: 100%; }
+:root .wallet-sec .card.post:not(#x) { width: 320px; box-sizing: border-box; display: flex; flex-direction: column; }
+:root .wallet-sec .post-details:not(#x) { flex: 1; }
+:root .wallet-sec .pin-btn:not(#x) { align-self: stretch; justify-content: center; gap: 8px; margin-top: 16px; padding: 12px 10px; border: 0; background: #17306e; color: #ffffff !important; font-size: 11px !important; }
+:root .wallet-sec .pin-btn:not(#x):hover { background: #111111; }
+:root .wallet-sec .post-head:not(#x) { min-height: 58px; box-sizing: border-box; }
+:root .wallet-sec .cards:not(#x) { display: flex !important; flex-wrap: wrap; justify-content: center; }
+:root .wallet-sec .post-details:not(#x) { grid-template-columns: 90px 1fr !important; }
+.stage-chip b { white-space: nowrap; font-size: 9px !important; }
+/* review pop up seller row: grey neuron banner like the profile, dark text, pfp framed in navy */
+:root .modal .seller-row:not(#x) { background: #ffffff url("/banner-neurons.svg") center / 600px 150px !important; border: 1px dashed var(--dash) !important; color: #222423 !important; }
+:root .modal .seller-who a:not(#x) { color: #222423 !important; }
+:root .modal .seller-who span:not(#x) { color: #9aa0a8 !important; }
+:root .modal .seller-go:not(#x) { color: #222423 !important; border-color: #222423 !important; background: #ffffff; }
+:root .modal .seller-go:not(#x):hover { background: #111111 !important; border-color: #111111 !important; color: #ffffff !important; }
+/* every pfp gets a navy frame */
+:root .avatar:has(svg):not(.stage-av):not(#x) { border: 1.5px solid #17306e !important; box-sizing: border-box; background: #ffffff !important; overflow: hidden; }
+:root .wallet-who .avatar:not(#x) { border-width: 2px !important; }
+:root .modal .co-total span:last-child:not(#x):not(.y) { color: #111111 !important; }
+/* seller profile layout: neurons a third on the left, earnings two thirds on the right, checkpoints full width under */
+.wallet-grid { display: grid; grid-template-columns: 1fr 2fr; grid-template-areas: "neurons earnings" "checkpoints checkpoints"; gap: 24px; margin-top: 30px; }
+.wallet-grid .ws-neurons { grid-area: neurons; }
+.wallet-grid .ws-earnings { grid-area: earnings; }
+.wallet-grid .ws-checkpoints { grid-area: checkpoints; }
+:root .wallet-grid .wallet-sec:not(#x) { margin-top: 0; padding: 36px 28px 36px !important; }
+/* seller cards: no navy header, just the writing inside a dotted line like the network panels */
+:root[data-white] .wallet-sec .post-head:not(#x) { background: #ffffff !important; border: 1px dashed var(--dash); color: #222423 !important; }
+:root[data-white] .wallet-sec .post-head *:not(.stage-chip):not(.stage-chip *):not(#x) { color: #222423 !important; }
+:root[data-white] .wallet-sec .post-head .muted:not(#x), :root[data-white] .wallet-sec .post-head .small:not(#x) { color: #9aa0a8 !important; }
+/* earnings chart: running total rising, navy line, solid pale fill under it, dotted grid */
+.earn-chart { border: 1px dashed var(--dash); background: #ffffff; padding: 16px 18px 10px; margin: 0 0 18px; }
+.earn-head { display: flex; justify-content: space-between; align-items: baseline; text-transform: uppercase; margin-bottom: 8px; }
+.earn-head span { color: #9aa0a8; font-size: 10px !important; }
+.earn-head b { font-weight: 400; font-size: 18px !important; color: #222423; }
+.earn-chart svg { width: 100%; height: 180px; display: block; overflow: visible; }
+.earn-chart .eg { stroke: #a1a2a2; stroke-dasharray: 3 3; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.earn-chart .ea { fill: #e8eefc; }
+.earn-chart .el { fill: none; stroke: #17306e; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.earn-chart .ep { fill: #17306e; }
+.earn-chart text { font-size: 9px; fill: #9aa0a8; text-transform: uppercase; font-family: inherit; }
+.earn-chart .ea { fill: #eceef1 !important; }
+/* simpler chart, like the network: one navy line joining square nodes, a single dotted base line, no fill */
+.earn-chart .el { stroke-width: 1.5 !important; }
+.earn-chart .ep { fill: #ffffff !important; stroke: #17306e; stroke-width: 1.5; }
+/* listing price as big as the pop up total, SOL in the same black */
+:root[data-white] .market-page .post-head .price:not(#x) { font-size: 22px !important; font-weight: 400 !important; color: #111111 !important; }
+:root[data-white] .market-page .post-head .price small:not(#x) { font-size: 22px !important; color: #111111 !important; }
+/* quiet link to the seller under the review button, so the button stays the one that stands out */
+.seller-link { display: block; text-align: center; margin-top: 10px; font-size: 10px !important; text-transform: uppercase; letter-spacing: .06em; color: #9aa0a8 !important; text-decoration: underline !important; text-underline-offset: 3px; }
+.seller-link:hover { color: #222423 !important; }
+/* every page title the same big size as Constraints, Rarities and Glossary; Market, Chat and My neurons stay left aligned; subtitles grey */
+:root .page-head h1:not(#x) { font-size: 36px !important; line-height: 1 !important; font-weight: 400 !important; letter-spacing: .01em !important; margin: 0 0 12px; }
+:root .page-head .page-sub:not(#x) { color: #9aa0a8 !important; }
+/* profile icon right next to the seller address on listings, with a View seller profile tip */
+.who-line { display: inline-flex; align-items: center; gap: 8px; }
+:root .market-page .profile-go:not(#x) { width: 16px; height: 16px; color: #222423 !important; border-color: #222423; background: #ffffff; }
+:root .market-page .profile-go:not(#x):hover { background: #111111; border-color: #111111; color: #ffffff !important; }
+/* show me in the network: cobalt like the virtual tour button, no icon */
+:root .wallet-sec .pin-btn:not(#x) { background: #2a5dff !important; }
+:root .wallet-sec .pin-btn:not(#x):hover { background: #111111 !important; }
+/* stage chip in black */
+:root .stage-chip:not(#x) { border-color: #111111; }
+:root .stage-chip b:not(#x) { background: #111111 !important; color: #ffffff !important; }
+.market-page a.avatar { cursor: pointer; text-decoration: none !important; }
+/* the parts inside each checkpoint: one row per part with its stage tag, place and neuron count */
+.cp-parts { margin-top: 14px; border-top: 1px dashed var(--dash); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.cp-parts-h { color: #9aa0a8; font-size: 10px !important; text-transform: uppercase; }
+.cp-part { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; text-transform: uppercase; font-size: 11px !important; }
+.cp-part span { font-size: 11px !important; }
+.cp-amt { color: #222423; }
+.wallet-grid { grid-template-areas: "neurons earnings" "checkpoints checkpoints" "tools tools" !important; }
+.wallet-grid .ws-tools { grid-area: tools; }
+:root .ws-tools .split.even.tools:not(#x) { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: 100%; }
+:root .ws-tools .panel:not(#x) { border: 1px dashed var(--dash); background: #ffffff; padding: 22px 24px; }
+:root .ws-tools .panel h3:not(#x) { font-size: 13px !important; font-weight: 400; text-transform: uppercase; margin: 0 0 12px; }
+:root .ws-tools input:not(#x), :root .ws-tools select:not(#x) { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+/* earnings in black: table values, chart line and nodes */
+:root .wallet-sec td:not(#x) { color: #111111 !important; }
+.earn-chart .el { stroke: #111111 !important; }
+.earn-chart .ep { stroke: #111111 !important; }
+:root[data-white] .tree-item.on:not(#x)::after { background: #111111 !important; }
+/* neuron counts as small pink neuron heads with a thin black outline, the last cut to its fraction */
+.ncount { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.ncount i { display: inline-block; width: 14px; height: 14px; overflow: hidden; flex: none; }
+.ncount i svg { display: block; width: 14px; height: 14px; }
+.ncount b { font-weight: 400; font-size: 10px !important; margin-left: 2px; }
+.ncount-n { margin-left: 8px; }
+.home-strip { position: relative; } .strip-link { position: absolute; inset: 0; z-index: 2; cursor: pointer; }
+/* wallet choice in the connect pop up: a full width button like the rest of the site, no stray line */
+:root[data-white] .menu-modal button.wallet-pick:not(#x) { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 12px 16px; margin-top: 8px; background: #2a5dff; color: #ffffff !important; -webkit-text-fill-color: #ffffff; text-align: center; text-transform: uppercase; letter-spacing: .06em; font-size: 12px !important; cursor: pointer; border: 0 !important; box-shadow: none !important; text-decoration: none !important; }
+:root[data-white] .menu-modal button.wallet-pick:not(#x):hover { background: #111111; }
+/* wallet menu: one style for every choice, full width, centred; the first is cobalt, the rest outlined */
+:root[data-white] .menu-modal a.wallet-pick:not(#x) { box-sizing: border-box; display: block; width: 100%; padding: 12px 16px; margin-top: 8px; background: #2a5dff; color: #ffffff !important; text-align: center; text-transform: uppercase; letter-spacing: .06em; font-size: 12px !important; text-decoration: none !important; }
+:root[data-white] .menu-modal a.wallet-pick:not(#x):hover { background: #111111; }
+:root[data-white] .menu-modal button.wallet-pick.ghost-pick:not(#x) { background: #ffffff; color: #111111 !important; -webkit-text-fill-color: #111111; border: 1.5px solid #111111 !important; }
+:root[data-white] .menu-modal button.wallet-pick.ghost-pick:not(#x):hover { background: #111111; color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+/* every pop up: its buttons sit centred along the bottom, sharing the width */
+:root .modal p.inline:not(#x) { display: flex; justify-content: center; gap: 10px; margin: 18px 0 0; }
+:root .modal p.inline > button:not(#x) { flex: 1; text-align: center; justify-content: center; }
+:root[data-white] .menu-modal button.wallet-pick.ghost-pick:not(#x):not(#y) { background: #ffffff !important; } :root[data-white] .menu-modal button.wallet-pick.ghost-pick:not(#x):not(#y):hover { background: #111111 !important; }
+/* empty states: the small grey label size, like Watch it live */
+.empty-line { text-align: center; color: #9aa0a8 !important; font-size: 9px !important; text-transform: uppercase; letter-spacing: .08em; margin: 6px 0 0; }
+/* section descriptions live in a small i beside the title, shown on hover like the shortcut tips */
+.info-tip { position: relative; display: inline-grid; place-items: center; width: 13px; height: 13px; margin-left: 24px; vertical-align: middle; border: 1px dashed #222423; font-size: 8px !important; font-style: normal; text-transform: none; cursor: help; top: -2px; }
+.info-tip::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: 240px; white-space: normal; background: #222423; color: #ffffff; font-size: 8px; line-height: 1.5; text-transform: uppercase; letter-spacing: .04em; padding: 6px 8px; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 6; text-align: left; }
+.info-tip:hover::after, .info-tip:focus::after { opacity: 1; }
+:root .wallet-sec .wallet-count:not(#x) { font-family: "Helvetica Neue", Arial, sans-serif !important; font-size: 8.5px !important; font-weight: 700; }
+:root .wallet-sec .wallet-title:not(#x) { display: inline-flex; align-items: flex-start; } :root .wallet-sec .wallet-count:not(#x) { position: relative; top: -6px; right: auto; margin-left: 3px; } :root .wallet-sec .info-tip:not(#x) { margin-left: 12px; top: 3px; }
+/* section titles show their description on hover, in the same dark tip as the network shortcuts */
+.wallet-title[data-tip] { cursor: default; }
+.wallet-title[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: 240px; white-space: normal; background: #222423; color: #ffffff; font-size: 8px !important; line-height: 1.5; letter-spacing: .04em; padding: 6px 8px; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 6; text-align: left; font-weight: 400; }
+.wallet-title[data-tip]:hover::after { opacity: 1; }
+/* wallet menu button: no dotted line under it */
+:root[data-white] .menu-modal a.wallet-pick:not(#x):not(#y) { border: 0 !important; box-shadow: none !important; }
+/* every hover tip matches the network shortcuts: 7px, tight padding, a small triangle pointing down */
+:root .wallet-title[data-tip]:not(#x)::after, :root .seller-go:not(#x)::after { font-size: 7px !important; line-height: 1.45; padding: 2px 4px; letter-spacing: .04em; text-transform: uppercase; bottom: calc(100% + 8px); }
+:root .wallet-title[data-tip]:not(#x)::after { width: max-content; max-width: 260px; text-align: center; }
+:root .wallet-title[data-tip]:not(#x)::before, :root .seller-go:not(#x)::before { content: ''; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid #222423; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 6; }
+:root .wallet-title[data-tip]:not(#x):hover::before, :root .seller-go:not(#x):hover::before { opacity: 1; }
+:root .wallet-sec .empty-line:not(#x):not(#y) { font-size: 9px !important; letter-spacing: .08em !important; line-height: 1.6 !important; }
+:root[data-white] .tree-wallet .walletbtn > button:not(#x):not(#y) { border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; padding: 0 !important; } :root[data-white] .tree-wallet .walletbtn > button.ghost:not(#x):not(#y) { color: #ff3fa4 !important; -webkit-text-fill-color: #ff3fa4 !important; } :root[data-white] .tree-wallet .walletbtn > button.ghost:not(#x):not(#y):hover { color: #111111 !important; -webkit-text-fill-color: #111111 !important; }
+:root .wallet-sec .wallet-count:not(#x):not(#y) { font-family: inherit !important; font-weight: 400; font-size: 8px !important; }
+:root[data-white] .tree-wallet.is-on > .ti:not(#x), :root[data-white] .tree-wallet.is-on > svg:not(#x), :root[data-white] .tree-wallet.is-on > .ti svg:not(#x) { color: #ff3fa4 !important; stroke: #ff3fa4 !important; }
+:root .modal .modal-head:not(#x) { border-bottom: 0 !important; padding-bottom: 0 !important; margin-bottom: 14px; box-shadow: none !important; }
+.ncount .ncount-n { order: -1; margin: 0 8px 0 0 !important; }
+/* tell the two apart at a glance: a tag in the banner corner, and pink (yours) on your own profile */
+.profile-tag { position: absolute; top: 12px; right: 12px; z-index: 1; padding: 4px 8px; background: #111111; color: #ffffff; font-size: 9px !important; text-transform: uppercase; letter-spacing: .08em; }
+.wallet-head.is-own .profile-tag { background: #ff3fa4; }
+:root .wallet-head.is-own .wallet-who .avatar:not(#x):not(#y) { border-color: #ff3fa4 !important; }
+:root .wallet-head.is-own:not(#x)::before { border-color: #ff3fa4 !important; border-style: solid !important; }
+/* seller banner line in black to match their black pfp; every pfp frame stays navy */
+:root .wallet-head:not(.is-own):not(#x)::before { border: 1px dashed #111111 !important; }
+:root .wallet-head.is-own .wallet-who .avatar:not(#x):not(#y):not(#z) { border-color: #17306e !important; }
+/* banner neurons: black on a seller's profile to match their pfp, pink on your own */
+:root .wallet-head:not(.is-own):not(#x)::before { background-image: url("/banner-neurons-black.svg") !important; border: 1px dashed var(--dash) !important; }
+:root .wallet-head.is-own:not(#x)::before { background-image: url("/banner-neurons-pink.svg") !important; border: 1px dashed var(--dash) !important; }
+/* banner back to faint grey neurons for everyone, plain grey dotted border */
+:root .wallet-head:not(#x):not(#y)::before { background-image: url("/banner-neurons.svg") !important; border: 1px dashed var(--dash) !important; }
+/* profile pfp frame: pink on your own, black on a seller's */
+:root .wallet-head .wallet-who .avatar:not(#x):not(#y):not(#z) { border-color: #111111 !important; }
+:root .wallet-head.is-own .wallet-who .avatar:not(#x):not(#y):not(#z) { border-color: #ff3fa4 !important; }
+.home-path-docs[aria-disabled="true"] { cursor: default; }
+.part-ic { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 10px; vertical-align: middle; } .part-ic svg { display: block; }
+/* chat like a social feed: your pink pfp on the right, the network's logo on the left, status above the message box */
+.msg { display: flex; align-items: flex-end; gap: 10px; margin: 10px 0; }
+.msg-you { justify-content: flex-end; }
+.msg-net { justify-content: flex-start; }
+.chat-av { width: 32px !important; height: 32px !important; flex: none; display: block; border: 1.5px solid #ff3fa4 !important; background: #ffffff; overflow: hidden; box-sizing: border-box; }
+.chat-av svg { width: 100% !important; height: 100% !important; display: block; }
+.net-av { border-color: #17306e !important; }
+.net-av img { width: 100%; height: 100%; display: block; }
+.msg .you, .msg .brain { margin: 0 !important; max-width: 70%; }
+.chat-status { margin: 0 0 8px; color: #9aa0a8; font-size: 9px !important; text-transform: uppercase; letter-spacing: .08em; }
+.chat-err { text-align: right !important; }
+.typing { display: inline-flex; gap: 4px; padding: 10px 12px; border: 1px dashed var(--dash); background: #ffffff; }
+.typing i { width: 5px; height: 5px; background: #17306e; animation: typing-blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes typing-blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+/* the chat box keeps one size in the window; only the messages inside scroll */
+.chat .chat-panel { display: flex; flex-direction: column; height: calc(100vh - 230px); min-height: 380px; box-sizing: border-box; }
+.chat .chat-log { flex: 1; overflow-y: auto; min-height: 0; padding-right: 6px; }
+.chat .chat-foot { flex: none; }
+/* chat v2: your messages in a solid grey box, the network's replies in a white dotted box, the network pfp a navy N on white */
+:root .chat .msg .you:not(#x) { background: #e9ebee !important; border: 0 !important; color: #222423 !important; padding: 10px 14px !important; }
+:root .chat .msg .brain:not(#x) { background: #ffffff !important; border: 1px dashed var(--dash) !important; padding: 12px 14px !important; }
+:root .chat .msg .brain .receipt:not(#x) { color: #9aa0a8; font-size: 10px !important; margin-top: 8px !important; }
+/* send button the same height as the field, grey until there is something to send */
+:root .chat .chat-foot form.inline:not(#x) { display: flex; align-items: stretch; gap: 8px; }
+:root .chat .chat-foot form.inline input:not(#x) { flex: 1; height: 40px; box-sizing: border-box; }
+:root .chat .chat-foot form.inline button:not(.clear-all):not(#x) { height: 40px; box-sizing: border-box; padding: 0 16px; }
+:root[data-white] .chat .chat-foot form.inline button:disabled:not(.clear-all):not(#x) { background: #c3c7ce !important; border-color: #c3c7ce !important; color: #ffffff !important; opacity: 1 !important; }
+/* the receipt in its own small dotted box under the reply, with a receipt icon */
+.net-col { display: flex; flex-direction: column; gap: 6px; max-width: 70%; }
+:root .chat .net-col .brain:not(#x) { max-width: none; }
+.receipt-box { display: flex; align-items: flex-start; gap: 8px; border: 1px dashed var(--dash); background: #ffffff; padding: 8px 12px; color: #9aa0a8; font-size: 10px !important; text-transform: uppercase; letter-spacing: .04em; }
+.receipt-box span { font-size: 10px !important; }
+.receipt-box a { color: #222423 !important; }
+.receipt-ic { display: grid; place-items: center; flex: none; color: #222423; margin-top: 1px; }
+.net-av iframe { width: 100%; height: 100%; border: 0; display: block; pointer-events: none; } :root .chat .chat-av:not(#x) { width: 40px !important; height: 40px !important; }
+/* receipt row: tokens, what was paid, and a small arrow to the transaction on Solscan */
+.receipt-box { align-items: center !important; gap: 12px !important; }
+.receipt-tok { color: #9aa0a8; }
+.receipt-box > span + span { flex: 1; }
+.receipt-now { flex: 1; color: #9aa0a8; }
+:root .chat .receipt-go:not(#x) { width: 16px; height: 16px; color: #222423 !important; border-color: #222423; background: #ffffff; flex: none; }
+:root .chat .receipt-go:not(#x):hover { background: #111111; border-color: #111111; color: #ffffff !important; }
+:root .chat .msg-you .chat-av:not(#x) { border-color: #c3c7ce !important; }
+/* chat like phone messages: yours navy with white text and a navy pfp, the network's replies in solid light grey */
+:root .chat .msg .you:not(#x):not(#y) { background: #17306e !important; color: #ffffff !important; }
+:root .chat .msg-you .chat-av:not(#x):not(#y) { border-color: #17306e !important; }
+:root .chat .msg .brain:not(#x):not(#y) { background: #e9ebee !important; border: 0 !important; color: #222423 !important; }
+:root .chat .net-av:not(#x):not(#y) { border-color: #c3c7ce !important; }
+/* the saved in this browser note now lives in the Clear all hover tip */
+.chat .clear-all { position: relative; }
+.chat .clear-all::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); right: 0; white-space: nowrap; background: #222423; color: #ffffff; font-size: 7px !important; text-transform: uppercase; letter-spacing: .04em; padding: 2px 4px; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 6; -webkit-text-fill-color: #ffffff; }
+.chat .clear-all::before { content: ''; position: absolute; bottom: calc(100% + 4px); right: 12px; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid #222423; opacity: 0; transition: opacity .12s; pointer-events: none; }
+.chat .clear-all:hover::after, .chat .clear-all:hover::before { opacity: 1; }
+/* receipt row exactly as tall as the pfp beside it */
+:root .chat .receipt-box:not(#x) { height: 40px; box-sizing: border-box; padding: 0 12px; }
+.chat .net-av { overflow: hidden; }
+/* bought: the button turns into a quiet confirmation, and a pink link takes you to what is now yours */
+.bought-row { display: flex; flex-direction: column; gap: 8px; }
+:root[data-white] .modal .buybox button.bought-btn:disabled:not(#x):not(#y) { background: #111111 !important; border-color: #111111 !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff; opacity: 1 !important; }
+.bought-go { display: block; text-align: center; padding: 12px; background: #ff3fa4; color: #ffffff !important; text-transform: uppercase; letter-spacing: .06em; font-size: 12px !important; text-decoration: none !important; }
+.bought-go:hover { background: #111111; }
+:root .market-empty:not(#x) { padding: 40px 20px !important; text-align: center; } :root .market-empty .empty-line:not(#x) { font-size: 9px !important; color: #9aa0a8 !important; }
+.sim-link { display: inline-block; margin-top: 14px; font-size: 10px !important; text-transform: uppercase; letter-spacing: .06em; color: #222423 !important; border: 1px dashed var(--dash); padding: 6px 10px; text-decoration: none !important; } .sim-link:hover { background: #111111; color: #ffffff !important; }
+/* verify bar: no separate border, so the navy fill runs edge to edge and the blue turns navy exactly where the bar has loaded */
+:root[data-white] .modal button.verify-bar:not(#x):not(#y) { border: 0 !important; }
+:root[data-white] .modal button.verify-bar .vb-fill:not(#x) { top: 0 !important; bottom: 0 !important; left: 0 !important; }
+/* bought row: both buttons side by side in the same 40px height, so the pop up keeps its size */
+:root .modal .bought-row:not(#x) { flex-direction: row; gap: 8px; height: 40px; }
+:root .modal .bought-row > *:not(#x) { flex: 1; height: 40px !important; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0 8px !important; margin: 0 !important; }
+/* wallet sections: only the section's own outline; the cards and their headers sit inside it with no extra boxes */
+:root[data-white] .wallet-sec .card.post:not(#x):not(#y) { border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; padding: 0 !important; }
+:root[data-white] .wallet-sec .post-head:not(#x):not(#y) { border: 0 !important; background: transparent !important; padding: 0 0 10px !important; min-height: 0; }
+:root .wallet-sec .cards:not(#x):not(#y) { gap: 48px; }
+:root .ws-tools .panel:not(#x):not(#y) { border: 0 !important; background: transparent !important; padding: 0 !important; } :root .ws-tools .split.even.tools:not(#x):not(#y) { gap: 48px; }
+:root .wallet-sec .earn-chart:not(#x) { border: 0 !important; background: transparent !important; padding: 0 0 10px !important; }
+/* your tools: same brand as the rest, title, one grey line, full width fields, one navy button */
+:root .ws-tools .tool:not(#x) { display: flex; flex-direction: column; gap: 10px; }
+:root .ws-tools .tool h3:not(#x) { font-size: 13px !important; font-weight: 400; text-transform: uppercase; margin: 0 !important; letter-spacing: .04em; }
+.tool-line { margin: 0 0 6px; color: #9aa0a8; font-size: 10px !important; line-height: 1.6; text-transform: uppercase; }
+:root .ws-tools .tool input:not(#x), :root .ws-tools .tool select:not(#x) { height: 40px; width: 100%; box-sizing: border-box; margin: 0 !important; border: 1px dashed var(--dash); background: #ffffff; border-radius: 0; padding: 0 12px; text-transform: uppercase; font-size: 11px; }
+.tool-result { display: flex; align-items: baseline; gap: 10px; min-height: 40px; align-items: center; text-transform: uppercase; }
+.tool-result b { font-weight: 400; font-size: 22px !important; color: #111111; }
+.tool-result span { color: #9aa0a8; font-size: 10px !important; }
+:root[data-white] .ws-tools .tool button.wide:not(#x) { height: 40px; background: #17306e !important; border-color: #17306e !important; color: #ffffff !important; margin: 0; }
+:root[data-white] .ws-tools .tool button.wide:disabled:not(#x) { background: #c3c7ce !important; border-color: #c3c7ce !important; opacity: 1 !important; }
+:root[data-white] .wallet-sec button.seal-btn:not(#x) { margin-top: 10px; height: 40px; background: #17306e !important; border-color: #17306e !important; color: #ffffff !important; }
+:root[data-white] .wallet-sec button.seal-btn:not(#x):hover { background: #111111 !important; }
+/* neuron card buttons stacked like the sidebar: cobalt network button on top, navy seal button under, same size and font */
+:root .wallet-sec .card.post .pin-btn:not(#x):not(#y), :root[data-white] .wallet-sec .card.post button.seal-btn:not(#x):not(#y) { font-size: 12px !important; letter-spacing: .06em !important; height: 40px !important; box-sizing: border-box; width: 100%; display: flex; align-items: center; justify-content: center; padding: 0 10px !important; margin: 0 !important; text-transform: uppercase; }
+:root .wallet-sec .card.post .pin-btn:not(#x):not(#y) { order: 10; margin-top: 16px !important; }
+:root[data-white] .wallet-sec .card.post button.seal-btn:not(#x):not(#y) { order: 11; margin-top: 8px !important; }
+/* checkpoints take the left third under In wallet; your tools take the right two thirds beside it (or earnings runs down beside it on a seller's page) */
+.wallet-grid { grid-template-areas: "neurons earnings" "checkpoints earnings" !important; align-items: start; }
+.wallet-grid:has(.ws-tools) { grid-template-areas: "neurons earnings" "checkpoints tools" !important; }
+:root .ws-tools .split.even.tools:not(#x):not(#y) { grid-template-columns: 1fr; gap: 36px; }
+:root .ws-tools .split.even.tools:not(#x):not(#y):not(#z) { grid-template-columns: 1fr 1fr; gap: 36px; } .ws-tools .wallet-net { display: none; }
+/* tool titles show their explanation on hover, same tip as the section titles */
+.tool-title { position: relative; align-self: flex-start; cursor: default; }
+.tool-title::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 0; width: max-content; max-width: 260px; white-space: normal; background: #222423; color: #ffffff; font-size: 7px !important; line-height: 1.45; letter-spacing: .04em; text-transform: uppercase; padding: 2px 4px; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 6; font-weight: 400; }
+.tool-title::before { content: ''; position: absolute; bottom: calc(100% + 4px); left: 12px; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid #222423; opacity: 0; transition: opacity .12s; pointer-events: none; z-index: 6; }
+.tool-title:hover::after, .tool-title:hover::before { opacity: 1; }
+/* card buttons exactly like the sidebar pair: 34px tall, 10px apart, pinned to the bottom of the section */
+.wallet-grid .ws-neurons { align-self: stretch; display: flex; flex-direction: column; }
+:root .wallet-grid .ws-neurons .cards:not(#x):not(#y) { flex: 1; align-items: stretch; }
+:root .wallet-grid .ws-neurons .card.post:not(#x):not(#y) { gap: 0 !important; height: 100%; }
+:root .wallet-sec .card.post .pin-btn:not(#x):not(#y):not(#z) { margin-top: auto !important; height: 34px !important; }
+:root[data-white] .wallet-sec .card.post button.seal-btn:not(#x):not(#y):not(#z) { margin-top: 10px !important; height: 34px !important; }
+:root .wallet-sec .card.post .post-details:not(#x):not(#y) { margin-bottom: 20px; flex: none; }
+:root .wallet-grid .ws-checkpoints .cards:not(#x):not(#y) { flex-direction: column; flex-wrap: nowrap; gap: 0 !important; } :root .wallet-grid .ws-checkpoints .card.post + .card.post:not(#x) { border-top: 1px dashed var(--dash) !important; margin-top: 28px !important; padding-top: 28px !important; }
+:root[data-white] .wallet-grid .ws-checkpoints .card.post + .card.post:not(#x):not(#y):not(#z) { border-top: 1px dashed var(--dash) !important; margin-top: 28px !important; padding-top: 28px !important; }
+:root[data-white] .wallet-grid .ws-checkpoints .card.post + .card.post:not(#x):not(#y):not(#z) { margin-left: -28px !important; margin-right: -28px !important; padding-left: 28px !important; padding-right: 28px !important; border-top: 1px dashed var(--dash) !important; width: auto !important; }
+:root .wallet-sec .cp-parts:not(#x) { border-top: 0 !important; padding-top: 0 !important; }
+/* buttons sit at the bottom of their containers */
+.wallet-grid .ws-checkpoints, .wallet-grid .ws-tools { align-self: stretch; display: flex; flex-direction: column; }
+:root .wallet-grid .ws-checkpoints .cards:not(#x):not(#y):not(#z) { flex: 1; }
+:root .wallet-grid .ws-checkpoints .card.post:last-child:not(#x):not(#y) { flex: 1; }
+:root .wallet-sec .card.post .card-foot:not(#x) { margin-top: auto !important; padding-top: 16px; }
+:root .wallet-sec .card.post .cp-parts:not(#x) { margin-bottom: 0; }
+:root .ws-tools .split.even.tools:not(#x):not(#y):not(#z) { flex: 1; align-items: stretch; }
+:root .ws-tools .tool:not(#x):not(#y) { height: 100%; }
+:root[data-white] .ws-tools .tool button.wide:not(#x):not(#y) { margin-top: auto !important; }
+:root .ws-tools .tool .tool-result:not(#x) { margin-bottom: 0; }
+/* tools box only as tall as its contents, Carry right under its fields */
+:root .wallet-grid .ws-tools:not(#x):not(#y) { align-self: start; }
+:root .ws-tools .split.even.tools:not(#x):not(#y):not(#z) { flex: none; }
+:root .ws-tools .tool:not(#x):not(#y):not(#z) { height: auto; }
+:root[data-white] .ws-tools .tool button.wide:not(#x):not(#y):not(#z) { margin-top: 0 !important; }
+/* the same space under the last buttons in every box */
+:root .wallet-grid .wallet-sec:not(#x):not(#y) { padding-bottom: 28px !important; }
+:root .wallet-sec .card.post:not(#x):not(#y):not(#z) { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:root .wallet-sec .cards:not(#x):not(#y):not(#z) { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:root .ws-tools .split.even.tools:not(#x):not(#y):not(#z) { margin: 0 !important; }
+:root .wallet-sec table:not(#x):not(#y) { margin-bottom: 0 !important; }
+/* checkpoint cards read like the market listings: tight rows, Holds lists each part with its stage tag */
+:root .wallet-sec .post-head:not(#x):not(#y):not(#z) { padding-bottom: 6px !important; }
+:root .wallet-sec .card.post .post-details:not(#x):not(#y):not(#z) { margin: 0 0 4px !important; row-gap: 10px; }
+.cp-holds { display: flex; flex-direction: column; gap: 6px; }
+.cp-holds .cp-part { grid-template-columns: auto 1fr; }
+.cp-holds .cp-amt { display: none; }
+:root .wallet-sec .card.post .card-foot:not(#x):not(#y) { padding-top: 14px; }
+.cp-holds .cp-part { display: flex !important; flex-direction: column; align-items: flex-start; gap: 4px; } .cp-holds .cp-part > span:nth-child(2) { white-space: nowrap; }
+/* slot page in the same style as the profile: back link, big title, the part on the left, holders on the right */
+.slot-nav { display: flex; justify-content: space-between; align-items: center; }
+.slot-nav span { display: inline-flex; gap: 18px; }
+.slot-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-top: 24px; align-items: stretch; }
+:root .slot-grid .wallet-sec:not(#x) { margin-top: 0; padding: 36px 28px 28px !important; }
+:root .slot-page .pin-btn.slot-pin:not(#x) { display: flex; justify-content: center; align-items: center; height: 34px; margin-top: 20px; background: #2a5dff; color: #ffffff !important; border: 0; font-size: 12px !important; text-transform: uppercase; letter-spacing: .06em; text-decoration: none !important; }
+:root .slot-page .pin-btn.slot-pin:not(#x):hover { background: #111111; }
+.slot-page table { width: 100%; border-collapse: collapse; border: 1px dashed var(--dash); background: #ffffff; }
+.slot-page th, .slot-page td { border: 1px dashed var(--dash); padding: 12px 14px; text-align: left; text-transform: uppercase; }
+.slot-page th { color: #9aa0a8; font-size: 10px !important; font-weight: 400; }
+.holder-cell { display: inline-flex; align-items: center; gap: 10px; color: #222423 !important; text-decoration: none !important; }
+.holder-av { width: 24px !important; height: 24px !important; display: block; border: 1.5px solid #17306e; box-sizing: border-box; background: #ffffff; overflow: hidden; }
+.holder-av svg { width: 100% !important; height: 100% !important; display: block; }
+:root .slot-page .page-head .page-sub:not(#x) { color: #9aa0a8 !important; }
+.wallet-sec .post-details dd a { color: #222423 !important; }
+:root[data-white] .wallet-sec button.cancel-listing:not(#x):not(#y) { background: #111111 !important; border-color: #111111 !important; color: #ffffff !important; } :root[data-white] .wallet-sec button.cancel-listing:not(#x):not(#y):hover { background: #2a5dff !important; border-color: #2a5dff !important; }
+.slot-pager { display: flex; justify-content: space-between; margin-top: 28px; } .slot-page-btn { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 18px; border: 1.5px solid #111111; background: #ffffff; color: #111111 !important; font-size: 12px !important; text-transform: uppercase; letter-spacing: .06em; text-decoration: none !important; } .slot-page-btn:hover { background: #111111; color: #ffffff !important; }
+.slot-page-btn { gap: 8px; }
+:root .holder-av.is-me:not(#x):not(#y) { border-color: #ff3fa4 !important; }
+/* tables fuse into the box's own dotted outline: full width to its edges, no second frame */
+:root .wallet-sec table:not(#x):not(#y):not(#z) { width: calc(100% + 56px) !important; margin: 0 -28px -28px !important; border: 0 !important; outline: 0 !important; background: transparent !important; }
+:root .wallet-sec table tr > *:first-child:not(#x):not(#y) { border-left: 0 !important; }
+:root .wallet-sec table tr > *:last-child:not(#x):not(#y) { border-right: 0 !important; }
+:root .wallet-sec table tbody tr:last-child td:not(#x):not(#y) { border-bottom: 0 !important; }
+.wallet-sec:has(table) { overflow: hidden; }
+/* easier to read: bigger table text, roomier rows; the holders box ends where its table ends */
+:root .wallet-sec td:not(#x):not(#y) { font-size: 13px !important; padding: 14px 16px !important; color: #111111 !important; }
+:root .wallet-sec th:not(#x):not(#y) { font-size: 11px !important; padding: 12px 16px !important; }
+.slot-grid { align-items: start !important; }
+.holder-av { width: 28px !important; height: 28px !important; }
+/* the part: one dotted line under its title, running right to the box's sides, like the top of the Held by table */
+.slot-grid > .wallet-sec:first-child > .wallet-title { margin-bottom: 0 !important; }
+:root .slot-grid > .wallet-sec:first-child > .post-details:not(#x):not(#y) { border-top: 1px dashed var(--dash); margin: 18px -28px 0 !important; padding: 18px 28px 0 !important; }
+:root .slot-grid > .wallet-sec:first-child > .post-details:not(#x):not(#y):not(#z) { width: auto !important; align-self: stretch; }
+/* slot page titles sit dead centre of their top band: the same space above and below */
+:root .slot-grid .wallet-sec:not(#x):not(#y):not(#z) { padding-top: 20px !important; }
+:root .slot-grid .wallet-sec .wallet-title:not(#x):not(#y) { margin: 0 !important; line-height: 1.2 !important; }
+:root .slot-grid > .wallet-sec:first-child > .post-details:not(#x):not(#y):not(#z) { margin-top: 20px !important; }
+:root .slot-grid > .wallet-sec:nth-child(2) table:not(#x):not(#y):not(#z) { margin-top: 20px !important; }
+:root .slot-grid .wallet-sec:not(#x):not(#y):not(#z):not(.q) { padding-top: 17px !important; } :root .slot-grid > .wallet-sec:first-child > .post-details:not(#x):not(#y):not(#z):not(.q), :root .slot-grid > .wallet-sec:nth-child(2) table:not(#x):not(#y):not(#z):not(.q) { margin-top: 23px !important; }
+:root .slot-grid .wallet-sec:not(#x):not(#y):not(#z):not(.q):not(.r) { padding-top: 19px !important; } :root .slot-grid > .wallet-sec:first-child > .post-details:not(#x):not(#y):not(#z):not(.q):not(.r), :root .slot-grid > .wallet-sec:nth-child(2) table:not(#x):not(#y):not(#z):not(.q):not(.r) { margin-top: 21px !important; }
+/* my neurons / profile: every section title in its own top band, one dotted line edge to edge under it, exactly like The part and Held by */
+:root .wallet-grid .wallet-sec:not(#x):not(#y):not(#z):not(.q) { padding-top: 19px !important; }
+:root .wallet-grid .wallet-sec > .wallet-title:not(#x):not(#y):not(#z) { margin: 0 !important; line-height: 1.2 !important; align-self: center; }
+:root .wallet-grid .wallet-sec > .wallet-title + *:not(#x):not(#y):not(#z) { border-top: 1px dashed var(--dash) !important; margin-top: 21px !important; margin-left: -28px !important; margin-right: -28px !important; padding-top: 21px !important; padding-left: 28px !important; padding-right: 28px !important; width: auto !important; align-self: stretch; box-sizing: border-box; }
+:root .wallet-grid .ws-tools > .wallet-title + .split.even.tools:not(#x):not(#y):not(#z):not(.q) { border-top: 1px dashed var(--dash) !important; margin: 21px -28px 0 !important; padding: 21px 28px 0 !important; width: auto !important; }

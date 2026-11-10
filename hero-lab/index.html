@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>if (/[?&]white=1/.test(location.search) || !location.search) document.documentElement.className = 'white';</script><style>html.white { background: #f6f6f4 !important; color-scheme: light; } html.white body { background: transparent !important; } html.white body:not(.ready) > * { visibility: hidden !important; } html.white body:not(.ready)::before { content: 'Loading'; position: fixed; top: 50%; left: 50%; width: 10ch; margin-left: -4ch; transform: translateY(-50%); text-align: left; animation: dots 1.2s steps(1, end) infinite; font: 12px/1 'Departure Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: #222423; } @keyframes dots { 0% { content: 'Loading'; } 25% { content: 'Loading.'; } 50% { content: 'Loading..'; } 75% { content: 'Loading...'; } }</style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>neurals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Archivo+Narrow:wght@500;600;700&family=Share+Tech+Mono&family=Barlow+Condensed:wght@800&family=VT323&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./world.css" />
+</head>
+<body>
+<div id="world"></div>
+<div class="hud tl">
+  <b>neurals</b>
+  <span>qwen2.5 1.5b, inscribed on solana</span>
+  <span id="live">reading the chain…</span>
+</div>
+<div class="hud bl" id="stats"></div>
+<div class="hud br">
+  <div class="k"><i class="s-tet"></i>tetrahedron, an attention head</div>
+  <div class="k"><i class="s-cube"></i>cube, a neuron column</div>
+  <div class="k"><i class="s-spin"></i>spin, how hard it fires</div>
+  <div class="k"><i class="s-unsold"></i>small, on the curve</div>
+  <div class="k"><i class="s-part"></i>medium, partly bought</div>
+  <div class="k"><i class="s-sold"></i>large, fully bought</div>
+  <div class="k"><i class="s-mine"></i>solid white, yours</div>
+  <div class="k"><i class="s-trait"></i>measured trait</div>
+  <div class="k"><i class="s-stream"></i>residual stream, every layer reads and writes it</div>
+  <div class="k"><i class="s-sig"></i>a real paid message, replayed layer by layer, parts swell by how much they fired</div>
+  <div class="k ramp"><i></i>contours, thin where quiet, thick where hot</div>
+  <div class="stages" id="stages"></div>
+</div>
+<div class="hud tc" id="shapes"></div>
+<div class="hud tr">
+  <span>drag to orbit, scroll to zoom, right drag to pan</span>
+  <form id="who"><input id="wallet" placeholder="show a wallet as yours" /><button>show</button></form>
+</div>
+<div id="tip"></div>
+<script type="module" src="./world.ts"></script>
+</body>
+</html>

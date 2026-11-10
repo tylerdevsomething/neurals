@@ -14,6 +14,8 @@ const pattern = new RegExp(
 );
 
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "dist", ".anchor", "test-ledger"]);
+// The front end handed over as is (2026-11-10): kept byte for byte at the owner's request, so not checked.
+const SKIP_PATHS = new Set(["site-v2", "hero-lab"]);
 const SKIP_EXT = /\.(png|jpe?g|gif|webp|ico|woff2?|ttf|gguf|bin|so|wasm|pdf|lock)$/i;
 
 const root = join(import.meta.dirname, "..");
@@ -25,7 +27,7 @@ function walk(dir: string) {
     const rel = relative(root, path).replaceAll("\\", "/");
     if (pattern.test(name)) hits.push(`${rel}: file name`);
     if (statSync(path).isDirectory()) {
-      if (!SKIP_DIRS.has(name)) walk(path);
+      if (!SKIP_DIRS.has(name) && !SKIP_PATHS.has(rel) && !name.startsWith("neurals-frontend-")) walk(path);
       continue;
     }
     if (SKIP_EXT.test(name)) continue;

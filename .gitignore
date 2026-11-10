@@ -10,3 +10,7 @@ target/
 test-ledger/
 site/dist/
 a.out.*
+
+# front end handoff zips and their unpacked copies (the folders live at site-v2/ and hero-lab/)
+neurals-frontend-*/
+neurals-frontend-*.zip

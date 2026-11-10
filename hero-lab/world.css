@@ -1,0 +1,412 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #010302; overflow: hidden; }
+body { letter-spacing: .06em; color: #9fb3a8; font: 12px/1.6 'JetBrains Mono', monospace; text-transform: lowercase; }
+input { text-transform: none; }
+#world { position: fixed; inset: 0; }
+.hud { position: fixed; z-index: 2; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.hud form, .hud input, .hud button { pointer-events: auto; }
+.tl { top: 22px; left: 26px; } .tl b { color: #e8fff0; font-size: 18px; letter-spacing: .08em; }
+.tr { top: 22px; right: 26px; align-items: flex-end; gap: 10px; }
+.bl { bottom: 22px; left: 26px; }
+.br { bottom: 22px; right: 26px; gap: 4px; }
+.k { display: flex; align-items: center; gap: 8px; }
+.k i { width: 12px; height: 12px; display: inline-block; }
+.s-unsold { width: 4px !important; height: 4px !important; margin: 0 4px; border-radius: 50%; background: #3dff6e66; }
+.s-part { width: 8px !important; height: 8px !important; margin: 0 2px; border-radius: 50%; background: #2bb352; }
+.s-sold { border-radius: 50%; background: #5dff8a; }
+.s-mine { border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px #010302, 0 0 0 3px #fff; }
+.s-trait { width: 9px !important; height: 9px !important; margin: 0 1.5px; border: 1px solid #ffe23d; transform: rotate(45deg); }
+.s-pulse { border-radius: 50%; border: 1px solid #3dff6e; box-shadow: 0 0 0 3px #3dff6e33; }
+.s-sig { width: 5px !important; height: 5px !important; margin: 0 3.5px; background: #ffe23d; box-shadow: 0 0 8px #ffe23d; border-radius: 50%; }
+.s-h { border-left: 1px solid #3dff6e; height: 14px !important; width: 6px !important; margin: 0 3px; position: relative; }
+.stages { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #12261a; }
+.stages span { display: flex; align-items: center; gap: 8px; }
+.stages i { width: 18px; height: 2px; display: inline-block; }
+#who { display: flex; gap: 6px; }
+#who input { width: 360px; background: #020604; border: 1px solid #173323; color: #cfe; padding: 6px 8px; font: inherit; }
+#who button { background: #0c1f14; color: #3dff6e; border: 1px solid #1e5a35; padding: 6px 12px; font: inherit; cursor: pointer; }
+#tip { position: fixed; z-index: 3; pointer-events: none; display: none; flex-direction: column; padding: 8px 10px; background: rgba(1,3,2,.92); border: 1px solid #3dff6e; color: #9fb3a8; max-width: 300px; }
+#tip b { color: #3dff6e; font-weight: 600; }
+.lbl { font: 11px 'JetBrains Mono', monospace; white-space: nowrap; pointer-events: none; text-transform: lowercase; }
+.tc { top: 18px; left: 50%; transform: translateX(-50%); flex-direction: row; gap: 6px; pointer-events: auto; }
+.tc button { background: #020604; border: 1px solid #173323; color: #7fa08d; padding: 7px 14px; font: inherit; cursor: pointer; }
+.tc button.on { border-color: #3dff6e; color: #3dff6e;  }
+.tc button b { color: #e8fff0; margin-right: 6px; }
+/* one letter spacing, matching the shape buttons, normal weight, smaller */
+body { font-size: 11px; }
+.lbl, .tc button, #who input, #who button, #tip { letter-spacing: .06em; font-weight: 400; }
+.lbl { font-size: 10px !important; }
+.tl b { font-size: 15px; font-weight: 600; }
+.tc button b { font-weight: 400; }
+
+/* labels: solid boxes, one line of text */
+.lbl { background: #010302; border: 1px solid; padding: 3px 7px; }
+
+/* solid panels behind every piece of text */
+.hud.tl, .hud.bl, .hud.br, .hud.tr > span { background: #010302; border: 1px solid #173323; padding: 10px 14px; }
+.hud.tr { gap: 8px; }
+.lbl { background: #010302 !important; border: 1px solid; padding: 3px 8px; opacity: 1; }
+.ramp { display: none; align-items: center; gap: 8px; }
+.ramp i { width: 70px !important; height: 6px !important; background: linear-gradient(90deg, #2440ff, #1fa8ff, #21e0c0, #7dff5a, #ffe23d, #ff9a2b, #ff3b3b); }
+body.onion .ramp { display: flex; }
+
+.lbl { padding: 6px 12px !important; font-size: 9px !important; text-align: center; line-height: 1.2; }
+.s-stream { height: 2px !important; width: 14px !important; background: #e8fff0; }
+
+/* labels: roomy solid boxes, small text dead centre */
+.lbl { display: flex !important; align-items: center; justify-content: center; text-align: center; min-width: 120px; height: 30px; padding: 0 18px !important; font-size: 9px !important; line-height: 1 !important; letter-spacing: .1em !important; background: #010302 !important; border: 1px solid; box-sizing: border-box; }
+
+/* labels: larger solid rectangles in their colour, small black text dead centre */
+.lbl { min-width: 150px !important; height: 34px !important; padding: 0 20px !important; color: #010302 !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: .1em !important; border: 0 !important; }
+.ramp i { background: repeating-linear-gradient(90deg, #3dff6e 0 4px, transparent 4px 7px) !important; height: 2px !important; width: 22px !important; }
+
+/* tabs wrap to two rows if needed */
+.tc { flex-wrap: wrap; justify-content: center; max-width: 900px; }
+/* flat tabs: the old drawings in a frame, the 3D view hidden */
+#flat { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding-top: 70px; z-index: 1; }
+body.flatmode #flat { display: flex; }
+body.flatmode #world, body.flatmode .hud.br { display: none; }
+.lbl { min-width: 170px !important; height: 38px !important; font-size: 10px !important; }
+.s-sig { background: linear-gradient(90deg, #36f5d0, #3dff6e, #ff4b6e) !important; box-shadow: none !important; }
+
+/* peel the onion */
+.peel { display: none; top: 130px; left: 26px; background: #010302; border: 1px solid #173323; padding: 12px 14px; gap: 6px; pointer-events: auto; min-width: 190px; }
+body.onion .peel { display: flex; }
+.peel b { color: #e8fff0; font-weight: 600; margin-bottom: 4px; }
+.peel button { display: flex; align-items: center; gap: 10px; background: #020604; border: 1px solid #173323; color: #cfe; padding: 7px 10px; font: inherit; letter-spacing: .06em; cursor: pointer; text-align: left; }
+.peel button i { width: 12px; height: 12px; display: inline-block; }
+.peel button.off { color: #4b5d52; } .peel button.off i { opacity: .2; }
+.peel .row { display: flex; gap: 6px; margin-top: 4px; } .peel .row button { flex: 1; justify-content: center; }
+
+/* smaller labels and text */
+.lbl { min-width: 118px !important; height: 26px !important; padding: 0 12px !important; font-size: 8px !important; }
+body { font-size: 10px; }
+.tl b { font-size: 13px; }
+.peel button, .tc button { padding: 5px 9px; }
+.ramp i { background: #3dff6e !important; height: 1px !important; }
+.s-unsold { background: #3dff6e !important; } .s-part { background: #3dff6e !important; }
+
+.s-tet { width: 0 !important; height: 0 !important; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 11px solid #3dff6e; background: none !important; }
+.s-cube { border: 1px solid #3dff6e; }
+.s-spin { border: 1px solid #3dff6e; border-radius: 50% !important; border-right-color: transparent; }
+
+.modebtn { pointer-events: auto; background: #010302; border: 1px solid #173323; color: #7fa08d; padding: 7px 12px; font: inherit; letter-spacing: .06em; cursor: pointer; }
+.modebtn b { font-weight: 400; padding: 2px 6px; margin-left: 4px; border: 1px solid #173323; }
+.modebtn b.on { background: #3dff6e; color: #010302; border-color: #3dff6e; }
+
+/* one view now: no tab bar */
+
+
+/* labels: small text, finally */
+.lbl { min-width: 96px !important; height: 20px !important; padding: 0 10px !important; font-size: 7px !important; letter-spacing: .08em !important; }
+
+/* kimura palette: soft mint grey to lavender, acid lime, violet and coral, light panels */
+body[data-palette="kimura"] { background: linear-gradient(180deg, #d9e4df 0%, #cfd3e6 45%, #b7a3ea 100%); color: #3a2a5c; }
+body[data-palette="kimura"] .hud.tl, body[data-palette="kimura"] .hud.bl, body[data-palette="kimura"] .hud.br, body[data-palette="kimura"] .hud.tr > span, body[data-palette="kimura"] .peel, body[data-palette="kimura"] .modebtn, body[data-palette="kimura"] .tc button, body[data-palette="kimura"] #who input, body[data-palette="kimura"] #who button { background: rgba(255,255,255,.55); border-color: rgba(91,34,214,.25); color: #3a2a5c; }
+body[data-palette="kimura"] .tl b, body[data-palette="kimura"] .peel b { color: #2a1650; }
+body[data-palette="kimura"] .tc button.on { border-color: #8b4dff; color: #5b22d6; }
+body[data-palette="kimura"] .modebtn b { border-color: rgba(91,34,214,.25); }
+body[data-palette="kimura"] .modebtn b.on { background: #b6ff2e; color: #2a1650; border-color: #b6ff2e; }
+body[data-palette="kimura"] .peel button { background: rgba(255,255,255,.6); border-color: rgba(91,34,214,.2); color: #3a2a5c; }
+body[data-palette="kimura"] .peel button.off { color: #a99cc4; }
+body[data-palette="kimura"] #tip { background: rgba(255,255,255,.92); border-color: #8b4dff; color: #3a2a5c; } body[data-palette="kimura"] #tip b { color: #5b22d6; }
+body[data-palette="kimura"] .stages { border-top-color: rgba(91,34,214,.2); }
+body[data-palette="kimura"] .k i { filter: hue-rotate(40deg); }
+body[data-palette="kimura"] .tc button b { color: #2a1650; }
+body[data-palette="kimura"] { background: #d3d6e6; }
+
+/* embedded in the website: just the brain, its labels and the peel panel, on the page's own background */
+body.embed, body.embed[data-palette] { background: transparent !important; }
+body.embed .hud.tl, body.embed .hud.tr, body.embed .hud.bl, body.embed .hud.br, body.embed .tc { display: none !important; }
+body.embed .peel { top: 20px; left: 20px; }
+html:has(body.embed) { background: transparent !important; }
+body.embed .peel, body.embed .peel button { background: rgba(251,241,228,.7) !important; }
+
+/* the stages panel: its own fixed box on the right, one font, one size */
+.peel { left: auto !important; right: 20px; top: 20px !important; width: 190px; gap: 0 !important; padding: 0 !important; font: 10px/1 'JetBrains Mono', monospace; letter-spacing: .06em; background: transparent !important; border: 1px solid #3f1d9e !important; }
+.peel .ph { padding: 10px 12px; border-bottom: 1px solid #3f1d9e; color: #3f1d9e; font-weight: 600; }
+.peel button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border-bottom: 1px solid rgba(63,29,158,.25); cursor: pointer; color: #1e1240; font: inherit; letter-spacing: inherit; }
+.peel button i { width: 10px; height: 10px; flex: none; }
+.peel button em { margin-left: auto; font-style: normal; color: #6b6290; }
+.peel button.off { color: #9c95b6; } .peel button.off i { opacity: .25; }
+.peel .row { display: flex; gap: 0; margin: 0; } .peel .row button { justify-content: center; border-bottom: 0; color: #3f1d9e; }
+.peel .row button + button { border-left: 1px solid #3f1d9e; }
+.peel .row button:hover, .peel button:hover { background: rgba(63,29,158,.08); }
+body.embed .peel, body.embed .peel button { background: transparent !important; }
+body.embed[data-theme="dark"] .peel { border-color: #6d3cf0 !important; }
+body.embed[data-theme="dark"] .peel .ph, body.embed[data-theme="dark"] .peel .row button { color: #9b7bff; border-color: #6d3cf0; }
+body.embed[data-theme="dark"] .peel button { color: #e8e6ee; border-bottom-color: rgba(109,60,240,.3); }
+body.embed[data-theme="dark"] .peel button em { color: #8d86a6; }
+body.embed[data-theme="dark"] .peel .row button + button { border-left-color: #6d3cf0; }
+
+/* stages box: drag by its header, close with the cross, reopen from the small tab */
+.peel .ph { display: flex; align-items: center; justify-content: space-between; cursor: grab; user-select: none; }
+.peel .ph:active { cursor: grabbing; }
+.peel .ph .x { all: unset; cursor: pointer; padding: 0 2px; font-size: 13px; line-height: 1; color: inherit; border: 0 !important; width: auto !important; }
+.peel.closed { width: auto; border: 0 !important; }
+.peel .reopen { all: unset; cursor: pointer; padding: 8px 12px; border: 1px solid #3f1d9e; color: #3f1d9e; font: inherit; letter-spacing: inherit; }
+body.embed[data-theme="dark"] .peel .reopen { border-color: #6d3cf0; color: #9b7bff; }
+
+/* stages box: solid backing, a tick on the right, a shape per stage */
+.peel { background: #dfe7e1 !important; }
+body.embed[data-theme="dark"] .peel { background: #050407 !important; }
+body.embed .peel button { background: transparent !important; }
+.peel .ic { flex: none; }
+.peel button.off .ic { opacity: .25; }
+.peel .tick { margin-left: auto; width: 14px; height: 14px; border: 1px solid #3f1d9e; display: grid; place-items: center; font-size: 10px; color: #3f1d9e; }
+body.embed[data-theme="dark"] .peel .tick { border-color: #6d3cf0; color: #ffffff; }
+
+/* parts key under the stages */
+.peel .ph.sub { border-top: 1px solid #3f1d9e; cursor: default; }
+.peel .prow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid rgba(63,29,158,.25); color: #1e1240; }
+.peel .prow:last-child { border-bottom: 0; }
+.peel .prow.note { color: #6b6290; }
+.peel .ic3 { flex: none; stroke: #3f1d9e; stroke-width: 1.1; stroke-linejoin: round; }
+body.embed[data-theme="dark"] .peel .ph.sub { border-top-color: #6d3cf0; }
+body.embed[data-theme="dark"] .peel .prow { color: #e8e6ee; border-bottom-color: rgba(109,60,240,.3); }
+body.embed[data-theme="dark"] .peel .prow.note { color: #8d86a6; }
+body.embed[data-theme="dark"] .peel .ic3 { stroke: #9b7bff; }
+
+/* solid box on both themes, whatever came before */
+body.embed .peel, body .peel { background: #dfe7e1 !important; }
+body.embed[data-theme="dark"] .peel { background: #050407 !important; }
+/* tick boxes: bigger, thicker, filled when on */
+.peel .tick { width: 20px !important; height: 20px !important; border: 2px solid #3f1d9e !important; font-size: 13px !important; font-weight: 700; color: #dfe7e1 !important; background: #3f1d9e; }
+.peel button.off .tick { background: transparent; }
+body.embed[data-theme="dark"] .peel .tick { border-color: #6d3cf0 !important; background: #6d3cf0; color: #050407 !important; }
+body.embed[data-theme="dark"] .peel button.off .tick { background: transparent; }
+.peel .ic3 { stroke: none !important; }
+
+/* tick box, as on Scribes: a square with a 2px border, filled when on, a bold drawn tick in the page colour */
+.peel .tick { all: unset; margin-left: auto; display: grid !important; place-items: center; flex: none; box-sizing: border-box; width: 16px !important; height: 16px !important; border: 2px solid #3f1d9e !important; background: #3f1d9e !important; }
+.peel .tick::after { content: ""; width: 7px; height: 3.5px; border-left: 2.2px solid #dfe7e1; border-bottom: 2.2px solid #dfe7e1; transform: translateY(-1.5px) rotate(-45deg); }
+.peel button.off .tick { background: transparent !important; }
+.peel button.off .tick::after { display: none; }
+body.embed[data-theme="dark"] .peel .tick { border-color: #6d3cf0 !important; background: #6d3cf0 !important; }
+body.embed[data-theme="dark"] .peel .tick::after { border-color: #050407; }
+body.embed[data-theme="dark"] .peel button.off .tick { background: transparent !important; }
+
+/* the site's chosen font, inside the brain too */
+body[data-font="1"] .lbl, body[data-font="1"] .peel, body[data-font="1"] .peel * { font-family: 'Anton', sans-serif !important; font-weight: 400 !important; }
+body[data-font="2"] .lbl, body[data-font="2"] .peel, body[data-font="2"] .peel * { font-family: 'Bebas Neue', sans-serif !important; font-weight: 400 !important; }
+body[data-font="3"] .lbl, body[data-font="3"] .peel, body[data-font="3"] .peel * { font-family: 'Archivo Black', sans-serif !important; font-weight: 400 !important; }
+body[data-font="4"] .lbl, body[data-font="4"] .peel, body[data-font="4"] .peel * { font-family: 'Barlow Condensed', sans-serif !important; font-weight: 800 !important; }
+body[data-font] .lbl { font-size: 10px !important; } body[data-font] .peel { font-size: 12px !important; }
+
+/* dark site: the stages box in white on black, colour only in the brain */
+body.embed[data-theme="dark"] .peel { border-color: #ffffff !important; background: #000000 !important; }
+body.embed[data-theme="dark"] .peel .ph, body.embed[data-theme="dark"] .peel .row button, body.embed[data-theme="dark"] .peel button, body.embed[data-theme="dark"] .peel .prow, body.embed[data-theme="dark"] .peel .prow.note, body.embed[data-theme="dark"] .peel .reopen { color: #ffffff !important; border-color: rgba(255,255,255,.35) !important; }
+body.embed[data-theme="dark"] .peel .ph, body.embed[data-theme="dark"] .peel .ph.sub { border-color: #ffffff !important; }
+body.embed[data-theme="dark"] .peel .row button + button { border-left-color: #ffffff !important; }
+body.embed[data-theme="dark"] .peel .tick { border-color: #ffffff !important; background: #ffffff !important; }
+body.embed[data-theme="dark"] .peel .tick::after { border-color: #000000 !important; }
+body.embed[data-theme="dark"] .peel button.off .tick { background: transparent !important; }
+body.embed[data-theme="dark"] .peel button.off { color: rgba(255,255,255,.4) !important; }
+body.embed[data-theme="dark"] .peel .reopen { border: 1px solid #ffffff !important; }
+
+/* light site: the stages box in black hairlines on the page colour */
+body.embed[data-theme="light"] .peel { border: .5px solid #000 !important; background: #dfe7e1 !important; font-weight: 300; }
+body.embed[data-theme="light"] .peel .ph, body.embed[data-theme="light"] .peel .ph.sub { color: #000 !important; border-color: #000 !important; border-width: .5px !important; }
+body.embed[data-theme="light"] .peel button, body.embed[data-theme="light"] .peel .prow, body.embed[data-theme="light"] .peel .row button, body.embed[data-theme="light"] .peel .reopen { color: #000 !important; border-color: rgba(0,0,0,.4) !important; border-width: .5px !important; }
+body.embed[data-theme="light"] .peel .row button + button { border-left: .5px solid #000 !important; }
+body.embed[data-theme="light"] .peel .tick { border-color: #000 !important; background: #000 !important; }
+body.embed[data-theme="light"] .peel .tick::after { border-color: #dfe7e1 !important; }
+body.embed[data-theme="light"] .peel button.off .tick { background: transparent !important; }
+body.embed[data-theme="light"] .peel button.off { color: rgba(0,0,0,.4) !important; }
+body.embed .peel, body.embed .peel * { font-weight: 300 !important; }
+body.embed[data-theme="dark"] .peel, body.embed[data-theme="dark"] .peel .ph, body.embed[data-theme="dark"] .peel button, body.embed[data-theme="dark"] .peel .prow { border-width: .5px !important; }
+/* the zoom note, a small box like the stages box, bottom left */
+.zoomnote { display: none; }
+body.embed .zoomnote { display: flex; flex-direction: row; align-items: center; gap: 12px; left: 20px; bottom: 20px; padding: 8px 10px 8px 12px; pointer-events: auto; font: 300 10px 'JetBrains Mono', monospace; letter-spacing: .06em; border: .5px solid #000; background: #dfe7e1; color: #000; }
+body.embed .zoomnote button { all: unset; cursor: pointer; font-size: 13px; line-height: 1; }
+body.embed[data-theme="dark"] .zoomnote { border-color: #fff; background: #000; color: #fff; }
+
+/* paper version: the stages box on paper, black hairlines, narrow uppercase */
+body.embed[data-theme="paper"] .peel, body.embed[data-theme="paper"] .zoomnote { background: #e9e5dc !important; border: 1px solid #111 !important; color: #111; }
+body.embed[data-theme="paper"] .peel *, body.embed[data-theme="paper"] .zoomnote, body.embed[data-theme="paper"] .lbl { font-family: 'Archivo Narrow', sans-serif !important; font-weight: 600 !important; text-transform: uppercase; letter-spacing: .08em !important; }
+body.embed[data-theme="paper"] .peel .ph, body.embed[data-theme="paper"] .peel button, body.embed[data-theme="paper"] .peel .prow { color: #111 !important; border-color: #111 !important; }
+body.embed[data-theme="paper"] .peel .row button + button { border-left: 1px solid #111 !important; }
+body.embed[data-theme="paper"] .peel .tick { border-color: #111 !important; background: #2f66e8 !important; }
+body.embed[data-theme="paper"] .peel .tick::after { border-color: #e9e5dc !important; }
+body.embed[data-theme="paper"] .peel button.off .tick { background: transparent !important; }
+
+@font-face { font-family: 'Departure Mono'; src: url('https://cdn.jsdelivr.net/gh/rektdeckard/departure-mono@main/public/assets/DepartureMono-Regular.woff2') format('woff2'); }
+body.embed[data-theme="paper"] .peel, body.embed[data-theme="paper"] .zoomnote { background: #e3dfd6 !important; border: 1px dashed #a1a2a2 !important; color: #222423; }
+body.embed[data-theme="paper"] .peel *, body.embed[data-theme="paper"] .zoomnote, body.embed[data-theme="paper"] .lbl { font-family: 'Departure Mono', monospace !important; font-weight: 400 !important; letter-spacing: .04em !important; }
+body.embed[data-theme="paper"] .peel .ph, body.embed[data-theme="paper"] .peel button, body.embed[data-theme="paper"] .peel .prow { color: #222423 !important; border-color: rgba(34,36,35,.4) !important; border-bottom-style: dashed !important; }
+body.embed[data-theme="paper"] .peel .row button + button { border-left: 1px dashed #a1a2a2 !important; }
+body.embed[data-theme="paper"] .peel .ph.sub { border-top: 1px dashed #a1a2a2 !important; }
+body.embed[data-theme="paper"] .peel .tick { border-color: #222423 !important; border-style: solid !important; background: #2a5dff !important; }
+body.embed[data-theme="paper"] .peel .tick::after { border-color: #e3dfd6 !important; }
+body.embed[data-theme="paper"] .peel button.off .tick { background: transparent !important; }
+
+/* every version: Departure Mono in capitals, dashed hairlines, colours from the site's theme */
+body.embed { --ink: #000000; --pbg: #dfe7e1; --tickc: #000000; }
+body.embed[data-theme="dark"] { --ink: #ffffff; --pbg: #000000; --tickc: #ffffff; }
+body.embed[data-theme="paper"] { --ink: #222423; --pbg: #e3dfd6; --tickc: #2a5dff; }
+body.embed .peel *, body.embed .peel, body.embed .zoomnote, body.embed .zoomnote *, body.embed .lbl { font-family: 'Departure Mono', monospace !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: .04em !important; }
+body.embed[data-theme] .peel, body.embed[data-theme] .zoomnote { background: var(--pbg) !important; color: var(--ink) !important; border: 1px dashed color-mix(in srgb, var(--ink) 60%, transparent) !important; }
+body.embed[data-theme] .peel .ph, body.embed[data-theme] .peel button, body.embed[data-theme] .peel .prow, body.embed[data-theme] .peel .reopen { color: var(--ink) !important; border: 0 !important; border-bottom: 1px dashed color-mix(in srgb, var(--ink) 40%, transparent) !important; }
+body.embed[data-theme] .peel .ph.sub { border-top: 1px dashed color-mix(in srgb, var(--ink) 40%, transparent) !important; }
+body.embed[data-theme] .peel .row button { border-bottom: 0 !important; }
+body.embed[data-theme] .peel .row button + button { border-left: 1px dashed color-mix(in srgb, var(--ink) 40%, transparent) !important; }
+body.embed[data-theme] .peel button.off { color: color-mix(in srgb, var(--ink) 40%, transparent) !important; }
+body.embed[data-theme] .peel .tick { border: 2px solid var(--ink) !important; background: var(--tickc) !important; }
+body.embed[data-theme] .peel .tick::after { border-color: var(--pbg) !important; }
+body.embed[data-theme] .peel button.off .tick { background: transparent !important; }
+body.embed[data-theme] .peel .reopen { border: 1px dashed color-mix(in srgb, var(--ink) 60%, transparent) !important; }
+/* the hover pop-up, in the site's own style on every version */
+body.embed[data-theme] #tip { background: var(--pbg) !important; color: var(--ink) !important; border: 1px dashed color-mix(in srgb, var(--ink) 60%, transparent) !important; border-radius: 0 !important; box-shadow: none !important; padding: 10px 12px; gap: 4px; max-width: 260px; }
+body.embed[data-theme] #tip, body.embed[data-theme] #tip * { font-family: 'Departure Mono', monospace !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: .04em !important; font-size: 10px; }
+body.embed[data-theme] #tip b { color: var(--ink) !important; font-size: 11px; padding-bottom: 4px; border-bottom: 1px dashed color-mix(in srgb, var(--ink) 40%, transparent); margin-bottom: 2px; }
+body.embed[data-theme="paper"] #tip b { color: #2a5dff !important; }
+
+/* the colours switch, beside the zoom note, same box */
+body.embed .palnote { flex-direction: row; align-items: center; gap: 8px; left: 230px; bottom: 20px; padding: 6px 8px 6px 12px; pointer-events: auto; background: var(--pbg); color: var(--ink); border: 1px dashed color-mix(in srgb, var(--ink) 60%, transparent); font: 400 10px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; }
+body.embed .palnote button { all: unset; cursor: pointer; padding: 4px 8px; border: 1px dashed color-mix(in srgb, var(--ink) 50%, transparent); font: inherit; letter-spacing: inherit; text-transform: uppercase; }
+body.embed .palnote button.on { background: #222423; color: #e3dfd6; border-style: solid; }
+
+/* view bar, bottom centre, same box as the others */
+.viewbar { display: none; }
+body.embed .viewbar { display: flex; flex-direction: row; align-items: center; gap: 6px; left: 50%; transform: translateX(-50%); bottom: 20px; padding: 6px 8px 6px 12px; pointer-events: auto; background: var(--pbg); color: var(--ink); border: 1px dashed color-mix(in srgb, var(--ink) 60%, transparent); font: 400 10px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; }
+body.embed .viewbar button { all: unset; cursor: pointer; padding: 5px 10px; border: 1px dashed color-mix(in srgb, var(--ink) 50%, transparent); font: inherit; letter-spacing: inherit; text-transform: uppercase; }
+body.embed .viewbar button:hover { background: var(--ink); color: var(--pbg); border-style: solid; }
+
+body.embed .viewbar { padding: 5px 6px; gap: 4px; }
+body.embed .viewbar button { padding: 5px 7px; display: grid; place-items: center; }
+body.embed .viewbar svg { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; }
+body.embed .viewbar svg .f { fill: var(--ink); }
+body.embed .viewbar button:hover svg { stroke: var(--pbg); } body.embed .viewbar button:hover svg .f { fill: var(--pbg); }
+
+.peel .ic .ol { stroke: #222423; }
+body.embed[data-theme="light"] .peel .ic .ol { stroke: #000; }
+body.embed[data-theme="dark"] .peel .ic .ol { stroke: none; }
+
+/* console version: the brain sits on the black panel, no boxes of its own, small frosted tags */
+body.embed[data-theme="hud"] { --ink: #ffffff; --pbg: #000000; --tickc: #ffffff; }
+body.embed[data-theme="hud"] .peel, body.embed[data-theme="hud"] .zoomnote, body.embed[data-theme="hud"] .viewbar, body.embed[data-theme="hud"] .palnote { display: none !important; }
+body.embed[data-theme="hud"] .lbl { background: rgba(241,237,237,.18) !important; color: #f1eded !important; border: 1px solid rgba(241,237,237,.5) !important; backdrop-filter: blur(4px); font-family: 'Inter', sans-serif !important; text-transform: none !important; letter-spacing: 0 !important; min-width: 0 !important; height: 20px !important; padding: 0 8px !important; font-size: 9px !important; }
+body.embed[data-theme="hud"] #tip, body.embed[data-theme="hud"] #tip * { font-family: 'Inter', sans-serif !important; text-transform: none !important; letter-spacing: 0 !important; }
+body.embed[data-theme="hud"] .stagelbl { display: none !important; }
+
+/* white backdrop: boxes and labels on white, ticks in blue */
+body.embed[data-white] { --pbg: #ffffff; --tickc: #2a5dff; }
+body.embed[data-white] .peel .tick::after { border-color: #ffffff !important; }
+
+/* compare page: tabs across the top in the site's style */
+body.compare .tc { display: flex !important; top: 16px; gap: 0; border: 1px dashed #a1a2a2; background: #ffffff; padding: 0; }
+body.compare .tc button { background: #ffffff !important; color: #222423 !important; border: 0 !important; border-right: 1px dashed #a1a2a2 !important; font: 400 11px 'Departure Mono', monospace !important; text-transform: uppercase; letter-spacing: .04em !important; padding: 10px 14px !important; box-shadow: none !important; }
+body.compare .tc button:last-child { border-right: 0 !important; }
+body.compare .tc button.on { background: #2a5dff !important; color: #ffffff !important; }
+body.compare .tc button b { color: inherit !important; }
+body.compare { background: #ffffff !important; }
+body.compare .peel { top: 80px !important; }
+/* chip tab: gold board behind, tabs and boxes stay crisp on it */
+body.compare.gold .tc, body.compare.gold .peel { box-shadow: none; }
+body.compare.gold .tc button.on { background: #1c1f22 !important; color: #e6e9ec !important; }
+body.compare.gold { --tickc: #1c1f22; }
+/* many strata tabs: two tight rows */
+body.compare .tc { flex-wrap: wrap !important; justify-content: center; max-width: 900px; }
+body.compare .tc button { padding: 7px 9px !important; font-size: 10px !important; }
+/* strata callouts: section boxes, leader lines, names outside */
+.callouts { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 2; }
+.callt { display: inline-block; color: #fff; font: 400 7.5px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; padding: 3px 6px; white-space: nowrap; }
+.calltoggle { all: unset; position: fixed; left: 20px; bottom: 64px; z-index: 5; display: flex; align-items: center; gap: 10px; cursor: pointer; background: #fff; border: 1px dashed #a1a2a2; padding: 8px 10px 8px 12px; font: 400 10px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; color: #222423; }
+.calltoggle i { width: 12px; height: 12px; border: 1px solid #222423; display: inline-block; }
+.calltoggle i.on { background: #222423; box-shadow: inset 0 0 0 2px #fff; }
+.callt { box-sizing: border-box; display: block !important; overflow: hidden; text-overflow: clip; }
+body.embed .viewbar button.on { background: var(--ink); border-style: solid; }
+body.embed .viewbar button.on svg { stroke: var(--pbg); }
+.callt { font-size: 7px !important; letter-spacing: 0 !important; padding: 3px 5px !important; }
+body.compare.embed[data-white] { --tickc: #2a5dff; }
+.callt { text-align: center; }
+/* inside the water bubble: a soft blue wash with a brighter surface above, like looking up through water */
+body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0; transition: opacity .8s ease; background: radial-gradient(ellipse at 50% -10%, rgba(255,255,255,.4) 0%, rgba(190,220,255,.12) 40%, rgba(120,170,235,.2) 100%); }
+body.underwater::before { opacity: 1; }
+/* the view box: data views first, then the brain's stages, each under its own small heading */
+.peel .sub { padding: 9px 12px 5px; font: 400 8px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--ink, #222423); border-top: 1px dashed color-mix(in srgb, var(--ink, #222423) 45%, transparent); }
+.peel .sub:first-of-type { border-top: 0; }
+/* my neurons box: same as the view box, pink ticks */
+.minebox { position: fixed !important; right: auto !important; }
+body.compare.embed[data-white] .minebox { --tickc: #ff3fa4; }
+.minebox .ph { cursor: default !important; }
+.minebox .cnt { color: #ff3fa4; }
+.minebox .empty { padding: 12px; font: 400 10px 'Departure Mono', monospace; text-transform: uppercase; }
+.minebox .buy { display: block; margin: 0 12px 12px; padding: 8px; text-align: center; background: #ff3fa4; color: #fff; text-decoration: none; font: 400 10px 'Departure Mono', monospace; text-transform: uppercase; }
+.minebox .ph { cursor: grab !important; }
+.minebox .ph i { font-style: normal; color: #ff3fa4; margin-left: 6px; }
+.peel.min .ph { border-bottom: 0 !important; }
+.peel .lblrow .lic { width: 16px; display: inline-grid; place-items: center; font-size: 14px; line-height: 1; }
+.peel .keyrow { display: flex; align-items: center; gap: 10px; padding: 6px 12px; font: 400 10px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; }
+.peel .keyrow i { width: 12px; height: 12px; display: inline-block; flex: none; }
+.keybox { position: fixed !important; }
+.keybox .ph { cursor: grab !important; }
+.minebox .go { margin-left: auto; margin-right: 10px; display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px dashed currentColor; cursor: pointer; }
+.minebox .go:hover { background: #ff3fa4; color: #fff; border-style: solid; }
+body.compare.embed[data-white] .peel .pinkrow { --tickc: #ff3fa4; }
+/* key swatches carry the same ink outline as the icons and tick boxes */
+.peel .keyrow i { width: 14px !important; height: 14px !important; box-sizing: border-box; border: 1.6px solid #222423; }
+/* hover tag on the jump arrow */
+.minebox .go { position: relative; }
+.minebox .go::after { content: 'jump to'; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #ff3fa4; color: #fff; font: 400 9px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; padding: 4px 6px; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.minebox .go:hover::after { opacity: 1; }
+/* jump arrow: same 16px square as the tick box, sat right beside it; small tag to its left on hover */
+.minebox .go { width: 16px !important; height: 16px !important; box-sizing: border-box; margin-left: auto !important; margin-right: 6px !important; border: 1px dashed currentColor; }
+.minebox .go svg { width: 10px; height: 10px; }
+.minebox button .tick { margin-left: 0 !important; }
+.minebox .go::after { bottom: auto !important; top: 50% !important; left: auto !important; right: calc(100% + 5px) !important; transform: translateY(-50%) !important; font-size: 7px !important; padding: 2px 4px !important; }
+/* small tags over the shortcut buttons on hover */
+body.embed .viewbar button { position: relative; }
+body.embed .viewbar button::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #222423; color: #fff; font: 400 7px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; padding: 2px 4px; pointer-events: none; opacity: 0; transition: opacity .12s; }
+body.embed .viewbar button:hover::after { opacity: 1; }
+/* every hover tag sits above its button with a small pointer underneath, like a speech bubble */
+.minebox .go::after { top: auto !important; bottom: calc(100% + 7px) !important; right: auto !important; left: 50% !important; transform: translateX(-50%) !important; }
+.minebox .go::before, body.embed .viewbar button::before { content: ''; position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid #ff3fa4; pointer-events: none; opacity: 0; transition: opacity .12s; }
+body.embed .viewbar button::before { border-top-color: #222423; bottom: calc(100% + 4px); }
+body.embed .viewbar button::after { bottom: calc(100% + 8px) !important; }
+.minebox .go:hover::before, body.embed .viewbar button:hover::before { opacity: 1; }
+/* up close and inside: the drawing runs right to the edge of the button square and is cut off there */
+body.embed .viewbar button .bleed { position: absolute; inset: 2px; overflow: hidden; display: block; }
+body.embed .viewbar button .bleed svg { width: 100%; height: 100%; overflow: visible; display: block; }
+/* the bleed icons keep the same line weight as the other buttons */
+body.embed .viewbar button .bleed svg * { vector-effect: non-scaling-stroke; stroke-width: 1.3px; }
+/* the control boxes always sit above the zoom windows and their lines */
+.peel, .viewbar, .calltoggle { z-index: 6 !important; }
+
+/* ===== virtual tour ===== */
+.peel, .viewbar, .callouts, .calltoggle { transition: opacity .6s ease; }
+body.touring .peel, body.touring .viewbar, body.touring .callouts, body.touring .calltoggle { opacity: 0 !important; pointer-events: none !important; }
+.tourui { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 8; display: none; align-items: stretch; gap: 8px; }
+body.touring .tourui { display: flex; }
+.tourbar { width: 260px; height: 14px; border: 1.5px solid #111111; background: #ffffff; box-sizing: border-box; }
+.tourfill { height: 100%; width: 0; background: #17306e; }
+.tourx { all: unset; cursor: pointer; width: 14px; height: 14px; border: 1.5px solid #111111; background: #ffffff; box-sizing: border-box; display: grid; place-items: center; }
+.tourx svg { stroke: #111111; stroke-width: 1.6; display: block; }
+.tourx:hover { background: #111111; } .tourx:hover svg { stroke: #ffffff; }
+.tourtext { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 8; width: 440px; box-sizing: border-box; background: #ffffff; border: 1px dotted #111111; padding: 14px 16px; font: 400 11px/1.7 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .04em; color: #222423; opacity: 0; transition: opacity .4s ease; pointer-events: none; }
+.tourtext.on { opacity: 1; }
+.tourtext .tt-head { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 9px; }
+.tourtext .tt-head b { font-weight: 400; color: #2a5dff; }
+.tourtext p { margin: 0; min-height: 5.1em; }
+.tourmarks { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 7; display: none; }
+body.touring .tourmarks { display: block; }
+/* the tour box never changes size: room for the longest line (four rows) from the start */
+.tourtext { height: 124px; }
+.tourtext p { height: 6.8em; min-height: 0; overflow: hidden; }
+/* tour captions: one wide white box for the whole tour, like subtitles; only the words change */
+.tourtext { width: min(760px, calc(100vw - 80px)) !important; height: 98px !important; bottom: 34px; }
+.tourtext p { height: 5.1em !important; }
+/* no fading on the caption box: the words just clear and the next line types in */
+.tourtext { transition: none !important; }
+.tourmarks text { font-family: 'Departure Mono', monospace; text-transform: uppercase; }
+/* during the tour the model's own tag for the current stop (data in, data out) steps aside so it doesn't double up with the tour frame, then fades back */
+.lbl { transition: opacity .5s ease; }
+body.touring .lbl.tourhide { opacity: 0 !important; }
+/* strip mode: nothing but the sliding close-ups, each framed in its stage colour with its name underneath */
+body.strip .hud, body.strip .peel, body.strip .viewbar, body.strip .callouts, body.strip .calltoggle, body.strip .lbl, body.strip .tourui, body.strip .tourtext, body.strip .tourmarks, body.strip #tip { display: none !important; }
+html.white body.strip { background: #ffffff !important; }
+.striptile { position: fixed; left: 0; top: 0; box-sizing: border-box; border: 1px solid; border-right-width: 0; pointer-events: none; z-index: 5; }
+.striptile span { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; display: flex; align-items: center; justify-content: center; color: #ffffff; font: 400 8px 'Departure Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.striptile.bare { border-width: 1px !important; } .striptile.bare span { display: none !important; }
+body .ph button.x, body .ph .x, .peel .ph button.x, .minebox .ph button.x, .keybox .ph button.x { border: 0 !important; border-bottom: 0 !important; box-shadow: none !important; } /* the minimise buttons have no line under them */
+body.embed[data-theme] .peel .ph button.x:not(#q), body.embed[data-theme] .ph button.x:not(#q) { border: 0 !important; border-bottom: 0 !important; }
