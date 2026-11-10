@@ -60,6 +60,7 @@ const API_ROUTES = new Set(['config', 'health', 'brain', 'slot', 'wallet', 'chec
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.wasm': 'application/wasm', '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
 };
 
 /** Serves the built site; unknown paths get index.html (the site routes by hash). */
@@ -67,6 +68,8 @@ function serveStatic(dir: string, pathname: string, res: ServerResponse, head = 
   const root = normalize(dir);
   let file = normalize(join(root, decodeURIComponent(pathname)));
   if (!file.startsWith(root + sep) && file !== root) { res.writeHead(403); return res.end(); }
+  // A folder serves its own index.html (the 3D pages at /lab/); anything else unknown gets the site's.
+  if (existsSync(file) && statSync(file).isDirectory() && existsSync(join(file, 'index.html'))) file = join(file, 'index.html');
   if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, 'index.html');
   if (!existsSync(file)) { res.writeHead(404); return res.end('site not built'); }
   const cache = file.includes(`${sep}assets${sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache';

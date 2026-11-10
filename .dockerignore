@@ -13,3 +13,5 @@ scripts
 tools
 test
 *.keypair.json
+site-v2/dist
+neurals-frontend-*

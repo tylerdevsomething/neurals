@@ -12,8 +12,13 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY brain ./brain
-COPY site ./site
-RUN npx vite build site
+# The v2 site (site-v2/) and its 3D pages (hero-lab/), served together: the 3D pages under /lab/.
+COPY site-v2 ./site-v2
+COPY hero-lab ./hero-lab
+COPY deploy/vite.hero-lab.ts ./deploy/vite.hero-lab.ts
+RUN cd hero-lab && npm ci --no-audit --no-fund
+RUN VITE_THEME=white VITE_LAB_URL=/lab npx vite build site-v2 \
+ && npx vite build --config deploy/vite.hero-lab.ts --outDir ../site-v2/dist/lab
 
 # --- runtime: Node runs the TypeScript directly ---
 FROM node:24-slim
@@ -24,7 +29,7 @@ COPY brain ./brain
 COPY indexer ./indexer
 COPY rules ./rules
 COPY deploy ./deploy
-COPY --from=site /app/site/dist ./site/dist
+COPY --from=site /app/site-v2/dist ./site/dist
 ENV NODE_ENV=production STATIC_DIR=/app/site/dist DATA_DIR=/data INDEXER_CONFIG=deploy/indexer.devnet.json
 EXPOSE 8080
 CMD ["sh", "-c", "exec node indexer/main.ts \"$INDEXER_CONFIG\""]
