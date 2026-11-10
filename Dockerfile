@@ -17,7 +17,10 @@ COPY site-v2 ./site-v2
 COPY hero-lab ./hero-lab
 COPY deploy/vite.hero-lab.ts ./deploy/vite.hero-lab.ts
 RUN cd hero-lab && npm ci --no-audit --no-fund
-RUN VITE_THEME=white VITE_LAB_URL=/lab npx vite build site-v2 \
+# The site reads LAB as a full URL (new URL(LAB) in site-v2/src/main.tsx): Railway gives the service's
+# public domain to the build; without one (a local docker build) it stays /lab on the same origin.
+ARG RAILWAY_PUBLIC_DOMAIN
+RUN VITE_THEME=white VITE_LAB_URL=${RAILWAY_PUBLIC_DOMAIN:+https://$RAILWAY_PUBLIC_DOMAIN}/lab npx vite build site-v2 \
  && npx vite build --config deploy/vite.hero-lab.ts --outDir ../site-v2/dist/lab
 
 # --- runtime: Node runs the TypeScript directly ---
