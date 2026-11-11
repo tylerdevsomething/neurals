@@ -4,7 +4,7 @@ import { api, fmt, neurons, short, type SiteConfig, type WalletView, type Brain 
 import { choose, connect, disconnect, useWallet, wallets } from './chain.ts';
 import { NeuralsAccounts } from '../../brain/accounts.ts';
 import { slotLabel } from './BrainMap.tsx';
-import { Modal, Loading } from './ui.tsx';
+import { Modal, Loading, PageHead } from './ui.tsx';
 import { Overview } from './pages/Overview.tsx';
 import { SlotPage } from './pages/Slot.tsx';
 import { WalletPage } from './pages/Wallet.tsx';
@@ -263,8 +263,8 @@ export function App() {
             {page === 'network' && <Overview />}
             {page === 'about' && <Overview part="info" />}
             {page === 'slot' && <SlotPage index={Number(route[1])} />}
-            {page === 'wallet' && <WalletPage address={route[1] ?? wallet ?? null} />}
-            {page === 'buy' && <Buy />}
+            {page === 'wallet' && (config?.mint ? <WalletPage address={route[1] ?? wallet ?? null} /> : <NotLive />)}
+            {page === 'buy' && (config?.mint ? <Buy /> : <NotLive />)}
             {page === 'market' && <Market />}
             {page === 'chat' && <Chat />}
             {page === 'rules' && <Rules />}
@@ -277,6 +277,16 @@ export function App() {
       <FontSwitch />
       {reveal && wallet && <Reveal wallet={wallet} onClose={() => setReveal(false)} />}
       </div>
+    </>
+  );
+}
+
+/** Before the token exists (mainnet, ahead of launch): pages that need the token say so instead of failing. */
+function NotLive() {
+  return (
+    <>
+      <PageHead title="Not live yet" sub="The Neurals token launches on pump.fun soon. Neurons, wallets and buying open the moment it exists." />
+      <p className="empty-line">The network, the rules, the glossary and the audit trail are all here to read in the meantime.</p>
     </>
   );
 }

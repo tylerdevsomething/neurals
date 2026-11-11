@@ -59,6 +59,14 @@ console.log(`rpc: ${rpcUrls.map(hostOf).join(" then ")}`);
 if (process.env.PORT) config.port = Number(process.env.PORT);
 if (process.env.DATA_DIR) config.dataDir = process.env.DATA_DIR;
 if (process.env.BRAIN_URL) config.brainUrl = process.env.BRAIN_URL;
+// Before the token exists (no mint yet: the launch writes it), the site and API are served and nothing
+// is followed, settled or revealed; nothing is written to the data volume either.
+const waiting = !config.mint;
+if (waiting) {
+  config.startSlot ??= 0;
+  config.curveTokenAccount ??= '';
+  console.log('WAITING for the token: no mint in the config yet. Serving the site; not following the chain.');
+}
 const rpc = new Rpc(config.rpcUrl, 8, rpcFetch);
 const store = new Store(config.dataDir);
 const indexer = new Indexer(config, rpc, store);
@@ -66,7 +74,7 @@ const indexer = new Indexer(config, rpc, store);
 // or the deadline passes. A reveal already built (by this indexer, or given as revealFile) is checked
 // against the rules and the seed block on chain, then set before the log is replayed, so it lands at
 // its canonical place; after the replay, its seed block must be the one the sellout calls for.
-if (config.rulesFile) {
+if (config.rulesFile && !waiting) {
   const rules = checkRules(JSON.parse(readFileSync(config.rulesFile, 'utf8')) as Rules);
   if (rules.model !== config.model) throw new Error('the rules are for a different model');
   indexer.setRules(rules);
@@ -81,15 +89,17 @@ if (config.rulesFile) {
 } else if (config.revealFile) {
   throw new Error('a reveal needs rulesFile to be checked against');
 }
+if (!waiting) {
 indexer.restore();
 await indexer.checkSeed();
+}
 console.log(`restored to slot ${indexer.syncedSlot}, epoch ${indexer.ledger.epoch}, fingerprint ${indexer.ledger.fingerprint().slice(0, 16)}`);
 
 // The settler's key: SETTLER_KEY (its JSON array) when hosted, or a file path in the config.
 const settlerSecret = process.env.SETTLER_KEY ?? (config.settlerKey ? readFileSync(config.settlerKey, 'utf8') : null);
 let settler: Settler | null = null;
 const paused = !!process.env.SETTLER_PAUSED && process.env.SETTLER_PAUSED !== '0';
-if (settlerSecret) {
+if (settlerSecret && !waiting) {
   const key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(settlerSecret)));
   settler = new Settler(new Connection(config.rpcUrl, { commitment: 'confirmed', fetch: rpcFetch }), key, new NeuralsAccounts(config.programId));
   const st = settler;
@@ -109,11 +119,13 @@ startApi({
   indexer, store, model: config.model, brainKey: config.brainKey,
   site: { rpcUrl: publicRpcUrl, brainUrl: config.brainUrl, cluster: config.cluster },
   staticDir: process.env.STATIC_DIR,
+  waiting,
   settler: settler ? () => ({ alerts: settler!.alerts, lastError: settler!.lastError, ...(paused ? { paused: true } : {}) }) : undefined,
 }, config.port);
 console.log(`api on :${config.port}`);
 
 for (;;) {
+  if (waiting) { await new Promise((r) => setTimeout(r, 60_000)); continue; }
   const n = await indexer.syncOnce();
   if (n) console.log(`slot ${indexer.syncedSlot}: applied ${n} transactions; epoch ${indexer.ledger.epoch}`);
   await new Promise((r) => setTimeout(r, config.pollMs ?? 2000));

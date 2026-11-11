@@ -17,7 +17,7 @@
 //   node tools/mainnet.ts railway-setup --yes       step 7.1: create the mainnet services, volumes, domains and
 //                                                   variables (secrets go through stdin, never printed), and deploy the brain
 //   node tools/mainnet.ts railway-fallback --yes    Alchemy as the RPC fallback on both mainnet services; redeploys the brain
-//   node tools/mainnet.ts railway-deploy --yes      step 7.3: deploy the site and indexer (after the launch wrote the mint)
+//   node tools/mainnet.ts railway-deploy --yes      (before the launch: the site in waiting mode) step 7.3: deploy the site and indexer (after the launch wrote the mint)
 
 import { readFileSync, existsSync, mkdirSync, openSync, writeFileSync, rmSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
@@ -276,7 +276,10 @@ switch (cmd) {
   case 'railway-deploy': {
     need();
     const c = JSON.parse(readFileSync('deploy/indexer.mainnet.json', 'utf8')) as { mint?: string };
-    if (!c.mint) { console.log('no mint in deploy/indexer.mainnet.json yet: run the launch first'); process.exit(1); }
+    // Before the launch (no mint yet) the site goes up in its waiting mode: pages load, nothing on chain is
+    // followed or paid; after the launch writes the mint, the same command switches it to the live token.
+    console.log(c.mint ? `deploying with the token ${c.mint}` : 'no mint yet: deploying in WAITING mode (the site loads; the chain is not followed until the launch)');
+    setVar(SITE, 'SITE_ORIGIN', 'https://www.neurals.network', false);
     const up = railway(['up', '--service', SITE, '--detach']);
     console.log(up.code === 0 ? `site and indexer deploying: https://${domainOf(SITE)}` : 'deploy FAILED');
     break;

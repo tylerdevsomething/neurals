@@ -19,8 +19,12 @@ COPY deploy/vite.hero-lab.ts ./deploy/vite.hero-lab.ts
 RUN cd hero-lab && npm ci --no-audit --no-fund
 # The site reads LAB as a full URL (new URL(LAB) in site-v2/src/main.tsx): Railway gives the service's
 # public domain to the build; without one (a local docker build) it stays /lab on the same origin.
+# SITE_ORIGIN (a service variable, e.g. https://www.neurals.network) wins when set, so the pages and the
+# 3D frames share the custom domain.
 ARG RAILWAY_PUBLIC_DOMAIN
-RUN VITE_THEME=white VITE_LAB_URL=${RAILWAY_PUBLIC_DOMAIN:+https://$RAILWAY_PUBLIC_DOMAIN}/lab npx vite build site-v2 \
+ARG SITE_ORIGIN
+RUN LAB_ORIGIN="${SITE_ORIGIN:-${RAILWAY_PUBLIC_DOMAIN:+https://$RAILWAY_PUBLIC_DOMAIN}}" \
+ && VITE_THEME=white VITE_LAB_URL="$LAB_ORIGIN/lab" npx vite build site-v2 \
  && npx vite build --config deploy/vite.hero-lab.ts --outDir ../site-v2/dist/lab
 
 # --- runtime: Node runs the TypeScript directly ---
