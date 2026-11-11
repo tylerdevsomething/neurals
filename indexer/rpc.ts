@@ -71,6 +71,27 @@ export class Rpc {
   blockSignatures = (slot: number) =>
     this.call<{ signatures: string[] }>('getBlock', [slot, { transactionDetails: 'signatures', rewards: false, commitment: 'finalized', maxSupportedTransactionVersion: 1 }]).then((b) => b.signatures);
 
+  /**
+   * Token accounts' owner and balance at one finalized slot, 100 accounts per call (a closed account is
+   * null). `slot` is the oldest slot any part was read at, or null when there was nothing to read.
+   */
+  async tokenSnapshot(accounts: string[]): Promise<{ slot: number | null; states: Map<string, { owner: string; amount: number } | null> }> {
+    const states = new Map<string, { owner: string; amount: number } | null>();
+    let slot: number | null = null;
+    const parts: string[][] = [];
+    for (let i = 0; i < accounts.length; i += 100) parts.push(accounts.slice(i, i + 100));
+    await Promise.all(parts.map(async (part) => {
+      const r = await this.call<{ context: { slot: number }; value: ({ data: { parsed?: { info?: { owner: string; tokenAmount: { amount: string } } } } } | null)[] }>(
+        'getMultipleAccounts', [part, { encoding: 'jsonParsed', commitment: 'finalized' }]);
+      slot = slot === null ? r.context.slot : Math.min(slot, r.context.slot);
+      part.forEach((a, i) => {
+        const info = r.value[i]?.data?.parsed?.info;
+        states.set(a, info ? { owner: info.owner, amount: Number(info.tokenAmount.amount) } : null);
+      });
+    }));
+    return { slot, states };
+  }
+
   /** A wallet's token accounts for a mint, with balances (seeding a newly registered wallet). */
   async tokenAccounts(owner: string, mint: string): Promise<{ account: string; amount: number }[]> {
     const r = await this.call<{ value: { pubkey: string; account: { data: { parsed: { info: { tokenAmount: { amount: string } } } } } }[] }>(

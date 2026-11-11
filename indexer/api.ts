@@ -116,7 +116,7 @@ export function startApi(o: ApiOptions, port: number): Server {
           return json(res, 200, { programId: c.programId, mint: c.mint, curveTokenAccount: c.curveTokenAccount, pumpProgramId: c.pumpProgramId, startSlot: c.startSlot, epochSlots: c.epochSlots, model: o.model, ...o.site });
         }
         case 'health':
-          return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, soldOutSlot: indexer.soldOutSlot, seedSlot: indexer.seedSlot(indexer.syncedSlot), fingerprint: ledger.fingerprint(), settler: o.settler?.() ?? null, ...(o.waiting ? { waiting: true } : {}) });
+          return json(res, 200, { synced: indexer.syncedSlot, finalized: indexer.finalizedSlot, epoch: ledger.epoch, issued: ledger.cursor, revealed: ledger.isRevealed, soldOutSlot: indexer.soldOutSlot, seedSlot: indexer.seedSlot(indexer.syncedSlot), fingerprint: ledger.fingerprint(), followed: indexer.trackedAccounts().length, repairs: indexer.repairs, settler: o.settler?.() ?? null, ...(o.waiting ? { waiting: true } : {}) });
         case 'brain':
           return json(res, 200, {
             revealed: ledger.isRevealed,

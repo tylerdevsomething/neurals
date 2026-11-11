@@ -194,5 +194,7 @@ for (;;) {
   }
   const n = await indexer.syncOnce();
   if (n) console.log(`slot ${indexer.syncedSlot}: applied ${n} transactions; epoch ${indexer.ledger.epoch}`);
-  await new Promise((r) => setTimeout(r, config.pollMs ?? 2000));
+  // Paced so RPC credits stay flat however many holders there are: about 2 calls a second at most
+  // for the routine part of a poll (the balance snapshot, the curve, the program, the slot).
+  await new Promise((r) => setTimeout(r, Math.max(config.pollMs ?? 2000, (indexer.snapshotCalls + 3) * 500)));
 }

@@ -2,7 +2,9 @@
 //
 // Watched addresses: the curve's token account, the Neurals program, and every token account of a
 // wallet holding positions or of a checkpoint. Nothing else: AMM pools and exchanges are never
-// followed (SPEC §5.6).
+// followed (SPEC §5.6). The curve and the program are scanned every poll; holders' accounts are read
+// together in one balance snapshot (100 per call) and only those that changed are scanned, so the
+// cost of a poll does not grow with every holder (see syncOnce).
 //
 // Order: transactions are applied by (slot, position in block). When applying a transaction makes
 // a new wallet tracked, that wallet's accounts are scanned from that slot on and merged into the
@@ -188,13 +190,36 @@ export class Indexer {
     return out;
   }
 
+  /** The holders' token accounts the indexer follows (wallets with positions, checkpoints). */
+  trackedAccounts(): string[] {
+    const fixed = new Set([this.config.curveTokenAccount, this.config.programId]);
+    return [...this.watched()].filter((a) => !fixed.has(a));
+  }
+
+  /** RPC calls the last poll's balance snapshot took: the main loop paces itself by it. */
+  snapshotCalls = 0;
+  /** Missed transactions found by the balance check, and corrections made (shown in /health). */
+  readonly repairs = { found: 0, corrected: 0 };
+
   /** Follows the chain up to the finalized slot. Returns the number of transactions applied. */
   async syncOnce(): Promise<number> {
-    const finalized = await this.rpc.slot('finalized');
+    // Credits: a holder's token account is not asked for its transactions every poll (one call per
+    // holder, every few seconds, does not scale). One snapshot reads every followed account's balance,
+    // 100 per call, at the finalized slot this poll syncs to; only accounts whose balance or owner
+    // differs from the book are scanned for transactions. The curve and the program are always scanned.
+    const tracked = this.trackedAccounts();
+    const snap = await this.rpc.tokenSnapshot(tracked);
+    this.snapshotCalls = Math.ceil(tracked.length / 100);
+    const finalized = snap.slot ?? (await this.rpc.slot('finalized'));
     this.finalizedSlot = finalized;
     if (finalized <= this.syncedSlot) return 0;
     const from = this.syncedSlot;
-    const scanned = new Set<string>();
+    const changed = tracked.filter((a) => {
+      const known = this.book.get(a), now = snap.states.get(a);
+      if (!known) return true;
+      return now ? now.amount !== known.amount || now.owner !== known.owner : known.amount !== 0;
+    });
+    const scanned = new Set<string>(tracked);
     const pending = new Map<string, Pending>();
     const applied = new Set<string>();
 
@@ -205,15 +230,43 @@ export class Indexer {
         if (!s.err && !applied.has(s.signature) && !pending.has(s.signature)) pending.set(s.signature, { signature: s.signature, slot: s.slot });
       }
     };
-    await scan([...this.watched()], from);
+    await scan([this.config.curveTokenAccount, this.config.programId, ...changed], from);
 
     let count = 0;
+    const rechecked = new Set<string>();
+    const staleIn = (t: DecodedTx) => t.pre.filter((o) => { const k = this.book.get(o.account); return k !== undefined && (k.amount !== o.amount || k.owner !== o.owner); });
     while (pending.size) {
       const next = await this.nextInOrder(pending);
       pending.delete(next.signature);
       const raw = await this.rpc.transaction(next.signature);
       if (!raw) throw new Error(`finalized transaction ${next.signature} not served`);
       const tx = this.decoder.decode(raw);
+      if (tx) {
+        // A followed account that does not start this transaction where the book left it: something
+        // touched it that the snapshot could not see (changed and changed back within one poll). Its
+        // transactions are scanned and applied first, in order; if none is found (it happened before
+        // this poll), the book takes the chain's balance here, logged as a correction.
+        const stale = staleIn(tx);
+        if (stale.length && !rechecked.has(next.signature)) {
+          rechecked.add(next.signature);
+          const before = new Set(pending.keys());
+          await scan(stale.map((o) => o.account), from);
+          pending.delete(next.signature); // the scan finds this one too: it is being handled now
+          const earlier = [...pending.values()].filter((p) => !before.has(p.signature) && p.signature !== next.signature && p.slot <= next.slot);
+          if (earlier.length) {
+            this.repairs.found += earlier.length;
+            console.log(`balance check: ${earlier.length} missed transaction(s) before ${next.signature.slice(0, 12)}…, applying them first`);
+            pending.set(next.signature, next);
+            continue;
+          }
+        }
+        const still = staleIn(tx);
+        if (still.length) {
+          this.repairs.corrected += still.length;
+          console.log(`balance check: ${still.map((o) => o.account.slice(0, 8)).join(', ')} corrected to the chain's balance at slot ${tx.slot}`);
+          this.apply({ slot: tx.slot, signature: `correction:${next.signature}`, actions: [], pre: [], post: still });
+        }
+      }
       applied.add(next.signature);
       if (!tx) continue;
       await this.fetchReceipts(tx);

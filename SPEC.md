@@ -199,7 +199,12 @@ neurons are affected. The site checks this before signing, so honest users never
 
 ### 5.6 What the indexer must watch
 Only the curve, the registered wallets' token accounts and the checkpoints. It never needs to follow
-AMM pools or exchanges, so trading volume elsewhere does not slow it down.
+AMM pools or exchanges, so trading volume elsewhere does not slow it down. The curve and the program
+are scanned for transactions every poll; the holders' accounts are read together in one balance
+snapshot (100 accounts per RPC call) and only those whose balance or owner changed are scanned, so a
+poll's cost does not grow with every holder. A transaction whose starting balances disagree with the
+book reveals anything the snapshot missed: those transactions are fetched and applied first, in order,
+or, if they predate the poll, the book takes the chain's balance there (a logged correction).
 
 ## 6. Launch
 

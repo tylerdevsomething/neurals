@@ -155,6 +155,11 @@ export class BalanceBook {
     return this.totals.get(wallet) ?? 0;
   }
 
+  /** One token account as the book has it, or undefined if never seen. */
+  get(account: string): { owner: string; amount: number } | undefined {
+    return this.accounts.get(account);
+  }
+
   /** Every token account the book knows, with its owner. */
   entries(): { account: string; owner: string; amount: number }[] {
     return [...this.accounts].map(([account, v]) => ({ account, owner: v.owner, amount: v.amount }));
