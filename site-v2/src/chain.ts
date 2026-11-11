@@ -44,7 +44,15 @@ let current: string | null = null;
 const listeners = new Set<(w: string | null) => void>();
 const set = (w: string | null) => { current = w; listeners.forEach((f) => f(w)); };
 
+// Disconnecting is remembered: wallets keep trusting the site after it disconnects, so without this a
+// refresh would quietly connect again. Connecting on purpose clears it.
+const OFF = 'neurals.wallet.off';
+const remember = (off: boolean) => { try { if (off) localStorage.setItem(OFF, '1'); else localStorage.removeItem(OFF); } catch { /* storage blocked */ } };
+const disconnectedByChoice = () => { try { return localStorage.getItem(OFF) === '1'; } catch { return false; } };
+
 export async function connect(silent = false): Promise<string | null> {
+  if (silent && disconnectedByChoice()) return null;
+  if (!silent) remember(false);
   const p = provider();
   if (!p) {
     if (!silent) throw new Error('No Solana wallet found. Install Phantom, Solflare or Backpack.');
@@ -64,6 +72,7 @@ export async function connect(silent = false): Promise<string | null> {
 }
 
 export async function disconnect() {
+  remember(true);
   await provider()?.disconnect();
   set(null);
 }
