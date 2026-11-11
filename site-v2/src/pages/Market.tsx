@@ -151,7 +151,7 @@ export function Market() {
       </div>
       {msg && <p className="note">{msg}</p>}
       {!items ? <Loading /> : all.length === 0 ? (
-        <div className="panel empty market-empty"><p className="empty-line">No checkpoints listed right now.</p><a className="sim-link" href="/market/simulate">[Try a pretend purchase]</a></div>
+        <div className="panel empty market-empty"><p className="empty-line">No checkpoints listed right now.</p></div>
       ) : listed.length === 0 ? <p className="muted page-loading page-empty">No checkpoints match.</p> : (
         <div className="cards">
           {listed.map((l, i) => (
