@@ -266,7 +266,7 @@ export function App() {
             {page === 'wallet' && (config?.mint ? <WalletPage address={route[1] ?? wallet ?? null} /> : <NotLive />)}
             {page === 'buy' && (config?.mint ? <Buy /> : <NotLive />)}
             {page === 'market' && <Market />}
-            {page === 'chat' && <Chat />}
+            {page === 'chat' && (config?.mint ? <Chat /> : <NotLive />)}
             {page === 'rules' && <Rules />}
             {page === 'rarities' && <Rarities />}
             {page === 'glossary' && <Glossary />}
@@ -285,7 +285,7 @@ export function App() {
 function NotLive() {
   return (
     <>
-      <PageHead title="Not live yet" sub="The Neurals token launches on pump.fun soon. Neurons, wallets and buying open the moment it exists." />
+      <PageHead title="Not live yet" sub="The Neurals token launches on pump.fun soon. Neurons, wallets, buying and paid chat open the moment it exists." />
       <p className="empty-line">The network, the rules, the glossary and the audit trail are all here to read in the meantime.</p>
     </>
   );
