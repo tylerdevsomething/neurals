@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { navigate, NAV_EVENT } from './nav.ts';
 import { Connection } from '@solana/web3.js';
 import { api, fmt, neurons, short, type SiteConfig, type WalletView, type Brain } from './api.ts';
 import { choose, connect, disconnect, useWallet, wallets } from './chain.ts';
@@ -23,13 +24,13 @@ const AppContext = createContext<Ctx | null>(null);
 export const useApp = () => useContext(AppContext)!;
 
 function useRoute(): string[] {
-  const [hash, setHash] = useState(location.hash);
+  const [path, setPath] = useState(location.pathname);
   useEffect(() => {
-    const on = () => { setHash(location.hash); window.scrollTo(0, 0); };
-    addEventListener('hashchange', on);
-    return () => removeEventListener('hashchange', on);
+    const on = () => { setPath(location.pathname); window.scrollTo(0, 0); };
+    addEventListener(NAV_EVENT, on);
+    return () => removeEventListener(NAV_EVENT, on);
   }, []);
-  return hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  return path.split('/').filter(Boolean);
 }
 
 /** Opens the wallet menu from anywhere (pages call this instead of connecting silently). */
@@ -59,7 +60,7 @@ function WalletButton({ onConnected, host = false }: { onConnected: () => void; 
           <div className="menu-head"><span>{me ? 'Your wallet' : 'Connect a wallet'}</span><button type="button" className="menu-x" aria-label="Close" onClick={() => setOpen(false)}><svg viewBox="0 0 12 12" width="10" height="10"><path d="M2 2 L10 10 M10 2 L2 10" /></svg></button></div>
           {me ? (
             <>
-              <a className="wallet-pick" href="#/wallet" onClick={() => setOpen(false)}>[My neurons]</a>
+              <a className="wallet-pick" href="/wallet" onClick={() => setOpen(false)}>[My neurons]</a>
               <button className="wallet-pick ghost-pick" onClick={() => { void navigator.clipboard.writeText(me); setOpen(false); }}>[Copy address]</button>
               <button className="wallet-pick ghost-pick" onClick={() => { void disconnect(); setOpen(false); }}>[Disconnect]</button>
             </>
@@ -156,7 +157,7 @@ function startTour() {
     if (f?.contentWindow && document.readyState === 'complete') f.contentWindow.postMessage({ tour: 'start' }, '*');
     else if (tries < 40) setTimeout(() => send(tries + 1), 250);
   };
-  if (!location.hash.startsWith('#/network')) { location.hash = '#/network'; setTimeout(() => send(), 1500); } else send();
+  if (!location.pathname.startsWith('/network')) { navigate('/network'); setTimeout(() => send(), 1500); } else send();
 }
 (window as unknown as { neuralsTour?: () => void }).neuralsTour = () => startTour();
 function TreeNav({ on, onConnected, splitOn }: { on: string; onConnected: () => void; splitOn: boolean }) {
@@ -164,11 +165,11 @@ function TreeNav({ on, onConnected, splitOn }: { on: string; onConnected: () => 
   const [shut, setShut] = useState<Record<string, boolean>>({});
   return (
     <aside className="side tree">
-      <a className="tree-logo" href="#/" aria-label="Neurals">{/* logo: the melted network N */}<svg className="logo-n" viewBox="0 0 100 100" width="20" height="20" aria-hidden="true"><rect x="0" y="0" width="100" height="100" fill="currentColor" /><g transform="translate(15 15) scale(.7)"><filter id="melt-n" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.6" /><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -13" /></filter><g filter="url(#melt-n)"><line x1="24" y1="20" x2="24" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="24" y1="50" x2="24" y2="80" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="24" y1="20" x2="50" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="50" y1="50" x2="76" y2="80" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="76" y1="20" x2="76" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="76" y1="50" x2="76" y2="80" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="24" y1="50" x2="50" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="50" y1="50" x2="76" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><circle cx="24" cy="20" r="9" fill="#ffffff" /><circle cx="24" cy="50" r="9" fill="#ffffff" /><circle cx="24" cy="80" r="9" fill="#ffffff" /><circle cx="50" cy="50" r="12" fill="#ffffff" /><circle cx="76" cy="20" r="9" fill="#ffffff" /><circle cx="76" cy="50" r="9" fill="#ffffff" /><circle cx="76" cy="80" r="9" fill="#ffffff" /></g></g><circle cx="50" cy="50" r="3.5" fill="currentColor" /></svg></a>
+      <a className="tree-logo" href="/" aria-label="Neurals">{/* logo: the melted network N */}<svg className="logo-n" viewBox="0 0 100 100" width="20" height="20" aria-hidden="true"><rect x="0" y="0" width="100" height="100" fill="currentColor" /><g transform="translate(15 15) scale(.7)"><filter id="melt-n" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.6" /><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -13" /></filter><g filter="url(#melt-n)"><line x1="24" y1="20" x2="24" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="24" y1="50" x2="24" y2="80" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="24" y1="20" x2="50" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="50" y1="50" x2="76" y2="80" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="76" y1="20" x2="76" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="76" y1="50" x2="76" y2="80" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="24" y1="50" x2="50" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><line x1="50" y1="50" x2="76" y2="50" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" /><circle cx="24" cy="20" r="9" fill="#ffffff" /><circle cx="24" cy="50" r="9" fill="#ffffff" /><circle cx="24" cy="80" r="9" fill="#ffffff" /><circle cx="50" cy="50" r="12" fill="#ffffff" /><circle cx="76" cy="20" r="9" fill="#ffffff" /><circle cx="76" cy="50" r="9" fill="#ffffff" /><circle cx="76" cy="80" r="9" fill="#ffffff" /></g></g><circle cx="50" cy="50" r="3.5" fill="currentColor" /></svg></a>
       <div className="tree-root">
         {/* the landing page, the main thing: its own row above the folders */}
-        <div className="tree-group"><a href="#/" className={`tree-folder tree-home-row ${on === '' ? 'on' : ''}`}><Ic n="home" />Home</a></div>
-        <div className="tree-group"><a href="#/network" className={`tree-folder tree-net ${on === 'network' ? 'on' : ''}`}><Ic n="brain" />The network<iframe className="live-logo" src={`${LAB}/neuron.html?logo&c=pink&fast`} title="live" aria-label="live" tabIndex={-1} /></a><div className="net-tools"><button type="button" className={`net-tool ${splitOn ? 'on' : ''}`} aria-pressed={splitOn} onClick={() => toggleSplit()}>{SPLIT_ICON}split screen</button><button type="button" className="net-tool" onClick={popOut}>{POP_ICON}pop out</button></div><div className="net-soon"><span className="tree-folder net-soon-row" aria-disabled="true">Llama / Mistral / Gemma / DeepSeek</span></div></div>
+        <div className="tree-group"><a href="/" className={`tree-folder tree-home-row ${on === '' ? 'on' : ''}`}><Ic n="home" />Home</a></div>
+        <div className="tree-group"><a href="/network" className={`tree-folder tree-net ${on === 'network' ? 'on' : ''}`}><Ic n="brain" />The network<iframe className="live-logo" src={`${LAB}/neuron.html?logo&c=pink&fast`} title="live" aria-label="live" tabIndex={-1} /></a><div className="net-tools"><button type="button" className={`net-tool ${splitOn ? 'on' : ''}`} aria-pressed={splitOn} onClick={() => toggleSplit()}>{SPLIT_ICON}split screen</button><button type="button" className="net-tool" onClick={popOut}>{POP_ICON}pop out</button></div><div className="net-soon"><span className="tree-folder net-soon-row" aria-disabled="true">Llama / Mistral / Gemma / DeepSeek</span></div></div>
         {TREE.map((g) => {
           const open = !shut[g.folder];
           return (
@@ -178,7 +179,7 @@ function TreeNav({ on, onConnected, splitOn }: { on: string; onConnected: () => 
               </button>
               {open && (
                 <div className="tree-items">
-                  {g.items.map(([to, name, ic]) => <a key={to} href={`#/${to}`} className={`tree-item ${on === to ? 'on' : ''}`}><Ic n={ic} />{name}</a>)}
+                  {g.items.map(([to, name, ic]) => <a key={to} href={`/${to}`} className={`tree-item ${on === to ? 'on' : ''}`}><Ic n={ic} />{name}</a>)}
                   {g.folder === 'You' && <div className={`tree-item tree-wallet ${me ? 'is-on' : ''}`}><Ic n={me ? 'connected' : 'connect'} /><WalletButton onConnected={onConnected} /></div>}
                 </div>
               )}
@@ -188,7 +189,7 @@ function TreeNav({ on, onConnected, splitOn }: { on: string; onConnected: () => 
       </div>
       <span className="side-label">Watch it live</span>
       <button className="side-tour" onClick={startTour}>[Virtual tour]</button>
-      <a className="side-buy" href="#/buy">[Buy neurons]</a>
+      <a className="side-buy" href="/buy">[Buy neurons]</a>
       <div className="connect-host"><WalletButton host onConnected={onConnected} /></div>
     </aside>
   );
@@ -199,7 +200,7 @@ function Crumbs({ on }: { on: string }) {
   return (
     <>
     <div className="crumbbar">
-      <a className="crumb-right" href="#/buy">[Buy neurons]</a>
+      <a className="crumb-right" href="/buy">[Buy neurons]</a>
     </div>
     {head === '3' && home && <div className="crumb-sub"><span className="crumb-title">A rarity system for neural networks.</span><span>A language model written byte for byte onto Solana and owned through a pump.fun token. Every token on the curve is a piece of it, and every paid message pays the parts that fired.</span></div>}
     </>
@@ -221,7 +222,7 @@ export function App() {
   // split view: the live brain in the top part of the window, the page below; remembered between visits
   const [split, setSplit] = useState(() => localStorage.getItem('neurals-split') === '1');
   const [paneH, setPaneH] = useState(() => Number(localStorage.getItem('neurals-split-h')) || 46);
-  toggleSplit = () => setSplit((v) => { localStorage.setItem('neurals-split', v ? '0' : '1'); if (!v && location.hash.startsWith('#/network')) location.hash = '#/market'; return !v; }); // turning split on from the homepage opens the first tab
+  toggleSplit = () => setSplit((v) => { localStorage.setItem('neurals-split', v ? '0' : '1'); if (!v && location.pathname.startsWith('/network')) navigate('/market'); return !v; }); // turning split on from the homepage opens the first tab
   useEffect(() => { const m = (e: MessageEvent) => { if (e.data && e.data.split === 'toggle') toggleSplit(); if (e.data && e.data.popout) popOut(); if (e.data && e.data.restore) { setSplit(false); localStorage.setItem('neurals-split', '0'); popWin?.close(); popWin = null; } }; addEventListener('message', m); return () => removeEventListener('message', m); }, []);
   useEffect(() => { localStorage.setItem('neurals-split-h', String(paneH)); document.querySelector<HTMLIFrameElement>('iframe.onion')?.contentWindow?.postMessage({ pause: paneH < 14 }, '*'); }, [paneH]);
   const dragSplit = (e: React.PointerEvent) => { e.preventDefault(); const move = (ev: PointerEvent) => setPaneH(Math.max(8, Math.min(80, (ev.clientY / innerHeight) * 100))); const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); document.body.classList.remove('dragging-split'); }; document.body.classList.add('dragging-split'); addEventListener('pointermove', move); addEventListener('pointerup', up); };
@@ -240,13 +241,13 @@ export function App() {
   return (
     <>
       {true
-        ? <TreeNav splitOn={split} on={navOn} onConnected={() => { location.hash = '#/wallet'; setReveal(true); }} />
+        ? <TreeNav splitOn={split} on={navOn} onConnected={() => { navigate('/wallet'); setReveal(true); }} />
         : (
       <aside className="side keys">
-          <a className={`key logo ${navOn === '' ? 'on' : ''}`} href="#/">neurals</a>
-          {nav.filter(([to]) => to !== '').map(([to, name]) => <a key={to} href={`#/${to}`} className={`key ${navOn === to ? 'on' : ''}`}>{name}</a>)}
-          <a href="#/wallet" className={`key ${navOn === 'wallet' ? 'on' : ''}`}>My neurons</a>
-          <div className="key keywallet"><WalletButton onConnected={() => { location.hash = '#/wallet'; setReveal(true); }} /></div>
+          <a className={`key logo ${navOn === '' ? 'on' : ''}`} href="/">neurals</a>
+          {nav.filter(([to]) => to !== '').map(([to, name]) => <a key={to} href={`/${to}`} className={`key ${navOn === to ? 'on' : ''}`}>{name}</a>)}
+          <a href="/wallet" className={`key ${navOn === 'wallet' ? 'on' : ''}`}>My neurons</a>
+          <div className="key keywallet"><WalletButton onConnected={() => { navigate('/wallet'); setReveal(true); }} /></div>
         </aside>
         )}
       <div className="shell">

@@ -6,6 +6,7 @@
 // five categories cannot be told apart reliably side by side (validated), so a trait is a letter
 // in the cell plus an outline. Every cell has a hover/focus tooltip (value first), and every map
 // has a table view.
+import { navigate } from './nav.ts';
 import { useMemo, useRef, useState } from 'react';
 import type { Brain, BrainSlot } from './api.ts';
 import { fmt } from './api.ts';
@@ -73,7 +74,7 @@ export function BrainMap({ data, legend, onPick }: { data: MapData; legend: { lo
     setTip({ x: p.x - box.left, y: p.y - box.top, cell });
   };
 
-  const onPICK = (href: string) => (onPick ? onPick(href) : (location.hash = href));
+  const onPICK = (href: string) => (onPick ? onPick(href) : navigate(href));
   const cellEl = (cell: Cell, x: number, y: number, w: number, key: string) => (
     <g key={key}>
       <rect
@@ -209,7 +210,7 @@ export function ownershipMap(brain: Brain, owned?: Set<number>): MapData {
     lines.push(`${fmt(size / 1e6 / 3000)} neurons in slot ${s.index}`);
     return {
       v: sold, value: sold === 0 ? 'not sold yet' : `${fmt(sold * 100, 1)}% sold`, lines,
-      trait: s.part?.points || undefined, owned: owned?.has(s.index), href: `#/slot/${s.index}`,
+      trait: s.part?.points || undefined, owned: owned?.has(s.index), href: `/slot/${s.index}`,
     };
   });
   return arrange(cells, anatomical, brain.revealed);
@@ -239,7 +240,7 @@ export function activityMap(shares: readonly number[], brain?: Brain | null): Ma
       value: shares[i] === 0 ? 'no activity yet' : p.kind === 'embedding' || p.kind === 'unembedding' ? `${fmt(shares[i] / 10_000, 2)}% of each fee` : `${fmt(ratio, 2)}× the average ${p.kind === 'head' ? 'head' : 'column'}`,
       lines,
       trait: slot?.part?.points || undefined,
-      href: slot ? `#/slot/${slot.index}` : undefined,
+      href: slot ? `/slot/${slot.index}` : undefined,
     };
   });
   return arrange(cells, true, !!brain?.revealed);

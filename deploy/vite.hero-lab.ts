@@ -20,7 +20,7 @@ const sameOriginApi: Plugin = {
       return code.replace(DEVNET_API, `(location.origin + '/api')`);
     }
     // The "buy neurons" link in the wallet panel (inside a template string): the site that serves the page.
-    if (file.endsWith('/hero-lab/world.ts')) return code.split('https://neurals-production.up.railway.app/#/buy').join('${location.origin}/#/buy');
+    if (file.endsWith('/hero-lab/world.ts')) return code.split('https://neurals-production.up.railway.app/#/buy').join('${location.origin}/buy');
     return null;
   },
 };

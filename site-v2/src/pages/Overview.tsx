@@ -1,4 +1,5 @@
 // v2 layout preview. New wording here is DRAFT, awaiting approval.
+import { navigate } from '../nav.ts';
 import { useEffect, useState } from 'react';
 import { api, fmt, fmtTokens, sol, type Health, type EpochView } from '../api.ts';
 import { useApp } from '../App.tsx';
@@ -35,7 +36,7 @@ export function Overview({ part = 'hero' }: { part?: 'hero' | 'info' }) {
   const sold = health ? health.issued / (CURVE_SUPPLY * UNIT) : 0;
   const onPump = config.pumpProgramId === PUMP_FUN;
   const isHud = (document.documentElement.dataset.theme as string) === 'hud';
-  const buyHref = onPump ? `https://pump.fun/coin/${config.mint}` : '#/buy';
+  const buyHref = onPump ? `https://pump.fun/coin/${config.mint}` : '/buy';
 
   return (
     <>
@@ -73,7 +74,7 @@ export function Overview({ part = 'hero' }: { part?: 'hero' | 'info' }) {
           <li><b>The brain thinks</b><span>Every paid message posts a receipt of which parts fired.</span></li>
           <li><b>Get paid</b><span>Each epoch the fees go to the owners of the parts that fired.</span></li>
         </ol>
-        <p className="inline"><a className="btn" href={buyHref} target={onPump ? '_blank' : undefined} rel="noreferrer">{onPump ? 'Buy on pump.fun' : 'Buy neurons'}</a><a href="#/rules">Read the rules</a></p>
+        <p className="inline"><a className="btn" href={buyHref} target={onPump ? '_blank' : undefined} rel="noreferrer">{onPump ? 'Buy on pump.fun' : 'Buy neurons'}</a><a href="/rules">Read the rules</a></p>
       </section>
 
       <section className="cols">
@@ -85,7 +86,7 @@ export function Overview({ part = 'hero' }: { part?: 'hero' | 'info' }) {
       <section>
         <h2>Questions</h2>
         <Fold q="Do I need a wallet to talk to the brain?">Yes. Each message is paid in SOL from your wallet. Looking at the brain and checking receipts needs no wallet.</Fold>
-        <Fold q="Can I choose which part of the brain I buy?">No. The sale fills the slots in order, so nobody can aim a buy at a rare one. To own a particular slot, buy a checkpoint that holds it on the <a href="#/market">Market</a>.</Fold>
+        <Fold q="Can I choose which part of the brain I buy?">No. The sale fills the slots in order, so nobody can aim a buy at a rare one. To own a particular slot, buy a checkpoint that holds it on the <a href="/market">Market</a>.</Fold>
         <Fold q="Does the AI have a memory?">No. Each message is answered on its own, with no earlier messages attached, so the network starts fresh every time. Your chat is saved in this browser only, and the receipts stay on the network either way.</Fold>
         <Fold q="What happens if I sell?">Some neurons go dormant and stop earning. The rarest keep earning longest. Buy back and they earn again.</Fold>
         <Fold q="How do I know the payouts are right?">Every receipt can be replayed on your own computer, and every payout is posted on chain as one Merkle root that anyone can rebuild.</Fold>
@@ -93,7 +94,7 @@ export function Overview({ part = 'hero' }: { part?: 'hero' | 'info' }) {
 
       <section>
         <h2>Look up a wallet</h2>
-        <form className="inline" onSubmit={(e) => { e.preventDefault(); if (look.trim()) location.hash = `#/wallet/${look.trim()}`; }}>
+        <form className="inline" onSubmit={(e) => { e.preventDefault(); if (look.trim()) navigate(`/wallet/${look.trim()}`); }}>
           <input value={look} onChange={(e) => setLook(e.target.value)} placeholder="Paste a Solana address" size={46} />
           <button>[Look up]</button>
         </form>

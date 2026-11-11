@@ -12,6 +12,10 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import './styles.css';
 import { LAB } from './lab.ts';
+import { startNav } from './nav.ts';
+
+// Clean addresses: old #/ links are rewritten and same-site links navigate without a reload.
+startNav();
 
 createRoot(document.getElementById('root')!).render(<App />);
 // the brain sits in a frame; plain scroll over it is passed up here so the page still moves

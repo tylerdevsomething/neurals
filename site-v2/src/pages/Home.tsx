@@ -57,7 +57,7 @@ export function Home() {
         <p>Every message to the network measures exactly which parts fired, posts a receipt anyone can audit, and pays their owners.</p>
         <iframe className="home-spin" src={`${LAB}/neuron.html?s=11&c=cobalt&a=6`} title="" aria-hidden="true" tabIndex={-1} />
         <span className="home-cta-label">See it live</span>
-        <a className="home-cta" href="#/network">[Enter the network]</a>
+        <a className="home-cta" href="/network">[Enter the network]</a>
       </div>
 
       {/* the six stages as a grid that runs edge to edge: each stage's symbol top centre, its text below */}
@@ -110,7 +110,7 @@ export function Home() {
       </div>
 
       {/* live close-ups of the network sliding past, entering right and leaving left; it divides the audit trail from more information */}
-      <div className="home-bleed home-strip"><iframe src={`${LAB}/?embed&theme=paper&white=1&compare&strip`} title="Close-ups of the live network" /><a className="strip-link" href="#/network" aria-label="Open the Qwen network" /></div>
+      <div className="home-bleed home-strip"><iframe src={`${LAB}/?embed&theme=paper&white=1&compare&strip`} title="Close-ups of the live network" /><a className="strip-link" href="/network" aria-label="Open the Qwen network" /></div>
       {/* how the network is drawn: two short paragraphs, centred like the essay (DRAFT wording) */}
       <div className="home-essay home-render">
         <p>The neural network you see is a live 3D simulation, rendered in your browser with WebGL. Every one of its 1,318 parts sits at its real layer and stage, in 28 rings from the tokenizer at the top to prediction at the bottom.</p>

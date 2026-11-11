@@ -49,9 +49,9 @@ export function Market() {
   /* after a purchase the same pop up turns into a receipt: ticks stay, the neuron spins again, the button says Bought */
   const [bought, setBought] = useState<string | null>(null);
   /* #/market/preview-bought: shows the bought state for design checks without sending anything */
-  const previewBought = location.hash.endsWith('/preview-bought');
+  const previewBought = location.pathname.endsWith('/preview-bought');
   /* #/market/simulate: a pretend listing you can review, verify and buy end to end; nothing touches the chain or your wallet */
-  const simulate = location.hash.endsWith('/simulate');
+  const simulate = location.pathname.endsWith('/simulate');
   const SIM: Listing = { checkpoint: 'SiMuLaTioN1111111111111111111111111111111x', holder: '8tL9MNZazK5UgyLmaYPTVQEHXXbDcjbuVwSsuL89Xrpo', positions: [[0, 6_000_000_000]], price: 5_000_000_000n, listed: true } as unknown as Listing;
   useEffect(() => {
     if (!previewBought) return;
@@ -151,14 +151,14 @@ export function Market() {
       </div>
       {msg && <p className="note">{msg}</p>}
       {!items ? <Loading /> : all.length === 0 ? (
-        <div className="panel empty market-empty"><p className="empty-line">No checkpoints listed right now.</p><a className="sim-link" href="#/market/simulate">[Try a pretend purchase]</a></div>
+        <div className="panel empty market-empty"><p className="empty-line">No checkpoints listed right now.</p><a className="sim-link" href="/market/simulate">[Try a pretend purchase]</a></div>
       ) : listed.length === 0 ? <p className="muted page-loading page-empty">No checkpoints match.</p> : (
         <div className="cards">
           {listed.map((l, i) => (
             <article key={l.checkpoint} className="card post">
               <header className="post-head">
-                <a className="avatar" href={`#/wallet/${l.holder}`} aria-label="View seller profile"><NeuronPfp seed={l.holder} alt={false} color={l.holder === me ? '#ff3fa4' : undefined} /></a>
-                <span className="post-who"><span className="who-line"><a href={`#/wallet/${l.holder}`}>{short(l.holder)}</a></span><span className="muted small">Seller</span></span>
+                <a className="avatar" href={`/wallet/${l.holder}`} aria-label="View seller profile"><NeuronPfp seed={l.holder} alt={false} color={l.holder === me ? '#ff3fa4' : undefined} /></a>
+                <span className="post-who"><span className="who-line"><a href={`/wallet/${l.holder}`}>{short(l.holder)}</a></span><span className="muted small">Seller</span></span>
                 <span className="price">{sol(l.price)} <small>SOL</small></span>
               </header>
               <dl className="post-details">
@@ -176,7 +176,7 @@ export function Market() {
       {open && (
         <Modal title="" onClose={() => setOpen(null)}>
           <div className="buybox">
-          {!checks && <div className="seller-row"><span className="avatar" aria-hidden><NeuronPfp seed={open.holder} alt={false} color={open.holder === me ? '#ff3fa4' : undefined} /></span><span className="seller-who"><a href={`#/wallet/${open.holder}`}>{short(open.holder)}</a><span>Seller</span></span><a className="seller-go" data-tip="Solscan wallet" href={`https://solscan.io/account/${open.holder}`} target="_blank" rel="noreferrer" aria-label="Solscan wallet"><svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M4 10 L10 4 M5 4 H10 V9" /></svg></a></div>}
+          {!checks && <div className="seller-row"><span className="avatar" aria-hidden><NeuronPfp seed={open.holder} alt={false} color={open.holder === me ? '#ff3fa4' : undefined} /></span><span className="seller-who"><a href={`/wallet/${open.holder}`}>{short(open.holder)}</a><span>Seller</span></span><a className="seller-go" data-tip="Solscan wallet" href={`https://solscan.io/account/${open.holder}`} target="_blank" rel="noreferrer" aria-label="Solscan wallet"><svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M4 10 L10 4 M5 4 H10 V9" /></svg></a></div>}
           {!checks ? (
             <dl className="post-details">
               <dt>Checkpoint</dt><dd>{short(open.checkpoint)}</dd>
@@ -207,7 +207,7 @@ export function Market() {
           ) : null}
           {/* one button at the bottom: it is the loading bar while the checks run, then it becomes the buy button */}
           {checks && checks.length === VERIFY_STEPS.length && checks.every((c) => c.ok)
-            ? bought ? <div className="bought-row"><button className="wide bought-btn" disabled>[Bought for {sol(open.price)} SOL]</button><a className="bought-go" href="#/wallet" onClick={() => setOpen(null)}>[See it in My neurons]</a></div>
+            ? bought ? <div className="bought-row"><button className="wide bought-btn" disabled>[Bought for {sol(open.price)} SOL]</button><a className="bought-go" href="/wallet" onClick={() => setOpen(null)}>[See it in My neurons]</a></div>
             : (me ? <button className="wide" disabled={!!busy} onClick={() => void buy(open)}>{busy ? '[Approve it in your wallet]' : `[Buy for ${sol(open.price)} SOL]`}</button>
                 : <button className="wide" disabled={noWallet} onClick={connectHere}>{noWallet ? '[No wallet found]' : '[Connect wallet to buy]'}</button>)
             : <button type="button" className={`verify-bar ${checks ? 'running' : ''}`} disabled={!!checks} onClick={() => void verify(open)}>

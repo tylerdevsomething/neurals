@@ -97,7 +97,10 @@ export function startApi(o: ApiOptions, port: number): Server {
       // The API answers at /api/... (same origin as the site) and, for local tools, at the root.
       const path = url.pathname.startsWith('/api/') || url.pathname === '/api' ? url.pathname.slice(4) || '/' : url.pathname;
       const parts = path.split('/').filter(Boolean);
-      if ((req.method === 'GET' || req.method === 'HEAD') && o.staticDir && !url.pathname.startsWith('/api') && !API_ROUTES.has(parts[0] ?? '')) {
+      // A browser opening a page (it asks for HTML) gets the site, even at /wallet/<address> or /slot/<n>,
+      // which the site uses as clean addresses; scripts asking for data still reach the API there.
+      const page = (req.headers.accept ?? '').includes('text/html');
+      if ((req.method === 'GET' || req.method === 'HEAD') && o.staticDir && !url.pathname.startsWith('/api') && (page || !API_ROUTES.has(parts[0] ?? ''))) {
         return serveStatic(o.staticDir, url.pathname, res, req.method === 'HEAD');
       }
 

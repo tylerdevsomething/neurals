@@ -38,7 +38,7 @@ const REVEAL_PART = (
 const TRAITS_PART = (
   <>
       <p>A published tool measures them on the exact model on chain. Anyone can rerun it. A part with a trait earns a bonus: (100 + points)/100 times its share, within its kind's budget.</p>
-      <p className="cons-more"><a className="home-cta" href="#/rarities">[See all rarities]</a></p>
+      <p className="cons-more"><a className="home-cta" href="/rarities">[See all rarities]</a></p>
   </>
 );
 

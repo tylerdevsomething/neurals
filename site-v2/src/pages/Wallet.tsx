@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { navigate } from '../nav.ts';
 import { PublicKey } from '@solana/web3.js';
 import { api, fmt, fmtTokens, neurons, short, sol, UNIT, type Brain, type WalletView } from '../api.ts';
 import { useApp, askConnect } from '../App.tsx';
@@ -20,7 +21,7 @@ export function WalletPage({ address: routeAddress }: { address: string | null }
   const { conn, accounts, config } = useApp();
   const me = useWallet();
   /* #/wallet/simulate: your page as it would look holding neurons loose in your wallet and in a checkpoint, made up data, nothing on chain */
-  const sim = location.hash.endsWith('/wallet/simulate');
+  const sim = location.pathname.endsWith('/wallet/simulate');
   const address = sim ? (me ?? '9WPNsimu1atedWa11etAddressXXXXXXXXXXXXP3KM') : routeAddress;
   const [view, setView] = useState<WalletView | null>(null);
   const [brain, setBrain] = useState<Brain | null>(null);
@@ -33,7 +34,7 @@ export function WalletPage({ address: routeAddress }: { address: string | null }
   const [field, setField] = useState('');
   const [look, setLook] = useState('');
   /* #/wallet/<address>/preview shows the owner view of any wallet, for design checks only: buttons still need that wallet connected to sign */
-  const preview = location.hash.endsWith('/preview');
+  const preview = location.pathname.endsWith('/preview');
   const own = !!address && (address === me || preview || sim);
   const mint = new PublicKey(config.mint);
 
@@ -80,7 +81,7 @@ export function WalletPage({ address: routeAddress }: { address: string | null }
         </div>
         <div className="panel">
           <h3>Look up a wallet</h3>
-          <form className="inline" onSubmit={(e) => { e.preventDefault(); if (look.trim()) location.hash = `#/wallet/${look.trim()}`; }}>
+          <form className="inline" onSubmit={(e) => { e.preventDefault(); if (look.trim()) navigate(`/wallet/${look.trim()}`); }}>
             <input value={look} onChange={(e) => setLook(e.target.value)} placeholder="Paste a Solana address" />
             <button className="ghost">[Look up]</button>
           </form>
@@ -139,7 +140,7 @@ export function WalletPage({ address: routeAddress }: { address: string | null }
     <section>
       {(
         <>
-        <a className="back-link" href="#/market"><svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3 L5 7 L9 11" /></svg>{own ? 'View the market' : 'Back to market'}</a>
+        <a className="back-link" href="/market"><svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3 L5 7 L9 11" /></svg>{own ? 'View the market' : 'Back to market'}</a>
         <div className={`wallet-head ${own ? 'is-own' : ''}`}>
           <span className="profile-tag">{own ? 'Your profile' : 'Seller profile'}</span>
           <div className="seller-row wallet-who">
@@ -165,7 +166,7 @@ export function WalletPage({ address: routeAddress }: { address: string | null }
               <article key={s.slot} className="card post">
                 
                 <dl className="post-details">
-                  <dt>Kind</dt><dd><a href={`#/slot/${s.slot}`}>{s.part?.kind === 'head' ? 'Attention head' : s.part?.kind === 'embedding' ? 'Embedding' : s.part?.kind === 'unembedding' ? 'Unembedding' : 'Neuron column'}</a></dd>
+                  <dt>Kind</dt><dd><a href={`/slot/${s.slot}`}>{s.part?.kind === 'head' ? 'Attention head' : s.part?.kind === 'embedding' ? 'Embedding' : s.part?.kind === 'unembedding' ? 'Unembedding' : 'Neuron column'}</a></dd>
                   <dt>Part</dt><dd>{s.part ? fmt(s.part.index) : '…'}</dd>
                   <dt>Stage</dt><dd className="stage-dd"><span className="stage-chip"><i className="stage-box" dangerouslySetInnerHTML={{ __html: stageIcon(s.part?.stage ?? '') ?? '' }} /><b>{(s.part?.stage ?? 'Before the reveal').replace(/ layers$/i, '')} {STAGE_RANGE[(s.part?.stage ?? '').split(' ')[0].toLowerCase()] ?? ''}</b></span></dd>
                   <dt>Layer</dt><dd>{s.part?.layer ?? '…'}</dd>
@@ -174,7 +175,7 @@ export function WalletPage({ address: routeAddress }: { address: string | null }
                   <dt>Tokens</dt><dd>{fmtTokens(s.amount)}</dd>
                   <dt>Active</dt><dd>{s.awake >= s.amount ? 'All' : fmtTokens(s.awake)}</dd>
                 </dl>
-                {s.part && <a className="pin-btn" href={`#/network/part/${s.part.index}`}>[Show me in the network]</a>}
+                {s.part && <a className="pin-btn" href={`/network/part/${s.part.index}`}>[Show me in the network]</a>}
                 {own && s.awake > 0 && <button className="wide seal-btn" disabled={!!busy} onClick={() => { setField(''); setPop({ kind: 'Seal', cp: '', slot: s.slot, max: s.awake / UNIT }); }}>[Seal into a checkpoint]</button>}
               </article>
             ))}
@@ -250,7 +251,7 @@ export function WalletPage({ address: routeAddress }: { address: string | null }
             {own && <CarryForm slots={view.slots.map((s) => ({ slot: s.slot, awake: s.awake, label: s.part && s.part.layer !== null ? `Layer ${s.part.layer}, ${s.part.kind === 'head' ? 'head' : 'column'} ${s.part.within}` : `Slot ${s.slot}` }))} busy={!!busy} onGo={carry} />}
           </div>
         )}
-        {own && held > 0 && <p className="wallet-net"><a className="home-cta" href="#/network">[See them in the network]</a></p>}
+        {own && held > 0 && <p className="wallet-net"><a className="home-cta" href="/network">[See them in the network]</a></p>}
       </section>}
       </div>
       {pop && (

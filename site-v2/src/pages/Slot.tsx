@@ -27,7 +27,7 @@ export function SlotPage({ index }: { index: number }) {
   const partSub = p ? `${kindName}, part ${fmt(p.index)}` : KIND[s.kind];
   return (
     <section className="slot-page">
-      <div className="slot-nav"><a className="back-link" href="#/network"><svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3 L5 7 L9 11" /></svg>Back to the network</a>
+      <div className="slot-nav"><a className="back-link" href="/network"><svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3 L5 7 L9 11" /></svg>Back to the network</a>
 </div>
       <PageHead title={partTitle} sub={partSub} stats={[[`${fmt((100 * s.issued) / size, 2)}%`, 'Sold'], [s.holders.length, 'Holders']]} />
       <div className="slot-grid">
@@ -42,7 +42,7 @@ export function SlotPage({ index }: { index: number }) {
             <dt>Slot</dt><dd>{s.index}</dd>
             <dt>Positions</dt><dd>{fmtTokens(s.start)} to {fmtTokens(s.end)}</dd>
           </dl>
-          {p && <a className="pin-btn slot-pin" href={`#/network/part/${p.index}`}>[Show me in the network]</a>}
+          {p && <a className="pin-btn slot-pin" href={`/network/part/${p.index}`}>[Show me in the network]</a>}
         </section>
         <section className="wallet-sec"><h2 className="cons-title wallet-title">Held by<sup className="wallet-count">{s.holders.length}</sup></h2>
           {s.holders.length === 0 ? <p className="empty-line">Nobody holds this part yet.</p> : (
@@ -51,7 +51,7 @@ export function SlotPage({ index }: { index: number }) {
               <tbody>
                 {s.holders.map((h) => (
                   <tr key={(h.checkpoint ?? '') + h.holder}>
-                    <td><a className="holder-cell" href={`#/wallet/${h.holder}`}><span className={`avatar holder-av ${h.holder === me ? 'is-me' : ''}`} aria-hidden><NeuronPfp seed={h.holder} alt={false} color={h.holder === me ? '#ff3fa4' : undefined} /></span>{short(h.holder)}</a></td>
+                    <td><a className="holder-cell" href={`/wallet/${h.holder}`}><span className={`avatar holder-av ${h.holder === me ? 'is-me' : ''}`} aria-hidden><NeuronPfp seed={h.holder} alt={false} color={h.holder === me ? '#ff3fa4' : undefined} /></span>{short(h.holder)}</a></td>
                     <td>{h.checkpoint ? `Checkpoint ${short(h.checkpoint)}` : 'Wallet'}</td>
                     <td>{fmtTokens(h.amount)}</td>
                     <td>{fmt((100 * h.amount) / size, 2)}%</td>
@@ -62,7 +62,7 @@ export function SlotPage({ index }: { index: number }) {
           )}
         </section>
       </div>
-      <div className="slot-pager">{index > 0 ? <a className="slot-page-btn" href={`#/slot/${index - 1}`}>[Previous]</a> : <span />}{index < 1317 && <a className="slot-page-btn" href={`#/slot/${index + 1}`}>[Next]</a>}</div>
+      <div className="slot-pager">{index > 0 ? <a className="slot-page-btn" href={`/slot/${index - 1}`}>[Previous]</a> : <span />}{index < 1317 && <a className="slot-page-btn" href={`/slot/${index + 1}`}>[Next]</a>}</div>
       <p className="home-copy">© 2026 Neurals</p>
     </section>
   );

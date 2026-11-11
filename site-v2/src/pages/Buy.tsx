@@ -88,13 +88,13 @@ export function Buy() {
         Neurons come from buying the token. On this site a "neuron" is {fmt(TOKENS_PER_NEURON)} tokens: exactly one MLP
         neuron in a neuron column, and the same amount of an attention head, the Embedding or the Unembedding.
         The sale fills the brain's 1,318 slots in order, so nobody can aim a buy at a rare slot.
-        To own a <b>particular</b> slot, buy a sealed checkpoint that holds it on the <a href="#/market">Market</a>.
+        To own a <b>particular</b> slot, buy a sealed checkpoint that holds it on the <a href="/market">Market</a>.
       </p>
 
       {!testCurve ? (
         <p className="note">
           The token trades on pump.fun: <a href={`https://pump.fun/coin/${config.mint}`} target="_blank" rel="noreferrer">buy it there</a>.
-          Your neurons show up under <a href="#/wallet">My neurons</a> once the purchase is final.
+          Your neurons show up under <a href="/wallet">My neurons</a> once the purchase is final.
         </p>
       ) : (
         <>
@@ -131,7 +131,7 @@ export function Buy() {
           <ul>
             {preview.slots.slice(0, 8).map((s) => {
               const got = Math.min(s.end, preview.to) - Math.max(s.start, preview.from);
-              return <li key={s.index}><a href={`#/slot/${s.index}`}>{slotLabel(s)}</a>: {fmt(neurons(got), 3)} neurons</li>;
+              return <li key={s.index}><a href={`/slot/${s.index}`}>{slotLabel(s)}</a>: {fmt(neurons(got), 3)} neurons</li>;
             })}
             {preview.slots.length > 8 && <li className="muted">and {preview.slots.length - 8} more slots</li>}
           </ul>
