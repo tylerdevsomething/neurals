@@ -199,7 +199,8 @@ switch (cmd) {
   }
   case 'launch': {
     need();
-    const creator = argOf('--creator');
+    // The dev wallet: --creator, or the one in deploy/indexer.mainnet.json (the server checks the same one).
+    const creator = argOf('--creator') ?? (config as { creator?: string }).creator;
     if (!creator) { console.log('--creator <the wallet that will create the token on pump.fun>'); process.exit(2); }
     console.log('watching for the token: create it on pump.fun from that wallet now');
     process.exit(await runLive('node', ['tools/launch.ts', '--rpc', RPC, '--creator', creator, '--admin-key', `${KEYS}/mainnet/deployer.json`,

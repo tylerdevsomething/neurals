@@ -19,5 +19,6 @@
   "challengeSlots": 9000,
   "brainKey": "6aWy1UL2uuF8G7pTCqC6JhHtLoBuhccQGavjjoVmdmGH",
   "minPushLamports": 100000,
-  "multisig": "4mSYGQvZTpcdVhz3bbN1EtYhSjnnnSdZLfD3ZVJRcrfa"
+  "multisig": "4mSYGQvZTpcdVhz3bbN1EtYhSjnnnSdZLfD3ZVJRcrfa",
+  "creator": "CoHgUjTDq6xfZkyyb2CNCjMdfyTrsKRhrPBjpsRhLxxc"
 }

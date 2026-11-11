@@ -9,18 +9,21 @@
 // Any error stops the process: run it under a supervisor that restarts it. The log makes restarts
 // safe; a halt from the ledger or balance book means a decoding problem and needs a human.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { Connection, Keypair } from '@solana/web3.js';
 import { Rpc } from './rpc.ts';
 import { Store } from './store.ts';
 import { Indexer, type IndexerConfig } from './indexer.ts';
 import { startApi } from './api.ts';
 import { Settler } from './settler.ts';
-import { NeuralsAccounts } from '../brain/accounts.ts';
+import { NeuralsAccounts, parseConfig } from '../brain/accounts.ts';
 import { checkReveal, checkRules, type Reveal, type Rules } from '../brain/reveal.ts';
 import { failoverFetch, hostOf, rpcList } from '../brain/rpcs.ts';
 
 type Config = IndexerConfig & {
+  /** The dev wallet that creates the token: only its mint is taken when the site goes live by itself. */
+  creator?: string;
   rpcUrl: string;
   port: number;
   dataDir: string;
@@ -59,6 +62,14 @@ console.log(`rpc: ${rpcUrls.map(hostOf).join(" then ")}`);
 if (process.env.PORT) config.port = Number(process.env.PORT);
 if (process.env.DATA_DIR) config.dataDir = process.env.DATA_DIR;
 if (process.env.BRAIN_URL) config.brainUrl = process.env.BRAIN_URL;
+// The token found on chain after the launch (see the waiting loop below), kept on the data volume: it
+// completes a config deployed before the launch, so no redeploy is needed to go live.
+const launchFile = join(config.dataDir, 'launch.json');
+if (!config.mint && existsSync(launchFile)) {
+  const l = JSON.parse(readFileSync(launchFile, 'utf8')) as { mint: string; curveTokenAccount: string; startSlot: number };
+  Object.assign(config, { mint: l.mint, curveTokenAccount: l.curveTokenAccount, startSlot: l.startSlot });
+  console.log(`token from ${launchFile}: mint ${l.mint}, start slot ${l.startSlot}`);
+}
 // Before the token exists (no mint yet: the launch writes it), the site and API are served and nothing
 // is followed, settled or revealed; nothing is written to the data volume either.
 const waiting = !config.mint;
@@ -86,7 +97,7 @@ if (config.rulesFile && !waiting) {
     const p = indexer.useReveal(r);
     console.log(`reveal checked: seed block ${r.seedSlot}, takes effect at slot ${p.effectiveSlot}`);
   }
-} else if (config.revealFile) {
+} else if (config.revealFile && !waiting) {
   throw new Error('a reveal needs rulesFile to be checked against');
 }
 if (!waiting) {
@@ -124,8 +135,63 @@ startApi({
 }, config.port);
 console.log(`api on :${config.port}`);
 
+/** Waiting: the mint the admin recorded in the program (set_mint, by tools/launch.ts watching the creator's
+ *  wallet), with the slot of the transaction that created it, which must be the creator's. */
+async function launched(): Promise<{ mint: string; curveTokenAccount: string; startSlot: number } | null> {
+  const a = await rpc.accountData(new NeuralsAccounts(config.programId).config().toBase58());
+  if (!a) return null;
+  const c = parseConfig(a.data);
+  if (c.mint.toBase58() === '11111111111111111111111111111111') return null;
+  const mint = c.mint.toBase58();
+  // The oldest page of the mint's transactions (oldest last in each page).
+  let oldest: { signature: string; slot: number; err: unknown }[] = [];
+  for (let before: string | undefined; ;) {
+    const page = await rpc.call<{ signature: string; slot: number; err: unknown }[]>('getSignaturesForAddress', [mint, { limit: 1000, before, commitment: 'finalized' }]);
+    if (page.length) oldest = page;
+    if (page.length < 1000) break;
+    before = page[page.length - 1].signature;
+  }
+  // The start slot is the creation: the earliest successful transaction paid by the dev wallet (what
+  // tools/launch.ts records). Without a dev wallet configured, the earliest successful one.
+  let first: { slot: number } | null = null;
+  let payer: string | undefined;
+  for (const s of oldest.filter((x) => !x.err).reverse().slice(0, 25)) {
+    const tx = await rpc.transaction(s.signature);
+    payer = tx?.transaction?.message?.accountKeys?.[0]?.pubkey as string | undefined;
+    if (!config.creator || payer === config.creator) { first = { slot: s.slot }; break; }
+  }
+  if (!oldest.length) return null; // recorded but not final yet
+  if (!first) {
+    console.log(`ALERT: the program's mint ${mint} was not created by the dev wallet ${config.creator} (first payer ${payer}): not going live`);
+    return null;
+  }
+  // Rules whose fallback deadline has already passed would reveal at once: post new rules and redeploy first.
+  if (config.rulesFile) {
+    const deadline = (JSON.parse(readFileSync(config.rulesFile, 'utf8')) as Rules).seed.deadlineSlot;
+    if (deadline <= first.slot) {
+      console.log(`ALERT: the rules deadline (slot ${deadline}) is before the launch (slot ${first.slot}): new rules are needed (tools/mainnet.ts rules --replace, then redeploy); not going live`);
+      return null;
+    }
+  }
+  return { mint, curveTokenAccount: c.curveTokenAccount.toBase58(), startSlot: first.slot };
+}
+
 for (;;) {
-  if (waiting) { await new Promise((r) => setTimeout(r, 60_000)); continue; }
+  if (waiting) {
+    try {
+      const l = await launched();
+      if (l) {
+        mkdirSync(config.dataDir, { recursive: true });
+        writeFileSync(launchFile, JSON.stringify({ ...l, foundAt: new Date().toISOString() }, null, 2));
+        console.log(`TOKEN LAUNCHED: mint ${l.mint}, curve ${l.curveTokenAccount}, start slot ${l.startSlot}. Restarting live.`);
+        process.exit(0); // the host restarts the service, which reads launch.json and goes live
+      }
+    } catch (e) {
+      console.log(`waiting: ${(e as Error).message}`);
+    }
+    await new Promise((r) => setTimeout(r, 5_000));
+    continue;
+  }
   const n = await indexer.syncOnce();
   if (n) console.log(`slot ${indexer.syncedSlot}: applied ${n} transactions; epoch ${indexer.ledger.epoch}`);
   await new Promise((r) => setTimeout(r, config.pollMs ?? 2000));
