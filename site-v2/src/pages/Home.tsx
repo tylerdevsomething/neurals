@@ -91,7 +91,7 @@ export function Home() {
             <div className="home-path-text"><b>{t}</b><p>{d}</p></div>
           </div>
         ))}
-        <span className="home-path-tail" aria-hidden="true" /><span className="home-path-label">Go deeper</span><a className="home-path-end home-path-docs" aria-disabled="true" onClick={(e) => e.preventDefault()}>[Read our docs]</a>
+        <span className="home-path-tail" aria-hidden="true" /><span className="home-path-label">Go deeper</span><a className="home-path-end home-path-docs" href="/neurals-whitepaper.pdf" target="_blank" rel="noopener">[Read our docs]</a>
       </div>
       </div>
 

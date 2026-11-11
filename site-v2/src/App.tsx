@@ -140,6 +140,7 @@ const ICON: Record<string, string> = {
   rarities: '<path d="M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.3 4.3 13.3l.8-4.1L2 6.3l4.2-.5z" fill="none"/>',
   rules: '<rect x="3.5" y="7.5" width="9" height="6.5" fill="none"/><path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5M8 10v1.5" fill="none"/>',
   glossary: '<path d="M8 4.5C6.5 3.5 4.5 3.3 2.5 3.6v8.6c2-.3 4 0 5.5 1 1.5-1 3.5-1.3 5.5-1V3.6c-2-.3-4-.1-5.5.9zM8 4.5v8.7" fill="none"/>',
+  paper: '<path d="M3.5 1.5h6l3 3v10h-9z M9.5 1.5v3h3 M5.5 8h5M5.5 10.5h5M5.5 13h3" fill="none"/>',
   wallet: '<path d="M2.5 4.5h10v8h-10z" fill="none"/><path d="M2.5 4.5 L10 2.5 V4.5" fill="none"/><path d="M9.5 7.5h3v2h-3z" fill="none"/>',
   connect: '<path d="M6 2v4M10 2v4M4 6h8v3a4 4 0 0 1-8 0zM8 13v2" fill="none"/>',
   connected: '<path d="M6 5v3M10 5v3M4 8h8v2a4 4 0 0 1-8 0zM8 14v1.5" fill="none"/><path d="M3 1.5h10v3.5H3z" fill="none"/>',
@@ -147,7 +148,7 @@ const ICON: Record<string, string> = {
 const Ic = ({ n }: { n: string }) => <svg className="ti" viewBox="0 0 16 16" width="14" height="14" stroke="currentColor" strokeWidth="1.2" dangerouslySetInnerHTML={{ __html: ICON[n] }} />;
 const TREE: { folder: string; items: [string, string, string][] }[] = [
   { folder: 'Explore', items: [['market', 'Market', 'market'], ['chat', 'Chat', 'chat']] },
-  { folder: 'Learn', items: [['rarities', 'Rarities', 'rarities'], ['rules', 'Constraints', 'rules'], ['glossary', 'Glossary', 'glossary']] },
+  { folder: 'Learn', items: [['rarities', 'Rarities', 'rarities'], ['rules', 'Constraints', 'rules'], ['glossary', 'Glossary', 'glossary'], ['neurals-whitepaper.pdf', 'Whitepaper', 'paper']] },
   { folder: 'You', items: [['wallet', 'My neurons', 'wallet']] },
 ];
 /** The virtual tour runs inside the brain: go to the homepage if needed, then tell the brain to start. */
@@ -179,7 +180,7 @@ function TreeNav({ on, onConnected, splitOn }: { on: string; onConnected: () => 
               </button>
               {open && (
                 <div className="tree-items">
-                  {g.items.map(([to, name, ic]) => <a key={to} href={`/${to}`} className={`tree-item ${on === to ? 'on' : ''}`}><Ic n={ic} />{name}</a>)}
+                  {g.items.map(([to, name, ic]) => <a key={to} href={`/${to}`} {...(to.endsWith('.pdf') ? { target: '_blank', rel: 'noopener' } : {})} className={`tree-item ${on === to ? 'on' : ''}`}><Ic n={ic} />{name}</a>)}
                   {g.folder === 'You' && <div className={`tree-item tree-wallet ${me ? 'is-on' : ''}`}><Ic n={me ? 'connected' : 'connect'} /><WalletButton onConnected={onConnected} /></div>}
                 </div>
               )}
@@ -245,7 +246,7 @@ export function App() {
         : (
       <aside className="side keys">
           <a className={`key logo ${navOn === '' ? 'on' : ''}`} href="/">neurals</a>
-          {nav.filter(([to]) => to !== '').map(([to, name]) => <a key={to} href={`/${to}`} className={`key ${navOn === to ? 'on' : ''}`}>{name}</a>)}
+          {nav.filter(([to]) => to !== '').map(([to, name]) => <a key={to} href={`/${to}`} {...(to.endsWith('.pdf') ? { target: '_blank', rel: 'noopener' } : {})} className={`key ${navOn === to ? 'on' : ''}`}>{name}</a>)}
           <a href="/wallet" className={`key ${navOn === 'wallet' ? 'on' : ''}`}>My neurons</a>
           <div className="key keywallet"><WalletButton onConnected={() => { navigate('/wallet'); setReveal(true); }} /></div>
         </aside>
