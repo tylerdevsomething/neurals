@@ -1,9 +1,11 @@
 # Checks the hosted devnet services every 15 minutes. A failed run emails the repository owner
 # (GitHub notifies whoever last changed this schedule), listing every problem found.
 name: monitor
+# Paused 2026-11-11: the devnet site is taken down. After the launch, point --site at the mainnet
+# site and put the schedule back.
 on:
-  schedule:
-    - cron: '*/15 * * * *'
+  # schedule:
+  #   - cron: '*/15 * * * *'
   workflow_dispatch:
 jobs:
   check:
