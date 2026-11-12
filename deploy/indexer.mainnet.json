@@ -20,5 +20,8 @@
   "brainKey": "6aWy1UL2uuF8G7pTCqC6JhHtLoBuhccQGavjjoVmdmGH",
   "minPushLamports": 100000,
   "multisig": "4mSYGQvZTpcdVhz3bbN1EtYhSjnnnSdZLfD3ZVJRcrfa",
-  "creator": "CoHgUjTDq6xfZkyyb2CNCjMdfyTrsKRhrPBjpsRhLxxc"
+  "creator": "CoHgUjTDq6xfZkyyb2CNCjMdfyTrsKRhrPBjpsRhLxxc",
+  "mint": "2RBEK4TrbkD4tBBsvj3hh5uKd6gSxKTMWDu5GAwvpump",
+  "curveTokenAccount": "8jF9Sdy8rUeSTBbfknTH1GLqxyg1zC3w7CZEoZp6r42o",
+  "startSlot": 468696076
 }
