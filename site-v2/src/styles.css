@@ -1972,3 +1972,10 @@ main > section:has(> .home-copy) { margin-bottom: 0 !important; }
 .chat-alert details code { display: block; margin-top: 6px; max-height: 120px; overflow: auto; white-space: pre-wrap; word-break: break-all; color: #9aa0a8; font-size: 9px; text-transform: none; }
 .chat-alert-x { flex: none; background: none; border: 0; color: #9aa0a8; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; }
 .chat-alert-x:hover { color: #17306e; }
+/* In wallet with several neurons: cards stack at their own height (stretching each to the box made one giant blank box) */
+:root .wallet-grid .ws-neurons .cards:not(#x):not(#y):not(#z) { flex: none; flex-direction: column; flex-wrap: nowrap; gap: 0 !important; align-items: stretch; }
+:root .wallet-grid .ws-neurons .card.post:not(#x):not(#y):not(#z) { height: auto; width: 100%; }
+:root[data-white] .wallet-grid .ws-neurons .card.post + .card.post:not(#x):not(#y):not(#z) { border-top: 1px dashed var(--dash) !important; margin: 28px -28px 0 !important; padding: 28px 28px 0 !important; width: auto !important; }
+/* Checkpoints (with List / Gift / Withdraw) sit in the right column under Earnings, so a long In wallet column never pushes them off screen */
+.wallet-grid:not(#x) { grid-template-areas: "neurons earnings" "neurons checkpoints" "neurons tools" "neurons ." !important; grid-template-rows: auto auto auto 1fr; align-items: start; }
+.wallet-grid:not(#x) .ws-neurons { align-self: start; }
