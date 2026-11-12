@@ -53,7 +53,9 @@ export class Rpc {
     const out: { signature: string; slot: number; err: unknown }[] = [];
     for (let before: string | undefined; ;) {
       const page = await this.call<{ signature: string; slot: number; err: unknown }[]>('getSignaturesForAddress', [address, { limit: 1000, before, commitment: 'finalized' }]);
-      let done = page.length < 1000;
+      // A short page is not the end: some endpoints return fewer than asked. Only an empty page, or
+      // reaching afterSlot, is.
+      let done = page.length === 0;
       for (const s of page) {
         if (s.slot <= afterSlot) { done = true; break; }
         if (s.slot <= maxSlot) out.push(s);
