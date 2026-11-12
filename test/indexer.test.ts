@@ -10,6 +10,7 @@ import { Indexer } from '../indexer/indexer.ts';
 import { Store } from '../indexer/store.ts';
 import { encodeBase58 } from '../brain/base58.ts';
 import type { Rpc } from '../indexer/rpc.ts';
+Indexer.LAG = 0; // the fake chain's transaction lists are never behind
 
 const MINT = 'Mint1111111111111111111111111111111111111111';
 const CURVE = 'Curve111111111111111111111111111111111111111';

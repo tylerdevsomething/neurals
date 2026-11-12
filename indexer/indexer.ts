@@ -196,6 +196,8 @@ export class Indexer {
     return [...this.watched()].filter((a) => !fixed.has(a));
   }
 
+  /** Slots the sync stays behind the finalized tip (about 30 seconds). */
+  static LAG = Number(process.env.SYNC_LAG_SLOTS ?? 75);
   /** RPC calls the last poll's balance snapshot took: the main loop paces itself by it. */
   snapshotCalls = 0;
   /** Missed transactions found by the balance check, and corrections made (shown in /health). */
@@ -207,10 +209,14 @@ export class Indexer {
     // holder, every few seconds, does not scale). One snapshot reads every followed account's balance,
     // 100 per call, at the finalized slot this poll syncs to; only accounts whose balance or owner
     // differs from the book are scanned for transactions. The curve and the program are always scanned.
+    // The poll syncs to a slot a little behind the finalized tip, and no later than the snapshot: the
+    // transaction lists can come from another RPC endpoint (failover) that has not indexed the newest
+    // finalized slots yet, and whatever they leave out at or before the synced slot is never asked for again.
+    const tip = await this.rpc.slot('finalized');
     const tracked = this.trackedAccounts();
     const snap = await this.rpc.tokenSnapshot(tracked);
     this.snapshotCalls = Math.ceil(tracked.length / 100);
-    const finalized = snap.slot ?? (await this.rpc.slot('finalized'));
+    const finalized = Math.min(tip, snap.slot ?? tip) - Indexer.LAG;
     this.finalizedSlot = finalized;
     if (finalized <= this.syncedSlot) return 0;
     const from = this.syncedSlot;
