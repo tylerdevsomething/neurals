@@ -73,7 +73,29 @@ export class Decoder {
     for (const o of [...pre, ...post]) ownerOf.set(o.account, o.owner);
 
     const actions: DecodedTx['actions'] = [];
-    for (const { ix, parent } of executionOrder(tx)) {
+    const order = executionOrder(tx);
+    // A token account opened and closed inside the transaction (a trading bot's temporary account) has
+    // no balance entry: its owner is whoever its tokens were passed on to, followed transfer by transfer.
+    // (For a sell through one, the tokens are followed back to where they came from.)
+    const onward = new Map<string, string>(), back = new Map<string, string>();
+    for (const { ix } of order) {
+      const t = ix.parsed?.type, info = ix.parsed?.info;
+      if (!TOKEN_PROGRAMS.has(ix.programId) || (t !== 'transfer' && t !== 'transferChecked') || (info.mint !== undefined && info.mint !== this.config.mint)) continue;
+      if (!onward.has(info.source)) onward.set(info.source, info.destination);
+      if (!back.has(info.destination)) back.set(info.destination, info.source);
+    }
+    const curve = this.config.curveTokenAccount;
+    const follow = (start: string, links: Map<string, string>) => {
+      let account = start;
+      for (let hops = 0; hops < 8 && !ownerOf.has(account) && links.has(account); hops++) account = links.get(account)!;
+      return account !== curve ? ownerOf.get(account) : undefined;
+    };
+    for (const account of new Set([...onward.keys(), ...back.keys()])) {
+      if (ownerOf.has(account)) continue;
+      const owner = follow(account, onward) ?? follow(account, back);
+      if (owner) ownerOf.set(account, owner);
+    }
+    for (const { ix, parent } of order) {
       if (TOKEN_PROGRAMS.has(ix.programId) && ix.parsed) {
         const e = this.curveEvent(slot, ix, parent, ownerOf);
         if (e) actions.push(e);

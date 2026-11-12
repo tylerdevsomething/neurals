@@ -234,6 +234,7 @@ export class Indexer {
 
     let count = 0;
     const rechecked = new Set<string>();
+    let last: Pending | null = null;
     const staleIn = (t: DecodedTx) => t.pre.filter((o) => { const k = this.book.get(o.account); return k !== undefined && (k.amount !== o.amount || k.owner !== o.owner); });
     while (pending.size) {
       const next = await this.nextInOrder(pending);
@@ -252,6 +253,11 @@ export class Indexer {
           const before = new Set(pending.keys());
           await scan(stale.map((o) => o.account), from);
           pending.delete(next.signature); // the scan finds this one too: it is being handled now
+          // What the rescan finds before the last applied transaction cannot be applied in order: the
+          // events after it are already in the ledger. Those are left to the correction below.
+          if (last) for (const p of [...pending.values()]) {
+            if (!before.has(p.signature) && (p.slot < last.slot || (p.slot === last.slot && (await this.before(p, last))))) pending.delete(p.signature);
+          }
           const earlier = [...pending.values()].filter((p) => !before.has(p.signature) && p.signature !== next.signature && p.slot <= next.slot);
           if (earlier.length) {
             this.repairs.found += earlier.length;
@@ -268,6 +274,7 @@ export class Indexer {
         }
       }
       applied.add(next.signature);
+      last = next;
       if (!tx) continue;
       await this.fetchReceipts(tx);
       await this.ensureReveal(tx.slot);
