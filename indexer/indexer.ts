@@ -87,8 +87,12 @@ export class Indexer {
     }
   }
 
+  /** Transactions already in the log: a poll cut short by a restart must not apply them twice. */
+  private readonly logged = new Set<string>();
+
   private replay(line: LogLine): void {
     if (line.kind === 'reveal') return; // older logs recorded when the file was read: not canonical
+    this.logged.add(line.tx.signature);
     for (const e of eventsOf(line.tx, this.book)) {
       this.revealIfDue(e.slot, false);
       this.settle(this.ledger.apply(e), false);
@@ -198,6 +202,8 @@ export class Indexer {
 
   /** Slots the sync stays behind the finalized tip (about 30 seconds). */
   static LAG = Number(process.env.SYNC_LAG_SLOTS ?? 75);
+  /** Most slots one poll covers. */
+  static STEP = 1500;
   /** RPC calls the last poll's balance snapshot took: the main loop paces itself by it. */
   snapshotCalls = 0;
   /** Missed transactions found by the balance check, and corrections made (shown in /health). */
@@ -216,7 +222,8 @@ export class Indexer {
     const tracked = this.trackedAccounts();
     const snap = await this.rpc.tokenSnapshot(tracked);
     this.snapshotCalls = Math.ceil(tracked.length / 100);
-    const finalized = Math.min(tip, snap.slot ?? tip) - Indexer.LAG;
+    // At most STEP slots per poll, so a long catch-up saves its progress as it goes.
+    const finalized = Math.min(Math.min(tip, snap.slot ?? tip) - Indexer.LAG, this.syncedSlot + Indexer.STEP);
     this.finalizedSlot = finalized;
     if (finalized <= this.syncedSlot) return 0;
     const from = this.syncedSlot;
@@ -233,7 +240,7 @@ export class Indexer {
       const lists = await Promise.all(addresses.map((a) => this.rpc.signaturesSince(a, afterSlot, finalized)));
       for (const a of addresses) scanned.add(a);
       for (const list of lists) for (const s of list) {
-        if (!s.err && !applied.has(s.signature) && !pending.has(s.signature)) pending.set(s.signature, { signature: s.signature, slot: s.slot });
+        if (!s.err && !applied.has(s.signature) && !pending.has(s.signature) && !this.logged.has(s.signature)) pending.set(s.signature, { signature: s.signature, slot: s.slot });
       }
     };
     await scan([this.config.curveTokenAccount, this.config.programId, ...changed], from);
@@ -304,6 +311,7 @@ export class Indexer {
 
   private apply(tx: DecodedTx): void {
     this.store.appendLog({ kind: 'tx', tx });
+    this.logged.add(tx.signature);
     for (const e of eventsOf(tx, this.book)) {
       this.revealIfDue(e.slot, true);
       this.settle(this.ledger.apply(e), true);
