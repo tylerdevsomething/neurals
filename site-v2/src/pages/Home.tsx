@@ -39,7 +39,7 @@ export function Home() {
       <div className="home-hero2" ref={heroRef}>
         <iframe className="home-blob" src={`${LAB}/blob.html?bounce`} title="The network's water, bouncing" />
         <div className="home-panel2">
-          <div className="home-panel2-title"><h1>A rarity system<br />for open source /<br />closed source</h1></div>
+          <div className="home-panel2-title"><h1>A rarity system<br />for open source models</h1></div>
           <div className="home-panel2-terms">
             <div><b>Neurals</b><span>The rules that make the parts of a real model ownable.</span></div>
             <div><b>Neurons</b><span>3,000 tokens, one piece of the network.</span></div>
