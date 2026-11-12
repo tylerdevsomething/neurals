@@ -82,8 +82,10 @@ export class Ledger {
   readonly options: LedgerOptions;
   /** Next fresh position the curve will issue. */
   cursor = 0;
-  /** Tokens sold back into the curve and not yet bought again; re-buying them issues nothing. */
+  /** Tokens sold back into the curve without neurons (none left to give up), not yet bought again. */
   returned = 0;
+  /** Neurons given up by selling back to the curve, waiting for the next curve buyer (lowest first). */
+  resale: Range[] = [];
   epoch = 0;
 
   /** Positions by holder key: `w:<wallet>` or `c:<checkpoint>`. */
@@ -188,20 +190,35 @@ export class Ledger {
     const done = this.advanceTo(e.slot);
     switch (e.type) {
       case 'curveBuy': {
+        // A curve buy gets neurons sold back to the curve first, then fresh ones (SPEC §5.1).
         positive(e.amount);
-        const fromReturned = Math.min(this.returned, e.amount);
+        const resold = takeRarest(this.resale, Math.min(e.amount, total(this.resale)), () => 0);
+        this.resale = subtract(this.resale, resold);
+        this.add(wallet(e.wallet), resold);
+        let rest = e.amount - total(resold);
+        const fromReturned = Math.min(this.returned, rest);
         this.returned -= fromReturned;
-        const fresh = Math.min(e.amount - fromReturned, SUPPLY - this.cursor);
+        rest -= fromReturned;
+        const fresh = Math.min(rest, SUPPLY - this.cursor);
         if (fresh > 0) {
           this.add(wallet(e.wallet), [[this.cursor, this.cursor + fresh]]);
           this.cursor += fresh;
         }
         break;
       }
-      case 'curveSell':
+      case 'curveSell': {
+        // Selling back to the curve gives up the neurons the sale leaves uncovered (the ones that would
+        // go dormant), and the curve sells them on with the tokens.
         positive(e.amount);
-        this.returned += e.amount;
+        const mine = this.reg.get(wallet(e.wallet)) ?? [];
+        const after = Math.max(0, this.balanceOf(e.wallet) - e.amount);
+        const kept = takeRarest(mine, Math.min(after, total(mine)), this.pointsOfSlot);
+        const given = takeRarest(subtract(mine, kept), e.amount, () => 0);
+        this.remove(wallet(e.wallet), given);
+        this.resale = union(this.resale, given);
+        this.returned += e.amount - total(given);
         break;
+      }
       case 'balance': {
         if (!Number.isSafeInteger(e.balance) || e.balance < 0) throw new Error(`bad balance ${e.balance}`);
         this.balances.set(e.wallet, e.balance);
@@ -385,6 +402,7 @@ export class Ledger {
       epoch: this.epoch,
       cursor: this.cursor,
       returned: this.returned,
+      resale: this.resale,
       reg: sorted(this.reg),
       start: sorted(this.start),
       holders: sorted(this.holders),

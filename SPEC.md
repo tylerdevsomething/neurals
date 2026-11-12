@@ -141,9 +141,12 @@ decides most of the split: segments that fire more earn more.
 neurons **dormant** (they earn nothing for a while), never destroyed. Three rules work together.
 
 ### 5.1 Registration
-A curve buy registers its fresh positions to the **buying wallet** (the owner of the token account
-the curve paid). Positions are issued once: tokens sold back to the curve and bought again carry
-no positions, because those positions still belong to their first buyer.
+A curve buy registers positions to the **buying wallet** (the owner of the token account the curve
+paid). Selling back to the curve gives up neurons: the seller's neurons the sale leaves uncovered
+(the ones that would go dormant) go back to the curve with the tokens, and the next curve buyer gets
+them first (lowest positions first), then fresh positions. Tokens sold back that carried no neurons
+(the seller had none left to give) are resold without any. Decided 2026-11-13, launch day: buyers
+right after launch were getting tokens bots had flipped back with no neurons.
 
 ### 5.2 Dormant and wake (the default; nobody has to do anything)
 A wallet's registered neurons are **awake** as far as its own token balance covers them:

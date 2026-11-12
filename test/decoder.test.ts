@@ -168,14 +168,15 @@ test('end to end: decoded transactions drive the ledger', () => {
   feed(curveTx('buy', 'alice', 'aliceAta', 5_000_000));
   assert.equal(total(ledger.positions('alice')), 5_000_000);
   assert.equal(ledger.balanceOf('alice'), 5_000_000);
-  // Alice sells 2,000,000 back to the curve: her neurons stay registered, part goes dormant.
+  // Alice sells 2,000,000 back to the curve: she gives up the neurons the sale leaves uncovered.
   feed(tx({
     slot: 11, top: [pumpIx('sell')], inner: { 0: [transfer('aliceAta', CURVE, 2_000_000)] },
     pre: [{ account: 'aliceAta', owner: 'alice', amount: 5_000_000 }], post: [{ account: 'aliceAta', owner: 'alice', amount: 3_000_000 }],
   }));
-  assert.equal(total(ledger.positions('alice')), 5_000_000);
+  assert.equal(total(ledger.positions('alice')), 3_000_000);
   assert.equal(total(ledger.awake('alice')), 3_000_000);
-  assert.equal(ledger.returned, 2_000_000);
+  assert.equal(ledger.returned, 0);
+  assert.equal(total(ledger.resale), 2_000_000);
   // Seal: the program event comes before the same transaction's balance change, so it is judged on
   // the balance going in.
   const seal = tx({

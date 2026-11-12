@@ -24,15 +24,16 @@ const evenFee = (slot: number, lamports: number): Event => ({ type: 'fee', slot,
 const COL0 = SLOTS[13];
 const COL1 = SLOTS[14];
 
-test('curve buys issue positions in buying order; re-bought sell-backs issue nothing', () => {
+test('curve buys issue positions in buying order; a sell-back gives its neurons to the next curve buyer', () => {
   const l = ledger();
   run(l, [...buy(1, 'A', TOKENS.embedding), ...buy(2, 'B', 1_000)]);
   assert.deepEqual(l.positions('A'), [[0, t(TOKENS.embedding)]]);
   assert.deepEqual(l.positions('B'), [[t(TOKENS.embedding), t(TOKENS.embedding + 1_000)]]);
   run(l, [{ type: 'curveSell', slot: 3, wallet: 'B', amount: t(400) }, ...buy(4, 'C', 1_000)]);
-  // C's first 400 came from B's sell-back: no positions. The other 600 are fresh.
-  assert.equal(total(l.positions('C')), t(600));
-  assert.deepEqual(l.positions('B'), [[t(TOKENS.embedding), t(TOKENS.embedding + 1_000)]], 'B keeps every position: neurons never die');
+  // B gave up the 400 neurons its sale left uncovered; C gets those first, then 600 fresh.
+  assert.equal(total(l.positions('C')), t(1_000));
+  assert.equal(total(l.positions('B')), t(600));
+  assert.deepEqual(l.resale, []);
   assert.equal(l.cursor, t(TOKENS.embedding + 1_600));
 });
 
