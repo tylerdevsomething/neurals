@@ -1069,6 +1069,13 @@ body.dragging-split { user-select: none; cursor: row-resize; } body.dragging-spl
 .home-panel2-terms > div + div { border-left: 1px dashed var(--dash); }
 .home-panel2-terms b { font-weight: 400; text-transform: uppercase; }
 .home-panel2-terms span { color: #9aa0a8; font-size: 11px !important; text-transform: uppercase; }
+.home-panel2-ca { display: flex; align-items: center; gap: 16px; padding: 10px 12px 10px 16px; border-top: 1px dashed var(--dash); background: #ffffff; text-align: left; }
+.home-panel2-ca b { font-weight: 400; text-transform: uppercase; white-space: nowrap; }
+.home-panel2-ca-addr { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa0a8; font-size: 11px !important; }
+.home-panel2-ca button { flex: none; padding: 6px 10px; border: 0; border-radius: 0; font: inherit; font-size: 11px !important; text-transform: uppercase; cursor: pointer; }
+:root[data-white] .home-panel2-ca button, :root[data-white] .home-panel2-ca button:disabled { background: #17306e !important; color: #ffffff !important; opacity: 1; }
+:root[data-white] .home-panel2-ca button:disabled { cursor: default; }
+:root[data-white] .home-panel2-ca button:not(:disabled):hover { background: #2a5dff !important; }
 .home-panel2-cta { position: absolute; left: 50%; top: calc(100% + 18px); transform: translateX(-50%); padding: 11px 18px; background: #17306e; color: #ffffff !important; text-decoration: none; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 .home-panel2-cta:hover { background: #2a5dff; }
 .home-hero2 { border-bottom: 1px dashed var(--dash); } /* one dotted line between the hero and the next section */

@@ -1,5 +1,6 @@
 // Home: the landing page that sells the idea. All wording here is DRAFT, awaiting her approval.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useApp } from '../App.tsx';
 import { Fold } from '../ui.tsx';
 import { STAGE_ICONS } from '../icons.ts';
 import { LAB } from '../lab.ts';
@@ -45,6 +46,7 @@ export function Home() {
             <div><b>Neurons</b><span>3,000 tokens, one piece of the network.</span></div>
             <div><b>Receipts</b><span>A record of which parts fired.</span></div>
           </div>
+          <ContractAddress />
         </div>
       </div>
 
@@ -141,5 +143,19 @@ export function Home() {
       </div>
       <p className="home-copy">© 2026 Neurals</p>
     </section>
+  );
+}
+
+/** The token's contract address under the hero, with a copy button; x's until the token exists. */
+function ContractAddress() {
+  const mint = useApp()?.config.mint || '';
+  const [copied, setCopied] = useState(false);
+  const copy = () => { if (!mint) return; void navigator.clipboard.writeText(mint).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
+  return (
+    <div className="home-panel2-ca">
+      <b>Contract address</b>
+      <span className="home-panel2-ca-addr">{mint || 'x'.repeat(44)}</span>
+      <button type="button" onClick={copy} disabled={!mint}>{copied ? '[Copied]' : '[Copy]'}</button>
+    </div>
   );
 }
