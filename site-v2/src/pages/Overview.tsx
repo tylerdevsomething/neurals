@@ -7,11 +7,13 @@ import { Fold } from '../ui.tsx';
 import { Hud } from './Hud.tsx';
 import { CURVE_SUPPLY, UNIT } from '../../../brain/model.ts';
 import { LAB } from '../lab.ts';
+import { useWallet } from '../chain.ts';
 
 const PUMP_FUN = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
 
 export function Overview({ part = 'hero' }: { part?: 'hero' | 'info' }) {
   const { config } = useApp();
+  const me = useWallet();
   const [health, setHealth] = useState<Health | null>(null);
   const [epochs, setEpochs] = useState<EpochView[]>([]);
   const [look, setLook] = useState('');
@@ -42,7 +44,7 @@ export function Overview({ part = 'hero' }: { part?: 'hero' | 'info' }) {
     <>
       {part === 'hero' && (<>
       {isHud
-        ? <Hud iframe={`${LAB}/?embed&theme=${document.documentElement.dataset.theme ?? 'light'}&font=${document.documentElement.dataset.font ?? ''}${document.documentElement.dataset.theme === 'paper' ? `&shape=${import.meta.env.VITE_SHAPE ?? 'network'}` : ''}${document.documentElement.dataset.variant === 'micro' ? '&variant=micro' : ''}${document.documentElement.dataset.white ? '&white=1' : ''}${document.documentElement.dataset.theme === 'hud' ? '&shape=onion' : ''}`} />
+        ? <Hud iframe={`${LAB}/?embed&theme=${document.documentElement.dataset.theme ?? 'light'}&font=${document.documentElement.dataset.font ?? ''}${document.documentElement.dataset.theme === 'paper' ? `&shape=${import.meta.env.VITE_SHAPE ?? 'network'}` : ''}${document.documentElement.dataset.variant === 'micro' ? '&variant=micro' : ''}${document.documentElement.dataset.white ? '&white=1' : ''}${document.documentElement.dataset.theme === 'hud' ? '&shape=onion' : ''}${me ? `&wallet=${me}` : ''}`} />
         : (
       <section className="brain-top">
             {/* the brain itself is mounted once by the app, so it can stay live in split view; this just holds its place */}

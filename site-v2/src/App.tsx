@@ -209,11 +209,14 @@ function Crumbs({ on }: { on: string }) {
   );
 }
 
-const BRAIN_SRC = `${LAB}/?embed&theme=paper&white=1&compare`;
+const BRAIN_BASE = `${LAB}/?embed&theme=paper&white=1&compare`;
+/** The 3D network, told which wallet is connected so its My neurons box shows that wallet's parts. */
+let brainWallet: string | null = null;
+const brainSrc = () => `${BRAIN_BASE}${brainWallet ? `&wallet=${brainWallet}` : ''}`;
 let toggleSplit: () => void = () => {};
 // pop the network out into its own small window, the way a wallet pops up its own window
 let popWin: Window | null = null;
-const popOut = () => { const w = 920, h = 720; popWin = window.open(BRAIN_SRC.replace('?embed&', '?'), 'neurals-network', `popup,width=${w},height=${h},left=${Math.max(0, screenX + outerWidth - w - 40)},top=${screenY + 60}`); };
+const popOut = () => { const w = 920, h = 720; popWin = window.open(brainSrc().replace('?embed&', '?'), 'neurals-network', `popup,width=${w},height=${h},left=${Math.max(0, screenX + outerWidth - w - 40)},top=${screenY + 60}`); };
 const POP_ICON = <svg className="split-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="4" width="10" height="10" fill="none" /><path d="M8 2 H14 V8 M14 2 L7.5 8.5" fill="none" /></svg>;
 const SPLIT_ICON = <svg className="split-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" fill="none" /><rect x="2" y="2.5" width="12" height="5.5" /></svg>;
 
@@ -230,6 +233,7 @@ export function App() {
   const dragSplit = (e: React.PointerEvent) => { e.preventDefault(); const move = (ev: PointerEvent) => setPaneH(Math.max(8, Math.min(80, (ev.clientY / innerHeight) * 100))); const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); document.body.classList.remove('dragging-split'); }; document.body.classList.add('dragging-split'); addEventListener('pointermove', move); addEventListener('pointerup', up); };
   const route = useRoute();
   const wallet = useWallet();
+  brainWallet = wallet;
   useEffect(() => { api.config().then(setConfig).catch((e) => setError(String(e.message ?? e))); }, []);
   const ctx = useMemo(() => config && {
     config,
@@ -255,7 +259,7 @@ export function App() {
       <div className="shell">
       {document.documentElement.dataset.variant === 'micro' && <div className="wordrow">{['A', 'rarity', 'system', 'for', 'neural', 'networks', 'on', 'solana'].map((w) => <span key={w}>{w}</span>)}</div>}
       {/* the one live brain: fills the window on the homepage, sits in the top pane in split view */}
-      {(page === 'network' || split) && <div className={`brain-dock ${page === 'network' ? 'full' : 'split'}`} style={page === 'network' ? undefined : { height: `${paneH}vh` }}><iframe className="onion" src={BRAIN_SRC} title="The brain, live" onLoad={(e) => { const at = route[0] === 'network' && route[1] === 'part' ? Number(route[2]) : NaN; if (!Number.isNaN(at)) (e.target as HTMLIFrameElement).contentWindow?.postMessage({ goto: at }, '*'); }} /></div>}
+      {(page === 'network' || split) && <div className={`brain-dock ${page === 'network' ? 'full' : 'split'}`} style={page === 'network' ? undefined : { height: `${paneH}vh` }}><iframe className="onion" src={brainSrc()} title="The brain, live" onLoad={(e) => { const at = route[0] === 'network' && route[1] === 'part' ? Number(route[2]) : NaN; if (!Number.isNaN(at)) (e.target as HTMLIFrameElement).contentWindow?.postMessage({ goto: at }, '*'); }} /></div>}
       {split && page !== 'network' && <div className="split-bar" style={{ top: `${paneH}vh` }} onPointerDown={dragSplit}><i className="grip" /><button type="button" className="split-x" data-tip="close split screen" aria-label="Close split screen" onPointerDown={(e) => e.stopPropagation()} onClick={() => toggleSplit()}><svg viewBox="0 0 12 12" width="10" height="10"><path d="M2 2 L10 10 M10 2 L2 10" /></svg></button></div>}
       <main className={split && page !== 'network' ? 'split-main' : ''} style={split && page !== 'network' ? { paddingTop: `calc(${paneH}vh + 40px)`, ['--split-top' as string]: `${paneH}vh` } : undefined}>
         {error && <p className="error">Cannot reach the indexer. {error}</p>}

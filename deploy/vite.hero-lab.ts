@@ -20,7 +20,12 @@ const sameOriginApi: Plugin = {
       return code.replace(DEVNET_API, `(location.origin + '/api')`);
     }
     // The "buy neurons" link in the wallet panel (inside a template string): the site that serves the page.
-    if (file.endsWith('/hero-lab/world.ts')) return code.split('https://neurals-production.up.railway.app/#/buy').join('${location.origin}/buy');
+    // My neurons shows the wallet connected on the site (passed as ?wallet=), not a sample holder.
+    if (file.endsWith('/hero-lab/world.ts')) {
+      if (!code.includes('void start(null);')) throw new Error('hero-lab/world.ts no longer starts with start(null): update deploy/vite.hero-lab.ts');
+      return code.split('https://neurals-production.up.railway.app/#/buy').join('${location.origin}/buy')
+        .replace('void start(null);', "void start(new URLSearchParams(location.search).get('wallet'));");
+    }
     return null;
   },
 };
